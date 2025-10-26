@@ -2,6 +2,51 @@
 
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
+## Running the App Locally
+
+The interactive prototype lives in the `code/` directory and is a client-side React application rendered through `index.tsx` and the HTML shell in `index.html`. Follow the steps below to get it running on your machine.
+
+### 1. Install dependencies
+
+1. Install Node.js 18 or newer.
+2. From the repository root, move into the application directory and install the dependencies (Vite, React, TypeScript, etc.):
+
+   ```bash
+   cd code
+   npm install
+   ```
+
+### 2. Configure environment variables (optional, for AI copilots)
+
+The AI assistants call Gemini via the `@google/genai` SDK and expect an `API_KEY` environment variable at build time. If you want to exercise those features locally, export a key before starting the dev server:
+
+```bash
+export API_KEY="your-google-genai-key"
+```
+
+Without the key, the rest of the interface still loads, but AI-powered actions will be unavailable.
+
+### 3. Start the development server
+
+Use the Vite dev server to run the app with hot reloading:
+
+```bash
+npm run dev
+```
+
+Vite will print a local URL (typically `http://localhost:5173`) you can open in a browser.
+
+### 4. Build & preview production assets
+
+To generate an optimized static build and preview it locally:
+
+```bash
+npm run build
+npm run preview
+```
+
+The build artifacts land in `code/dist`, and `npm run preview` serves them with the same Vite configuration used in production.
+
 ---
 
 ## 1) Vision & Design Tenets
