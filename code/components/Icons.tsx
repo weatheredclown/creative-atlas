@@ -129,3 +129,15 @@ export const CalendarIcon: React.FC<{ className?: string }> = ({ className }) =>
         <path d='M3.5 7.75a.75.75 0 01.75-.75h11a.75.75 0 010 1.5h-11a.75.75 0 01-.75-.75zM6.75 10a.75.75 0 000 1.5h1.5A.75.75 0 009 10h-.007A.75.75 0 006.75 10zm0 3a.75.75 0 000 1.5h1.5A.75.75 0 009 13h-.007A.75.75 0 006.75 13zm4-3a.75.75 0 000 1.5h1.5a.75.75 0 00.75-.75h-.007A.75.75 0 0010.75 10zm0 3a.75.75 0 000 1.5h1.5a.75.75 0 00.75-.75h-.007A.75.75 0 0010.75 13z' />
     </svg>
 );
+
+export const MagnifyingGlassIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
+        <path fillRule='evenodd' d='M9 3.5a5.5 5.5 0 014.356 8.89l2.932 2.932a.75.75 0 11-1.06 1.06l-2.932-2.932A5.5 5.5 0 119 3.5zm0 1.5a4 4 0 100 8 4 4 0 000-8z' clipRule='evenodd' />
+    </svg>
+);
+
+export const FlagIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
+        <path fillRule='evenodd' d='M3.75 2A.75.75 0 013 2.75v14.5a.75.75 0 001.5 0v-4.03c.399-.186.84-.22 1.276-.087l.805.241c1.172.351 2.42.267 3.545-.238a4.978 4.978 0 012.716-.357l2.05.341A.75.75 0 0015.75 12V3.25a.75.75 0 00-.88-.737l-2.477.413a4.478 4.478 0 01-2.506.327l-1.28-.256A5.977 5.977 0 005.5 3.5a4.5 4.5 0 01-1.75-.35V2.75A.75.75 0 013.75 2z' clipRule='evenodd' />
+    </svg>
+);
