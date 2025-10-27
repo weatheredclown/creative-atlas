@@ -2,6 +2,43 @@
 
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
+## Productionization Roadmap
+
+### Persistent, Multi-User Data Layer
+- [ ] Launch a managed database-backed service (e.g., Supabase/Postgres, Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
+- [ ] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
+- [ ] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
+
+### Authentication, Authorization, and Profiles
+- [ ] Add sign-up and login flows with token-based authentication for the web client.
+- [ ] Associate every project and artifact with an owner and enforce row-level authorization rules.
+- [ ] Persist user-specific settings, XP totals, and achievements so progress follows accounts across devices.
+
+### Collaboration & Offline-Resilient UX
+- [ ] Decide on collaboration scope (real-time, turn-based, etc.) and add the necessary synchronization layer (websockets, CRDTs) for shared editing.
+- [ ] Implement optimistic UI updates with conflict resolution to keep the workspace fluid during network delays.
+- [ ] Add background draft syncing and local caching so editors remain usable when offline or during service interruptions.
+
+### AI Platform Hardening
+- [ ] Proxy Gemini (and future model) calls through a secure backend to keep API keys out of the client.
+- [ ] Add observability features such as rate limiting, retries, logging, and telemetry to track AI usage and failures.
+- [ ] Support provider/model configuration and queue long-running generations so the UI can display progress and degrade gracefully.
+
+### Robust Import/Export & Publishing
+- [ ] Validate CSV/Markdown inputs on the server and return actionable schema errors to the client.
+- [ ] Turn “Publish Site” into a backend-driven export that produces deployable static bundles hosted on durable storage/CDNs.
+- [ ] Version published outputs and support rollbacks to recover from accidental overwrites.
+
+### Operational Readiness
+- [ ] Add linting, unit, integration, and end-to-end tests alongside the existing Vite build to create a regression safety net.
+- [ ] Stand up continuous integration that runs the full test suite on every pull request.
+- [ ] Define staging and production deployment pipelines (e.g., Docker + Fly.io/Render, or frontend on Vercel) with monitoring, logging, and alerting.
+
+### Productization & Compliance
+- [ ] Layer in onboarding, documentation, accessibility, and localization improvements for first-time users.
+- [ ] Establish policies for data retention, content moderation, and privacy covering generated and uploaded content.
+- [ ] Provide support and education content (tutorials, FAQs) that make the product approachable for new creators.
+
 ## Running the App Locally
 
 The interactive prototype lives in the `code/` directory and is a client-side React application rendered through `index.tsx` and the HTML shell in `index.html`. Follow the steps below to get it running on your machine.
