@@ -1,4 +1,5 @@
 # Node build artifacts
+node_modules/
 code/node_modules/
 code/dist/
 

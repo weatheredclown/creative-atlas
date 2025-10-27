@@ -11,13 +11,26 @@ function escapeCsvCell(cell: any): string {
     return cellStr;
 }
 
+const serializeArtifactData = (artifact: Artifact): string => {
+    if (artifact.data === undefined || artifact.data === null) {
+        return '';
+    }
+
+    try {
+        return JSON.stringify(artifact.data);
+    } catch (error) {
+        console.warn(`Failed to serialize data for artifact ${artifact.id}`, error);
+        return '';
+    }
+};
+
 export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string) {
     if (artifacts.length === 0) {
         alert('No artifacts to export.');
         return;
     }
 
-    const headers = ['id', 'type', 'projectId', 'title', 'summary', 'status', 'tags', 'relations'];
+    const headers = ['id', 'type', 'projectId', 'title', 'summary', 'status', 'tags', 'relations', 'data'];
     const csvRows = [headers.join(',')];
 
     for (const artifact of artifacts) {
@@ -31,6 +44,7 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
             escapeCsvCell(artifact.status),
             escapeCsvCell(artifact.tags.join(';')),
             escapeCsvCell(relationsStr),
+            escapeCsvCell(serializeArtifactData(artifact)),
         ];
         csvRows.push(row.join(','));
     }

@@ -1,5 +1,74 @@
 
-import { Artifact, ArtifactType, Relation } from '../types';
+import { Artifact, ArtifactType, Relation, ConlangLexeme, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData } from '../types';
+
+const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
+    switch (type) {
+        case ArtifactType.Conlang:
+        case ArtifactType.Story:
+            return [];
+        case ArtifactType.Task:
+            return { state: TaskState.Todo } as TaskData;
+        case ArtifactType.Character:
+            return { bio: '', traits: [] } as CharacterData;
+        case ArtifactType.Wiki:
+            return { content: '' } as WikiData;
+        case ArtifactType.Location:
+            return { description: '', features: [] } as LocationData;
+        default:
+            return {};
+    }
+};
+
+const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data'] => {
+    if (!rawData) {
+        return getDefaultDataForType(type);
+    }
+
+    try {
+        const parsed = JSON.parse(rawData);
+
+        switch (type) {
+            case ArtifactType.Conlang:
+                return Array.isArray(parsed) ? parsed as ConlangLexeme[] : getDefaultDataForType(type);
+            case ArtifactType.Story:
+                return Array.isArray(parsed) ? parsed as Scene[] : getDefaultDataForType(type);
+            case ArtifactType.Task:
+                return (parsed && typeof parsed === 'object') ? parsed as TaskData : getDefaultDataForType(type);
+            case ArtifactType.Character: {
+                if (parsed && typeof parsed === 'object') {
+                    const character = parsed as CharacterData;
+                    return {
+                        bio: typeof character.bio === 'string' ? character.bio : '',
+                        traits: Array.isArray(character.traits) ? character.traits : [],
+                    };
+                }
+                return getDefaultDataForType(type);
+            }
+            case ArtifactType.Wiki: {
+                if (parsed && typeof parsed === 'object') {
+                    const wiki = parsed as WikiData;
+                    return { content: typeof wiki.content === 'string' ? wiki.content : '' };
+                }
+                return getDefaultDataForType(type);
+            }
+            case ArtifactType.Location: {
+                if (parsed && typeof parsed === 'object') {
+                    const location = parsed as LocationData;
+                    return {
+                        description: typeof location.description === 'string' ? location.description : '',
+                        features: Array.isArray(location.features) ? location.features : [],
+                    };
+                }
+                return getDefaultDataForType(type);
+            }
+            default:
+                return parsed ?? {};
+        }
+    } catch (error) {
+        console.warn(`Failed to parse data for artifact type ${type}:`, error);
+        return getDefaultDataForType(type);
+    }
+};
 
 // A simple CSV parser that handles quoted fields.
 const parseCsvRow = (row: string): string[] => {
@@ -8,8 +77,13 @@ const parseCsvRow = (row: string): string[] => {
     let inQuotes = false;
     for (let i = 0; i < row.length; i++) {
         const char = row[i];
-        if (char === '"' && (i === 0 || row[i-1] !== '\\')) {
-            inQuotes = !inQuotes;
+        if (char === '"') {
+            if (inQuotes && row[i + 1] === '"') {
+                current += '"';
+                i++; // Skip escaped quote
+            } else {
+                inQuotes = !inQuotes;
+            }
         } else if (char === ',' && !inQuotes) {
             result.push(current);
             current = '';
@@ -18,7 +92,7 @@ const parseCsvRow = (row: string): string[] => {
         }
     }
     result.push(current);
-    return result.map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"'));
+    return result;
 };
 
 export const importArtifactsFromCSV = (csvString: string, currentProjectId: string): Artifact[] => {
@@ -39,8 +113,15 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
             const values = parseCsvRow(rows[i]);
             const rowData: { [key: string]: string } = {};
             header.forEach((h, index) => {
-                rowData[h] = values[index];
+                rowData[h] = values[index] ?? '';
             });
+
+            const artifactType = rowData.type as ArtifactType;
+
+            if (!Object.values(ArtifactType).includes(artifactType)) {
+                console.warn(`Skipping row ${i+1}: Invalid artifact type '${rowData.type}'`);
+                continue;
+            }
 
             const relations: Relation[] = (rowData.relations || '')
                 .split(';')
@@ -52,21 +133,17 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
 
             const artifact: Artifact = {
                 id: rowData.id,
-                type: rowData.type as ArtifactType,
+                type: artifactType,
                 projectId: rowData.projectId || currentProjectId,
                 title: rowData.title,
                 summary: rowData.summary || '',
                 status: rowData.status || 'idea',
                 tags: (rowData.tags || '').split(';').filter(t => t),
                 relations: relations,
-                data: {}, // Importer doesn't handle complex data field for now
+                data: parseArtifactData(artifactType, rowData.data),
             };
-            
+
             // Basic validation
-            if (!Object.values(ArtifactType).includes(artifact.type)) {
-                console.warn(`Skipping row ${i+1}: Invalid artifact type '${artifact.type}'`);
-                continue;
-            }
             if (!artifact.id || !artifact.title) {
                 console.warn(`Skipping row ${i+1}: Missing required id or title.`);
                 continue;
