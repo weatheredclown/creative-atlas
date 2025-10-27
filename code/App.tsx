@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState } from './types';
+import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData, TemplateCategory, Milestone, AIAssistant } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -20,6 +20,9 @@ import { exportArtifactsToCSV, exportProjectAsStaticSite } from './utils/export'
 import { importArtifactsFromCSV } from './utils/import';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
+import TemplateGallery from './components/TemplateGallery';
+import Roadmap from './components/Roadmap';
+import AICopilotPanel from './components/AICopilotPanel';
 
 // Mock data based on the product spec
 const initialProjects: Project[] = [
@@ -50,6 +53,185 @@ const achievements: Achievement[] = [
     { id: 'ach-2', title: 'Polyglot', description: 'Create a Conlang artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Conlang) },
     { id: 'ach-3', title: 'Cartographer', description: 'Create a Location artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Location) },
     { id: 'ach-4', title: 'Connector', description: 'Link 3 artifacts together.', isUnlocked: (artifacts) => artifacts.reduce((acc, a) => acc + a.relations.length, 0) >= 3 },
+];
+
+const templateLibrary: TemplateCategory[] = [
+    {
+        id: 'tamenzut',
+        title: 'Tamenzut Series',
+        description: 'High-fantasy seeds that keep the Tamenzut saga consistent from novel to novel.',
+        recommendedFor: ['Tamenzut'],
+        templates: [
+            { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
+            { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
+            { id: 'tam-city', name: 'City', description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
+            { id: 'tam-faction', name: 'Faction', description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
+            { id: 'tam-edruel', name: 'Edruel Ruins', description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
+            { id: 'tam-thread-log', name: 'ThreadWeaving Log', description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
+            { id: 'tam-canon', name: 'Canon Tracker', description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
+        ],
+    },
+    {
+        id: 'steamweave',
+        title: 'Steamweave / Anya',
+        description: 'Coal-punk ops boards for Anya’s guild drama and gadgeteering.',
+        recommendedFor: ['Steamweave'],
+        templates: [
+            { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
+            { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
+            { id: 'steam-scene', name: 'Scene', description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
+            { id: 'steam-villain', name: 'Villain (Red-Eyes)', description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
+            { id: 'steam-triangle', name: 'Love Triangle Map', description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
+            { id: 'steam-release', name: 'Release Notes', description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
+        ],
+    },
+    {
+        id: 'dustland',
+        title: 'Dustland RPG',
+        description: 'Questline scaffolds for the Dustland tabletop campaign.',
+        recommendedFor: ['Dustland'],
+        templates: [
+            { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
+            { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
+            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, mannerisms, and secret agendas.', tags: ['npc'] },
+            { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
+            { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
+            { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
+            { id: 'dust-build', name: 'Build', description: 'Record character progressions and loadouts for playtests.', tags: ['characters'] },
+        ],
+    },
+    {
+        id: 'spatch',
+        title: 'Spatch League',
+        description: 'Sports-drama templates tuned for the Spatch comic universe.',
+        recommendedFor: ['Spatch'],
+        templates: [
+            { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
+            { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
+            { id: 'spatch-rule', name: 'Rule Variant', description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
+            { id: 'spatch-match', name: 'Match', description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
+            { id: 'spatch-board', name: 'Panel Board', description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
+        ],
+    },
+    {
+        id: 'darv',
+        title: 'Darv Conlang',
+        description: 'Linguistic workbench for the ancient language of the Darv.',
+        recommendedFor: ['Darv'],
+        templates: [
+            { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
+            { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
+            { id: 'darv-paradigm', name: 'Paradigm', description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
+            { id: 'darv-proverb', name: 'Proverb', description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
+            { id: 'darv-myth', name: 'Myth', description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
+        ],
+    },
+    {
+        id: 'sacred-truth',
+        title: 'Sacred Truth Dossiers',
+        description: 'Supernatural investigation kits for the Sacred Truth vampire saga.',
+        recommendedFor: ['Sacred Truth'],
+        templates: [
+            { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
+            { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
+            { id: 'sacred-codex', name: 'Monster Codex', description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
+            { id: 'sacred-cathedral', name: 'Cathedral Asset', description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
+        ],
+    },
+];
+
+const milestoneRoadmap: Milestone[] = [
+    {
+        id: 'm1',
+        title: 'M1 — MVP',
+        timeline: 'Weeks 1–4',
+        focus: 'Ship the graph-native core so ideas can be captured, linked, and exported.',
+        objectives: [
+            'Core graph model, Projects/Artifacts/Relations',
+            'Seed capture, Table view, basic Graph view',
+            'CSV import/export (artifacts, relations)',
+            'GitHub read-only import (repos/issues/releases)',
+        ],
+    },
+    {
+        id: 'm2',
+        title: 'M2 — Editors & Gamification',
+        timeline: 'Weeks 5–8',
+        focus: 'Deepen creation flows with rich editors and playful progression loops.',
+        objectives: [
+            'Conlang table editor; Storyboard; Kanban',
+            'XP/Streaks/Quests + Achievements',
+            'Markdown bundle export',
+        ],
+    },
+    {
+        id: 'm3',
+        title: 'M3 — Publishing & Integrations',
+        timeline: 'Weeks 9–12',
+        focus: 'Publish worlds outward with search, release tooling, and static sites.',
+        objectives: [
+            'Static site exporter (Wikis/Docs)',
+            'Release notes generator',
+            'Search (Meilisearch), advanced filters',
+        ],
+    },
+    {
+        id: 'm4',
+        title: 'M4 — Polish & Extensibility',
+        timeline: 'Weeks 13–16',
+        focus: 'Open the universe with plugins, theming, and offline-friendly polish.',
+        objectives: [
+            'Plugin API + 3 sample plugins (conlang, webcomic, ai prompts)',
+            'Theming, keyboard palette, offline cache (light)',
+        ],
+    },
+];
+
+const aiAssistants: AIAssistant[] = [
+    {
+        id: 'lore-weaver',
+        name: 'Lore Weaver',
+        description: 'Expands summaries, suggests links, and weaves conflict matrices so the universe feels alive.',
+        focus: 'Narrative expansion & connective tissue',
+        promptSlots: [
+            'synth_outline(projectId, artifactId, tone, constraints)',
+            'link_matrix(projectId, focusArtifactId)',
+            'conflict_web(projectId)',
+        ],
+    },
+    {
+        id: 'conlang-smith',
+        name: 'Conlang Smith',
+        description: 'Batches lexemes, paradigm tables, and example sentences to grow fictional languages fast.',
+        focus: 'Language design & lexicon growth',
+        promptSlots: [
+            'lexeme_seed(conlangId, phonotactics, needed_pos)',
+            'paradigm_table(conlangId, partOfSpeech)',
+            'example_sentences(conlangId, register)',
+        ],
+    },
+    {
+        id: 'story-doctor',
+        name: 'Story Doctor',
+        description: 'Diagnoses beats, tension curves, and recommends comp titles for strong narrative pacing.',
+        focus: 'Story health & pacing diagnostics',
+        promptSlots: [
+            'beat_diagnostic(projectId, artifactId)',
+            'tension_graph(projectId, artifactId)',
+            'comp_titles(genre, wordcount)',
+        ],
+    },
+    {
+        id: 'release-bard',
+        name: 'Release Bard',
+        description: 'Turns changelogs into narrative release notes and scripts launch trailers.',
+        focus: 'Publishing voice & launch storytelling',
+        promptSlots: [
+            'patch_notes(repo, tag_range, audience)',
+            'release_story(projectId, milestoneId, tone)',
+            'trailer_script(projectId, duration)',
+        ],
+    },
 ];
 
 const Header: React.FC<{ xp: number }> = ({ xp }) => (
@@ -515,6 +697,13 @@ export default function App() {
                     )}
                 </div>
               )}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+                <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+                <AICopilotPanel assistants={aiAssistants} />
+                <div className="xl:col-span-2">
+                    <Roadmap milestones={milestoneRoadmap} />
+                </div>
+              </div>
             </>
           ) : (
             <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">

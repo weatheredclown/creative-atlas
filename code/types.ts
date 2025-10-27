@@ -112,3 +112,34 @@ export interface Achievement {
     description: string;
     isUnlocked: (artifacts: Artifact[], projects: Project[]) => boolean;
 }
+
+export interface TemplateEntry {
+    id: string;
+    name: string;
+    description: string;
+    tags?: string[];
+}
+
+export interface TemplateCategory {
+    id: string;
+    title: string;
+    description: string;
+    recommendedFor: string[];
+    templates: TemplateEntry[];
+}
+
+export interface Milestone {
+    id: string;
+    title: string;
+    timeline: string;
+    focus: string;
+    objectives: string[];
+}
+
+export interface AIAssistant {
+    id: string;
+    name: string;
+    description: string;
+    focus: string;
+    promptSlots: string[];
+}
