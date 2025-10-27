@@ -95,7 +95,7 @@ const parseCsvRow = (row: string): string[] => {
     return result;
 };
 
-export const importArtifactsFromCSV = (csvString: string, currentProjectId: string): Artifact[] => {
+export const importArtifactsFromCSV = (csvString: string, currentProjectId: string, ownerId: string): Artifact[] => {
     const importedArtifacts: Artifact[] = [];
     const rows = csvString.split('\n').filter(row => row.trim() !== '');
     if (rows.length < 2) {
@@ -131,6 +131,7 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
                     return { kind, toId };
                 });
 
+            const now = new Date().toISOString();
             const artifact: Artifact = {
                 id: rowData.id,
                 type: artifactType,
@@ -141,6 +142,9 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
                 tags: (rowData.tags || '').split(';').filter(t => t),
                 relations: relations,
                 data: parseArtifactData(artifactType, rowData.data),
+                ownerId,
+                createdAt: now,
+                updatedAt: now,
             };
 
             // Basic validation

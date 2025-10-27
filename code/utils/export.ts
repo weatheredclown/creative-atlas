@@ -24,12 +24,9 @@ const serializeArtifactData = (artifact: Artifact): string => {
     }
 };
 
-export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string) {
-    if (artifacts.length === 0) {
-        alert('No artifacts to export.');
-        return;
-    }
+export const slugify = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 
+export const serializeArtifactsToCsv = (artifacts: Artifact[]): string => {
     const headers = ['id', 'type', 'projectId', 'title', 'summary', 'status', 'tags', 'relations', 'data'];
     const csvRows = [headers.join(',')];
 
@@ -49,21 +46,49 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
         csvRows.push(row.join(','));
     }
 
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    return csvRows.join('\n');
+};
 
+export const createCsvFilename = (projectName: string): string => {
+    const slug = slugify(projectName || 'project');
+    return `${slug || 'project'}_artifacts.csv`;
+};
+
+const triggerDownload = (blob: Blob, filename: string) => {
     const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        const filename = `${projectName.replace(/\s+/g, '_').toLowerCase()}_artifacts.csv`;
-        link.setAttribute('download', filename);
-        link.href = url;
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    if (typeof link.download === 'undefined') {
+        return;
     }
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
+    link.href = url;
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string) {
+    if (artifacts.length === 0) {
+        alert('No artifacts to export.');
+        return;
+    }
+
+    const csvString = serializeArtifactsToCsv(artifacts);
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    triggerDownload(blob, createCsvFilename(projectName));
 }
+
+export const downloadCsvContent = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    triggerDownload(blob, filename);
+};
+
+export const downloadZipBuffer = (buffer: ArrayBuffer, filename: string) => {
+    const blob = new Blob([buffer], { type: 'application/zip' });
+    triggerDownload(blob, filename);
+};
 
 const generateArtifactMarkdownBody = (artifact: Artifact): string => {
     let body = `# ${artifact.title}\n\n${artifact.summary || ''}\n\n`;
@@ -179,18 +204,8 @@ export function exportArtifactToMarkdown(artifact: Artifact) {
 
     const markdownString = frontmatter + generateArtifactMarkdownBody(artifact);
     const blob = new Blob([markdownString], { type: 'text/markdown;charset=utf-8;' });
-    
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        const filename = `${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.md`;
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    const filename = `${artifact.type}_${slugify(artifact.title)}.md`;
+    triggerDownload(blob, filename);
 }
 
 const createHtmlShell = (title: string, content: string) => `
@@ -296,7 +311,7 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         artifact.relations.forEach(rel => {
             const target = allArtifacts.find(a => a.id === rel.toId);
             if (target) {
-                const targetFilename = `${target.type}_${target.title.replace(/\s+/g, '_').toLowerCase()}.html`;
+                const targetFilename = `${target.type}_${slugify(target.title)}.html`;
                 content += `<li class='text-slate-400'>${rel.kind.replace(/_/g, ' ')} <a href='${targetFilename}' class='text-cyan-400 hover:underline'>${target.title}</a></li>`;
             }
         });
@@ -307,16 +322,15 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
     return content;
 };
 
-export async function exportProjectAsStaticSite(project: Project, artifacts: Artifact[]) {
+export async function buildStaticSiteArchive(project: Project, artifacts: Artifact[]): Promise<Blob> {
     const zip = new JSZip();
-    const projectSlug = project.title.replace(/\s+/g, '_').toLowerCase();
 
     // Create main index.html
     let indexContent = `<h1 class='text-4xl font-bold text-white mb-2'>${project.title}</h1>`;
     indexContent += `<p class='text-lg text-slate-400 mb-8'>${project.summary}</p>`;
     indexContent += "<h2 class='text-2xl font-bold text-white mb-4'>Artifacts</h2><div class='grid grid-cols-1 md:grid-cols-3 gap-4'>";
     artifacts.forEach(artifact => {
-        const filename = `artifacts/${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.html`;
+        const filename = `artifacts/${artifact.type}_${slugify(artifact.title)}.html`;
         indexContent += `<a href='${filename}' class='block bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-cyan-500 transition'>
             <h3 class='font-bold text-slate-200'>${artifact.title}</h3>
             <p class='text-sm text-cyan-400'>${artifact.type}</p>
@@ -329,18 +343,22 @@ export async function exportProjectAsStaticSite(project: Project, artifacts: Art
     const artifactsFolder = zip.folder('artifacts');
     if (artifactsFolder) {
         artifacts.forEach(artifact => {
-            const filename = `${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.html`;
+            const filename = `${artifact.type}_${slugify(artifact.title)}.html`;
             const artifactHtml = generateArtifactContent(artifact, artifacts);
             artifactsFolder.file(filename, createHtmlShell(`${artifact.title} | ${project.title}`, artifactHtml));
         });
     }
 
     // Generate and download zip
-    const content = await zip.generateAsync({ type: 'blob' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(content);
-    link.download = `${projectSlug}_static_site.zip`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    return zip.generateAsync({ type: 'blob' });
+}
+
+export async function exportProjectAsStaticSite(project: Project, artifacts: Artifact[]) {
+    if (artifacts.length === 0) {
+        alert('Add at least one artifact before exporting a static site.');
+        return;
+    }
+    const content = await buildStaticSiteArchive(project, artifacts);
+    const projectSlug = slugify(project.title || 'project') || 'project';
+    triggerDownload(content, `${projectSlug}_static_site.zip`);
 }

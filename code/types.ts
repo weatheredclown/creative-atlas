@@ -6,7 +6,16 @@ export enum ProjectStatus {
   Archived = 'archived',
 }
 
-export interface Project {
+export interface TimestampedEntity {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OwnedEntity extends TimestampedEntity {
+  ownerId: string;
+}
+
+export interface Project extends OwnedEntity {
   id: string;
   title: string;
   summary: string;
@@ -76,7 +85,7 @@ export interface LocationData {
     features: LocationFeature[];
 }
 
-export interface Artifact {
+export interface Artifact extends OwnedEntity {
   id: string;
   projectId: string;
   type: ArtifactType;
@@ -142,4 +151,35 @@ export interface AIAssistant {
     description: string;
     focus: string;
     promptSlots: string[];
+}
+
+export interface UserAccount extends TimestampedEntity {
+  id: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+}
+
+export interface AuthSession {
+  token: string;
+  userId: string;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+export interface UserSettings extends TimestampedEntity {
+  userId: string;
+  xp: number;
+  achievementIds: string[];
+  lastQuestReset: string;
+}
+
+export interface PaginationParams {
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  nextCursor: string | null;
 }

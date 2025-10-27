@@ -5,14 +5,14 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 ## Productionization Roadmap
 
 ### Persistent, Multi-User Data Layer
-- [ ] Launch a managed database-backed service (e.g., Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
-- [ ] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
-- [ ] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
+- [x] Launch a managed database-backed service (e.g., Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
+- [x] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
+- [x] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
 
 ### Authentication, Authorization, and Profiles
-- [ ] Add sign-up and login flows with token-based authentication for the web client.
-- [ ] Associate every project and artifact with an owner and enforce row-level authorization rules.
-- [ ] Persist user-specific settings, XP totals, and achievements so progress follows accounts across devices.
+- [x] Add sign-up and login flows with token-based authentication for the web client.
+- [x] Associate every project and artifact with an owner and enforce row-level authorization rules.
+- [x] Persist user-specific settings, XP totals, and achievements so progress follows accounts across devices.
 
 ### Collaboration & Offline-Resilient UX (do not implement yet)
 - [ ] Decide on collaboration scope (real-time, turn-based, etc.) and add the necessary synchronization layer (websockets, CRDTs) for shared editing.
@@ -23,8 +23,8 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Proxy Gemini (and future model) calls through a secure backend to keep API keys out of the client.
 
 ### Robust Import/Export & Publishing
-- [ ] Validate CSV/Markdown inputs on the server and return actionable schema errors to the client.
-- [ ] Turn “Publish Site” into a backend-driven export that produces deployable static bundles hosted on durable storage/CDNs.
+- [x] Validate CSV/Markdown inputs on the server and return actionable schema errors to the client.
+- [x] Turn “Publish Site” into a backend-driven export that produces deployable static bundles hosted on durable storage/CDNs.
 
 ### Operational Readiness
 - [x] Add linting, unit, integration, and end-to-end tests alongside the existing Vite build to create a regression safety net.
