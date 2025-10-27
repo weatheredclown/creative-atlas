@@ -15,6 +15,7 @@ import KanbanBoard from './components/KanbanBoard';
 import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
+import TaskEditor from './components/TaskEditor';
 import { exportArtifactsToCSV, exportArtifactToMarkdown, exportProjectAsStaticSite } from './utils/export';
 import { importArtifactsFromCSV } from './utils/import';
 import ProjectInsights from './components/ProjectInsights';
@@ -124,6 +125,9 @@ export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addXp = useCallback((amount: number) => {
@@ -161,6 +165,9 @@ export default function App() {
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     setSelectedArtifactId(null);
+    setArtifactTypeFilter('ALL');
+    setStatusFilter('ALL');
+    setSearchTerm('');
   };
 
   const handleCreateProject = useCallback(({ title, summary }: { title: string; summary: string }) => {
@@ -251,6 +258,39 @@ export default function App() {
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
+  const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
+
+  const filteredArtifacts = useMemo(() => {
+    const normalizedQuery = searchTerm.trim().toLowerCase();
+
+    return projectArtifacts.filter((artifact) => {
+      if (artifactTypeFilter !== 'ALL' && artifact.type !== artifactTypeFilter) {
+        return false;
+      }
+
+      if (statusFilter !== 'ALL' && artifact.status !== statusFilter) {
+        return false;
+      }
+
+      if (normalizedQuery) {
+        const haystack = `${artifact.title} ${artifact.summary} ${artifact.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projectArtifacts, artifactTypeFilter, statusFilter, searchTerm]);
+
+  const hasActiveFilters = artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '';
+  const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
+
+  const handleResetFilters = () => {
+    setArtifactTypeFilter('ALL');
+    setStatusFilter('ALL');
+    setSearchTerm('');
+  };
 
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
@@ -323,6 +363,61 @@ export default function App() {
                         </button>
                     </div>
                 </div>
+                <div className="mt-3 bg-slate-900/40 border border-slate-700/50 rounded-lg px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="artifact-type-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Type</label>
+                            <select
+                                id="artifact-type-filter"
+                                value={artifactTypeFilter}
+                                onChange={(event) => setArtifactTypeFilter(event.target.value as 'ALL' | ArtifactType)}
+                                className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                                <option value="ALL">All artifact types</option>
+                                {Object.values(ArtifactType).map((type) => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="artifact-status-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stage</label>
+                            <select
+                                id="artifact-status-filter"
+                                value={statusFilter}
+                                onChange={(event) => setStatusFilter(event.target.value as 'ALL' | string)}
+                                className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                                <option value="ALL">All stages</option>
+                                {availableStatuses.map((status) => (
+                                    <option key={status} value={status}>{formatStatusLabel(status)}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="artifact-search" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Search</label>
+                            <input
+                                id="artifact-search"
+                                type="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Title, summary, or tag"
+                                className="bg-slate-800/80 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 w-48 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                        {hasActiveFilters && (
+                            <button
+                                type="button"
+                                onClick={handleResetFilters}
+                                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                            >
+                                Clear filters
+                            </button>
+                        )}
+                    </div>
+                    <div className="text-xs text-slate-400">
+                        Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                    </div>
+                </div>
                 {viewMode === 'table' && (
                     <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden">
                         <table className="w-full text-left">
@@ -335,26 +430,33 @@ export default function App() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {projectArtifacts.length > 0 ? (
-                                    projectArtifacts.map(art => (
+                                {filteredArtifacts.length > 0 ? (
+                                    filteredArtifacts.map(art => (
                                         <ArtifactListItem key={art.id} artifact={art} onSelect={setSelectedArtifactId} isSelected={art.id === selectedArtifactId} />
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="text-center p-8 text-slate-500">No artifacts in this project yet. Create a new seed!</td>
+                                        <td colSpan={4} className="text-center p-8 text-slate-500">
+                                            {hasActiveFilters ? 'No artifacts match the current filters.' : 'No artifacts in this project yet. Create a new seed!'}
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
                 )}
-                {viewMode === 'graph' && <GraphView artifacts={projectArtifacts} onNodeClick={setSelectedArtifactId} />}
-                {viewMode === 'kanban' && <KanbanBoard artifacts={projectArtifacts} onUpdateArtifactData={handleUpdateArtifactData} />}
+                {viewMode === 'graph' && <GraphView artifacts={filteredArtifacts} onNodeClick={setSelectedArtifactId} />}
+                {viewMode === 'kanban' && <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={handleUpdateArtifactData} />}
               </div>
 
               {selectedArtifact && (
                 <div className="space-y-8">
-                    <ArtifactDetail 
+                    {filteredSelectedArtifactHidden && (
+                        <div className="bg-amber-900/40 border border-amber-700/60 text-amber-200 text-sm px-4 py-3 rounded-lg">
+                            This artifact is currently hidden by the active filters. Clear them to surface it in the list.
+                        </div>
+                    )}
+                    <ArtifactDetail
                         artifact={selectedArtifact}
                         projectArtifacts={projectArtifacts}
                         onUpdateArtifact={handleUpdateArtifact}
@@ -362,8 +464,8 @@ export default function App() {
                         addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
-                        <ConlangLexiconEditor 
-                            artifact={selectedArtifact} 
+                        <ConlangLexiconEditor
+                            artifact={selectedArtifact}
                             conlangName={selectedProject.title}
                             onLexemesAdded={(id, lexemes) => handleUpdateArtifactData(id, [...(selectedArtifact.data as ConlangLexeme[]), ...lexemes])}
                             addXp={addXp}
@@ -389,6 +491,12 @@ export default function App() {
                     )}
                     {selectedArtifact.type === ArtifactType.Location && (
                         <LocationEditor
+                            artifact={selectedArtifact}
+                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                        />
+                    )}
+                    {selectedArtifact.type === ArtifactType.Task && (
+                        <TaskEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
                         />

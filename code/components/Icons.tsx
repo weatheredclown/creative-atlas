@@ -122,3 +122,10 @@ export const FolderPlusIcon: React.FC<{ className?: string }> = ({ className }) 
         <path d='M2 10.75a.75.75 0 00-1.5 0v4.5A1.75 1.75 0 002.25 17h5a.75.75 0 000-1.5h-5a.25.25 0 01-.25-.25v-4.5z' />
     </svg>
 );
+
+export const CalendarIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
+        <path d='M6 2.75a.75.75 0 00-1.5 0V4H3.5A1.5 1.5 0 002 5.5v11A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0016.5 4H15V2.75a.75.75 0 00-1.5 0V4h-7V2.75z' />
+        <path d='M3.5 7.75a.75.75 0 01.75-.75h11a.75.75 0 010 1.5h-11a.75.75 0 01-.75-.75zM6.75 10a.75.75 0 000 1.5h1.5A.75.75 0 009 10h-.007A.75.75 0 006.75 10zm0 3a.75.75 0 000 1.5h1.5A.75.75 0 009 13h-.007A.75.75 0 006.75 13zm4-3a.75.75 0 000 1.5h1.5a.75.75 0 00.75-.75h-.007A.75.75 0 0010.75 10zm0 3a.75.75 0 000 1.5h1.5a.75.75 0 00.75-.75h-.007A.75.75 0 0010.75 13z' />
+    </svg>
+);
