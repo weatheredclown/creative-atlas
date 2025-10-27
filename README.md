@@ -8,6 +8,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Launch a managed database-backed service (e.g., Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
 - [ ] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
 - [ ] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
+- 📘 See [`docs/firebase-backend-migration.md`](docs/firebase-backend-migration.md) for the recommended Firebase + Firestore architecture and step-by-step migration plan (starting with authentication setup).
 
 ### Authentication, Authorization, and Profiles
 - [ ] Add sign-up and login flows with token-based authentication for the web client.
