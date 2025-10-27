@@ -18,11 +18,18 @@ The interactive prototype lives in the `code/` directory and is a client-side Re
 
 ### 2. Configure environment variables (optional, for AI copilots)
 
-The AI assistants call Gemini via the `@google/genai` SDK and expect an `API_KEY` environment variable at build time. If you want to exercise those features locally, export a key before starting the dev server:
+The AI assistants call Gemini via the `@google/genai` SDK and expect a `VITE_API_KEY` environment variable at build time. Follow the steps below to create a key and expose it to the app:
 
-```bash
-export API_KEY="your-google-genai-key"
-```
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and sign in with the Google account you want to use for Gemini access.
+2. Click **Create API key**, then either select an existing Google Cloud project or create a new one. (Google will prompt you to enable the Gemini API and, if necessary, billing for that project.)
+3. After the key is generated, copy its value and keep it somewhere secure.
+4. Back in this repository, export the key before running any Vite commands, or add it to a `.env` file that Vite can read:
+
+   ```bash
+   export VITE_API_KEY="your-google-genai-key"
+   ```
+
+   For a persistent setup, create a file named `.env.local` inside `code/` with the line `VITE_API_KEY=your-google-genai-key`.
 
 Without the key, the rest of the interface still loads, but AI-powered actions will be unavailable.
 
