@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Artifact, ArtifactType, TaskData, TaskState } from '../types';
-import { PlusIcon } from './Icons';
 
 interface KanbanCardProps {
   task: Artifact;

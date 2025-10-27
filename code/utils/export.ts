@@ -3,7 +3,7 @@ import { Artifact, Project, ArtifactType, Scene, CharacterData, LocationData, Co
 import JSZip from 'jszip';
 import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
 
-function escapeCsvCell(cell: any): string {
+function escapeCsvCell(cell: unknown): string {
     const cellStr = String(cell ?? '');
     if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
         return `"${cellStr.replace(/"/g, '""')}"`;
@@ -57,6 +57,7 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
         const url = URL.createObjectURL(blob);
         const filename = `${projectName.replace(/\s+/g, '_').toLowerCase()}_artifacts.csv`;
         link.setAttribute('download', filename);
+        link.href = url;
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

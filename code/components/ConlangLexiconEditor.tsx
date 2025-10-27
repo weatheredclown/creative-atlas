@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Artifact, ConlangLexeme } from '../types';
 import { generateLexemes } from '../services/geminiService';
 import { SparklesIcon, Spinner } from './Icons';
@@ -16,7 +16,7 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const lexemes = (artifact.data as ConlangLexeme[]) || [];
+  const lexemes = useMemo(() => (artifact.data as ConlangLexeme[]) || [], [artifact.data]);
 
   const handleGenerateLexemes = useCallback(async () => {
     if (!theme) {

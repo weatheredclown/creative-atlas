@@ -27,8 +27,8 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Turn “Publish Site” into a backend-driven export that produces deployable static bundles hosted on durable storage/CDNs.
 
 ### Operational Readiness
-- [ ] Add linting, unit, integration, and end-to-end tests alongside the existing Vite build to create a regression safety net.
-- [ ] Stand up continuous integration that runs the full test suite on every pull request.
+- [x] Add linting, unit, integration, and end-to-end tests alongside the existing Vite build to create a regression safety net.
+- [x] Stand up continuous integration that runs the full test suite on every pull request.
 
 ### Productization & Compliance (low priority)
 - [ ] Layer in onboarding, documentation, accessibility, and localization improvements for first-time users.
@@ -86,6 +86,19 @@ npm run preview
 ```
 
 The build artifacts land in `code/dist`, and `npm run preview` serves them with the same Vite configuration used in production.
+
+### 5. Quality and test tooling
+
+Run the automated quality gates before opening a pull request:
+
+```bash
+npm run lint
+npm test
+npm run test:e2e
+```
+
+`npm test` executes the Vitest-powered unit and integration suite. `npm run test:e2e` runs the Playwright smoke tests; the first run
+may prompt you to install the required browsers via `npx playwright install`.
 
 ---
 
