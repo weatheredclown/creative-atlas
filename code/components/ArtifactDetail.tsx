@@ -20,6 +20,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
   const [expandError, setExpandError] = useState<string | null>(null);
   const [showAddRelation, setShowAddRelation] = useState(false);
   const [relationTargetId, setRelationTargetId] = useState('');
+  const [relationKind, setRelationKind] = useState('RELATES_TO');
   const [editableSummary, setEditableSummary] = useState(artifact.summary);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -29,6 +30,8 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
     setIsEditingSummary(false);
     setTagInput('');
     setExpandError(null);
+    setRelationTargetId('');
+    setRelationKind('RELATES_TO');
   }, [artifact.id, artifact.summary]);
 
   const statusOptions = Array.from(
@@ -59,11 +62,17 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
 
   const handleAddRelationClick = () => {
     if (relationTargetId) {
-      onAddRelation(artifact.id, relationTargetId, 'RELATES_TO');
+      onAddRelation(artifact.id, relationTargetId, relationKind);
       addXp(2); // XP Source: link two artifacts (+2)
       setRelationTargetId('');
+      setRelationKind('RELATES_TO');
       setShowAddRelation(false);
     }
+  };
+
+  const handleRemoveRelation = (indexToRemove: number) => {
+    const updatedRelations = artifact.relations.filter((_, index) => index !== indexToRemove);
+    onUpdateArtifact({ ...artifact, relations: updatedRelations });
   };
 
   const handleSaveSummary = () => {
@@ -100,6 +109,15 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
   };
 
   const availableTargets = projectArtifacts.filter((a) => a.id !== artifact.id && !artifact.relations.some((r) => r.toId === a.id));
+  const relationOptions = [
+    'RELATES_TO',
+    'CONTAINS',
+    'DERIVES_FROM',
+    'USES',
+    'APPEARS_IN',
+    'SET_IN',
+    'PUBLISHES_TO',
+  ];
 
   return (
     <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 divide-y divide-slate-700/50">
@@ -245,8 +263,15 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
             const target = projectArtifacts.find((a) => a.id === rel.toId);
             return (
               <div key={`${rel.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
-                <span className="text-slate-400">{rel.kind.replace(/_/g, ' ').toLowerCase()}</span>
+                <span className="text-slate-400">{formatStatusLabel(rel.kind)}</span>
                 <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
+                <button
+                  onClick={() => handleRemoveRelation(index)}
+                  className="ml-auto p-1 text-slate-400 hover:text-red-400"
+                  aria-label={`Remove relation ${rel.kind} to ${target?.title ?? rel.toId}`}
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
               </div>
             );
           })}
@@ -257,6 +282,17 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
 
         {showAddRelation ? (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-4">
+            <select
+              value={relationKind}
+              onChange={(event) => setRelationKind(event.target.value)}
+              className="w-full sm:w-40 bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+            >
+              {relationOptions.map((option) => (
+                <option key={option} value={option}>
+                  {formatStatusLabel(option)}
+                </option>
+              ))}
+            </select>
             <select
               value={relationTargetId}
               onChange={(event) => setRelationTargetId(event.target.value)}

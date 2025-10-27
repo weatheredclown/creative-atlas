@@ -22,11 +22,12 @@ const nodeColor = (type: ArtifactType): string => {
 
 const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
   const { nodes, edges } = useMemo(() => {
+    const artifactIds = new Set(artifacts.map((artifact) => artifact.id));
     const initialNodes: Node[] = artifacts.map((artifact, i) => ({
       id: artifact.id,
       data: { label: artifact.title, type: artifact.type },
       position: { x: (i % 6) * 190 + Math.random() * 40, y: Math.floor(i / 6) * 140 + Math.random() * 40 },
-      style: { 
+      style: {
           background: '#1e293b', // slate-800
           color: '#e2e8f0', // slate-200
           border: `1px solid ${nodeColor(artifact.type)}`,
@@ -39,14 +40,16 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
     const initialEdges: Edge[] = [];
     artifacts.forEach(sourceArtifact => {
       sourceArtifact.relations.forEach(relation => {
-        initialEdges.push({
-          id: `e-${sourceArtifact.id}-${relation.toId}`,
-          source: sourceArtifact.id,
-          target: relation.toId,
-          animated: true,
-          label: relation.kind.replace(/_/g, ' ').toLowerCase(),
-          style: { stroke: '#64748b', strokeWidth: 1.5 }, // slate-500
-        });
+        if (artifactIds.has(relation.toId)) {
+          initialEdges.push({
+            id: `e-${sourceArtifact.id}-${relation.toId}`,
+            source: sourceArtifact.id,
+            target: relation.toId,
+            animated: true,
+            label: relation.kind.replace(/_/g, ' ').toLowerCase(),
+            style: { stroke: '#64748b', strokeWidth: 1.5 }, // slate-500
+          });
+        }
       });
     });
 
