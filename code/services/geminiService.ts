@@ -2,12 +2,21 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { Artifact, ConlangLexeme } from '../types';
 
-// Ensure the API key is available from environment variables
-if (!process.env.API_KEY) {
-  throw new Error('API_KEY environment variable not set');
-}
+const apiKey = import.meta.env.VITE_API_KEY;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY, vertexai: true });
+let cachedClient: GoogleGenAI | null = null;
+
+const getClient = (): GoogleGenAI => {
+  if (!apiKey) {
+    throw new Error('VITE_API_KEY environment variable not set');
+  }
+
+  if (!cachedClient) {
+    cachedClient = new GoogleGenAI({ apiKey, vertexai: true });
+  }
+
+  return cachedClient;
+};
 
 const lexemeSchema = {
   type: Type.OBJECT,
@@ -58,7 +67,7 @@ export const generateLexemes = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getClient().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
         role: 'user',
@@ -110,7 +119,7 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getClient().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: {
                 role: 'user',
