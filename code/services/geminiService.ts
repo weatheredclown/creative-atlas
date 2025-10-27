@@ -12,7 +12,7 @@ const getClient = (): GoogleGenAI => {
   }
 
   if (!cachedClient) {
-    cachedClient = new GoogleGenAI({ apiKey, vertexai: true });
+    cachedClient = new GoogleGenAI({ apiKey });
   }
 
   return cachedClient;
