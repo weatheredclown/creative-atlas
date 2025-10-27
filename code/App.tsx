@@ -17,6 +17,8 @@ import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import { exportArtifactsToCSV, exportArtifactToMarkdown, exportProjectAsStaticSite } from './utils/export';
 import { importArtifactsFromCSV } from './utils/import';
+import ProjectInsights from './components/ProjectInsights';
+import { getStatusClasses, formatStatusLabel } from './utils/status';
 
 // Mock data based on the product spec
 const initialProjects: Project[] = [
@@ -91,7 +93,7 @@ const ProjectCard: React.FC<{ project: Project; onSelect: (id: string) => void; 
 };
 
 const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) => void; isSelected: boolean }> = ({ artifact, onSelect, isSelected }) => (
-    <tr 
+    <tr
         onClick={() => onSelect(artifact.id)}
         className={`border-b border-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-cyan-900/30' : 'hover:bg-slate-700/50'}`}
         role="button"
@@ -103,7 +105,12 @@ const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) =>
             <span className="font-semibold">{artifact.title}</span>
         </td>
         <td className="p-3 text-slate-400">{artifact.type}</td>
-        <td className="p-3 text-slate-500 hidden sm:table-cell">{artifact.summary}</td>
+        <td className="p-3">
+            <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusClasses(artifact.status)}`}>
+                {formatStatusLabel(artifact.status)}
+            </span>
+        </td>
+        <td className="p-3 text-slate-500 hidden lg:table-cell">{artifact.summary}</td>
     </tr>
 );
 
@@ -289,6 +296,8 @@ export default function App() {
         <section className="lg:col-span-9 space-y-8">
           {selectedProject ? (
             <>
+              <ProjectInsights artifacts={projectArtifacts} />
+
               <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
@@ -321,7 +330,8 @@ export default function App() {
                                 <tr>
                                     <th className="p-3 text-sm font-semibold text-slate-300">Title</th>
                                     <th className="p-3 text-sm font-semibold text-slate-300">Type</th>
-                                    <th className="p-3 text-sm font-semibold text-slate-300 hidden sm:table-cell">Summary</th>
+                                    <th className="p-3 text-sm font-semibold text-slate-300">Stage</th>
+                                    <th className="p-3 text-sm font-semibold text-slate-300 hidden lg:table-cell">Summary</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -331,7 +341,7 @@ export default function App() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={3} className="text-center p-8 text-slate-500">No artifacts in this project yet. Create a new seed!</td>
+                                        <td colSpan={4} className="text-center p-8 text-slate-500">No artifacts in this project yet. Create a new seed!</td>
                                     </tr>
                                 )}
                             </tbody>
