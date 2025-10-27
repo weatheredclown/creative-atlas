@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, KeyboardEvent } from 'react';
 import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData, TemplateCategory, Milestone, AIAssistant } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
 import Modal from './components/Modal';
@@ -16,7 +16,7 @@ import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
-import { exportArtifactsToCSV, exportArtifactToMarkdown, exportProjectAsStaticSite } from './utils/export';
+import { exportArtifactsToCSV, exportProjectAsStaticSite } from './utils/export';
 import { importArtifactsFromCSV } from './utils/import';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
@@ -265,6 +265,12 @@ const ProjectCard: React.FC<{ project: Project; onSelect: (id: string) => void; 
             role="button"
             aria-pressed={isSelected}
             tabIndex={0}
+            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelect(project.id);
+                }
+            }}
         >
             <div className="flex justify-between items-start">
                 <h3 className="font-bold text-slate-100">{project.title}</h3>
@@ -282,6 +288,12 @@ const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) =>
         role="button"
         aria-pressed={isSelected}
         tabIndex={0}
+        onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelect(artifact.id);
+            }
+        }}
     >
         <td className="p-3 flex items-center gap-3">
             <BookOpenIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
@@ -316,7 +328,7 @@ export default function App() {
     setXp(currentXp => Math.min(currentXp + amount, 100));
   }, []);
 
-  const handleUpdateArtifactData = useCallback((artifactId: string, data: any) => {
+  const handleUpdateArtifactData = useCallback((artifactId: string, data: Artifact['data']) => {
     setArtifacts(currentArtifacts => 
         currentArtifacts.map(art => {
             if (art.id === artifactId) {

@@ -34,16 +34,21 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in relative"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      onClick={onClose}
+      tabIndex={-1}
     >
+      <button
+        type="button"
+        className="absolute inset-0 w-full h-full cursor-default"
+        aria-label="Close modal"
+        onClick={onClose}
+      />
       <div
         ref={modalRef}
-        className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg m-4 transform transition-all"
-        onClick={(e) => e.stopPropagation()}
+        className="relative bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg m-4 transform transition-all"
       >
         <div className="flex justify-between items-center p-4 border-b border-slate-700">
           <h2 id="modal-title" className="text-lg font-semibold text-slate-100">{title}</h2>

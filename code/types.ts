@@ -86,7 +86,7 @@ export interface Artifact {
   tags: string[];
   relations: Relation[];
   // A flexible field for type-specific data
-  data: ConlangLexeme[] | Scene[] | TaskData | CharacterData | WikiData | LocationData | Record<string, any>;
+  data: ConlangLexeme[] | Scene[] | TaskData | CharacterData | WikiData | LocationData | Record<string, unknown>;
 }
 
 export interface ConlangLexeme {

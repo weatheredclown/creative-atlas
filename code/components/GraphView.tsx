@@ -20,10 +20,12 @@ const nodeColor = (type: ArtifactType): string => {
   }
 };
 
+type GraphNodeData = { label: string; type: ArtifactType };
+
 const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
   const { nodes, edges } = useMemo(() => {
     const artifactIds = new Set(artifacts.map((artifact) => artifact.id));
-    const initialNodes: Node[] = artifacts.map((artifact, i) => ({
+    const initialNodes: Node<GraphNodeData>[] = artifacts.map((artifact, i) => ({
       id: artifact.id,
       data: { label: artifact.title, type: artifact.type },
       position: { x: (i % 6) * 190 + Math.random() * 40, y: Math.floor(i / 6) * 140 + Math.random() * 40 },
@@ -68,8 +70,8 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
       >
         <Background color="#293548" gap={24} />
         <Controls showInteractive={false} />
-        <MiniMap 
-            nodeColor={node => nodeColor(node.data.type)} 
+        <MiniMap
+            nodeColor={node => nodeColor((node.data as GraphNodeData | undefined)?.type ?? ArtifactType.Story)}
             nodeStrokeWidth={3} 
             zoomable 
             pannable 

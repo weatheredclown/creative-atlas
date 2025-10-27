@@ -40,7 +40,6 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClo
           className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
           placeholder="e.g., The Crimson Blade, City of Glass"
           required
-          autoFocus
         />
         {error && <p className="text-red-400 mt-1 text-sm">{error}</p>}
       </div>

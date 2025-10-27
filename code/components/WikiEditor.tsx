@@ -39,10 +39,12 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData 
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1">
+          <p id="wiki-live-preview-label" className="block text-sm font-medium text-slate-300 mb-1">
             Live Preview
-          </label>
+          </p>
           <div
+            role="region"
+            aria-labelledby="wiki-live-preview-label"
             className="w-full h-[500px] bg-slate-900/70 border border-slate-700 rounded-md p-3 text-slate-300 prose prose-sm prose-invert max-w-none"
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />

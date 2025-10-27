@@ -160,7 +160,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Tags</label>
+            <label htmlFor="artifact-tags-input" className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Tags</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {artifact.tags.map((tag) => (
                 <span
@@ -183,6 +183,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
             </div>
             <div className="flex items-center gap-2">
               <input
+                id="artifact-tags-input"
                 type="text"
                 value={tagInput}
                 onChange={(event) => setTagInput(event.target.value)}
@@ -202,7 +203,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Summary</label>
+            <label htmlFor="artifact-summary" className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Summary</label>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => (isEditingSummary ? handleCancelSummary() : setIsEditingSummary(true))}
@@ -215,6 +216,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
           {isEditingSummary ? (
             <>
               <textarea
+                id="artifact-summary"
                 value={editableSummary}
                 onChange={(event) => setEditableSummary(event.target.value)}
                 rows={6}
