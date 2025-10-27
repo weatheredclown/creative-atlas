@@ -1,0 +1,6 @@
+# Node build artifacts
+code/node_modules/
+code/dist/
+
+# Environment files
+code/.env
