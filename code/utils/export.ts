@@ -1,6 +1,7 @@
 
-import { Artifact, Project, ArtifactType, Scene, CharacterData, LocationData, ConlangLexeme } from '../types';
+import { Artifact, Project, ArtifactType, Scene, CharacterData, LocationData, ConlangLexeme, TaskData, TaskState, WikiData } from '../types';
 import JSZip from 'jszip';
+import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
 
 function escapeCsvCell(cell: any): string {
     const cellStr = String(cell ?? '');
@@ -49,6 +50,103 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
     }
 }
 
+const generateArtifactMarkdownBody = (artifact: Artifact): string => {
+    let body = `# ${artifact.title}\n\n${artifact.summary || ''}\n\n`;
+
+    switch (artifact.type) {
+        case ArtifactType.Story: {
+            const scenes = artifact.data as Scene[];
+            if (Array.isArray(scenes) && scenes.length > 0) {
+                body += '## Scenes\n\n';
+                scenes.forEach((scene, index) => {
+                    body += `### ${index + 1}. ${scene.title}\n${scene.summary || ''}\n\n`;
+                });
+            }
+            break;
+        }
+        case ArtifactType.Character: {
+            const charData = artifact.data as CharacterData;
+            if (charData?.bio) {
+                body += `## Biography\n\n${charData.bio}\n\n`;
+            }
+            if (Array.isArray(charData?.traits) && charData.traits.length > 0) {
+                body += '## Traits\n';
+                charData.traits.forEach(trait => {
+                    body += `- **${trait.key}:** ${trait.value}\n`;
+                });
+                body += '\n';
+            }
+            break;
+        }
+        case ArtifactType.Conlang: {
+            const lexemes = artifact.data as ConlangLexeme[];
+            if (Array.isArray(lexemes) && lexemes.length > 0) {
+                body += '## Lexicon\n\n| Lemma | Part of Speech | Gloss | Etymology |\n| --- | --- | --- | --- |\n';
+                lexemes.forEach(lexeme => {
+                    body += `| ${escapeMarkdownCell(lexeme.lemma)} | ${escapeMarkdownCell(lexeme.pos)} | ${escapeMarkdownCell(lexeme.gloss)} | ${escapeMarkdownCell(lexeme.etymology ?? '')} |\n`;
+                });
+                body += '\n';
+            }
+            break;
+        }
+        case ArtifactType.Wiki: {
+            const wiki = artifact.data as WikiData;
+            if (wiki?.content) {
+                body += `${wiki.content}\n\n`;
+            }
+            break;
+        }
+        case ArtifactType.Location: {
+            const location = artifact.data as LocationData;
+            if (location?.description) {
+                body += `## Description\n\n${location.description}\n\n`;
+            }
+            if (Array.isArray(location?.features) && location.features.length > 0) {
+                body += '## Notable Features\n';
+                location.features.forEach(feature => {
+                    body += `- **${feature.name}:** ${feature.description}\n`;
+                });
+                body += '\n';
+            }
+            break;
+        }
+        case ArtifactType.Task: {
+            const task = artifact.data as TaskData;
+            body += '## Task Details\n';
+            body += `- Status: ${task?.state ?? 'Unspecified'}\n`;
+            if (task?.assignee) body += `- Assignee: ${task.assignee}\n`;
+            if (task?.due) body += `- Due: ${task.due}\n`;
+            body += '\n';
+            break;
+        }
+        default: {
+            if (artifact.data && typeof artifact.data === 'object' && Object.keys(artifact.data).length > 0) {
+                body += '```json\n';
+                body += `${JSON.stringify(artifact.data, null, 2)}\n`;
+                body += '```\n\n';
+            }
+        }
+    }
+
+    if (artifact.tags.length > 0) {
+        body += '## Tags\n';
+        artifact.tags.forEach(tag => {
+            body += `- ${tag}\n`;
+        });
+        body += '\n';
+    }
+
+    if (artifact.relations.length > 0) {
+        body += '## Relations\n';
+        artifact.relations.forEach(rel => {
+            body += `- ${rel.kind}: ${rel.toId}\n`;
+        });
+        body += '\n';
+    }
+
+    return body.trimEnd();
+};
+
 export function exportArtifactToMarkdown(artifact: Artifact) {
     let frontmatter = '---';
     frontmatter += `\nid: ${artifact.id}`;
@@ -64,9 +162,7 @@ export function exportArtifactToMarkdown(artifact: Artifact) {
     });
     frontmatter += '\n---\n\n';
 
-    const body = `# ${artifact.title}\n\n${artifact.summary}`;
-
-    const markdownString = frontmatter + body;
+    const markdownString = frontmatter + generateArtifactMarkdownBody(artifact);
     const blob = new Blob([markdownString], { type: 'text/markdown;charset=utf-8;' });
     
     const link = document.createElement('a');
@@ -124,8 +220,60 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
             content += `<li class='text-slate-400'><strong class='text-slate-300'>${trait.key}:</strong> ${trait.value}</li>`;
         });
         content += '</ul></div>';
+    } else if (artifact.type === ArtifactType.Conlang) {
+        const lexemes = artifact.data as ConlangLexeme[];
+        if (Array.isArray(lexemes) && lexemes.length > 0) {
+            content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Lexicon</h2>";
+            content += "<div class='overflow-x-auto'><table class='min-w-full text-left border-collapse'>";
+            content += "<thead class='bg-slate-800/80'><tr><th class='px-4 py-2 text-sm text-slate-300'>Lemma</th><th class='px-4 py-2 text-sm text-slate-300'>Part of Speech</th><th class='px-4 py-2 text-sm text-slate-300'>Gloss</th><th class='px-4 py-2 text-sm text-slate-300'>Etymology</th></tr></thead><tbody>";
+            lexemes.forEach(lexeme => {
+                content += `<tr class='border-b border-slate-700'><td class='px-4 py-2 font-mono text-cyan-300'>${lexeme.lemma}</td><td class='px-4 py-2 text-slate-400 italic'>${lexeme.pos}</td><td class='px-4 py-2 text-slate-300'>${lexeme.gloss}</td><td class='px-4 py-2 text-slate-500'>${lexeme.etymology ?? ''}</td></tr>`;
+            });
+            content += '</tbody></table></div>';
+        }
+    } else if (artifact.type === ArtifactType.Wiki) {
+        const wiki = artifact.data as WikiData;
+        const wikiHtml = simpleMarkdownToHtml(wiki?.content ?? '');
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Wiki</h2>";
+        content += `<div class='prose prose-invert max-w-none bg-slate-800/60 border border-slate-700 rounded-lg p-6'>${wikiHtml}</div>`;
+    } else if (artifact.type === ArtifactType.Location) {
+        const location = artifact.data as LocationData;
+        content += "<div class='grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8'>";
+        content += `<div class='lg:col-span-2 bg-slate-800 p-5 rounded-lg border border-slate-700'><h2 class='text-xl font-bold text-white mb-3'>Description</h2><p class='text-slate-300 leading-relaxed'>${(location?.description || '').replace(/\n/g, '<br>')}</p></div>`;
+        content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700'><h2 class='text-xl font-bold text-white mb-3'>Notable Features</h2>";
+        if (Array.isArray(location?.features) && location.features.length > 0) {
+            content += "<ul class='space-y-2'>";
+            location.features.forEach(feature => {
+                content += `<li class='bg-slate-900/60 border border-slate-700 rounded-md p-3'><strong class='text-slate-200'>${feature.name}</strong><p class='text-slate-400 text-sm mt-1'>${feature.description}</p></li>`;
+            });
+            content += '</ul>';
+        } else {
+            content += "<p class='text-slate-500 text-sm'>No features documented yet.</p>";
+        }
+        content += '</div></div>';
+    } else if (artifact.type === ArtifactType.Task) {
+        const task = artifact.data as TaskData;
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Task Details</h2>";
+        content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 space-y-2 text-slate-300'>";
+        content += `<p><span class='text-slate-400'>State:</span> ${task?.state ?? TaskState.Todo}</p>`;
+        if (task?.assignee) {
+            content += `<p><span class='text-slate-400'>Assignee:</span> ${task.assignee}</p>`;
+        }
+        if (task?.due) {
+            content += `<p><span class='text-slate-400'>Due:</span> ${task.due}</p>`;
+        }
+        content += '</div>';
     }
     // Add more specific renderers here for other types...
+
+    if (artifact.tags.length > 0) {
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Tags</h2>";
+        content += "<div class='flex flex-wrap gap-2'>";
+        artifact.tags.forEach(tag => {
+            content += `<span class='px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-slate-800 border border-slate-700 rounded-full text-slate-200'>${tag}</span>`;
+        });
+        content += '</div>';
+    }
 
     // Render relations
     if (artifact.relations.length > 0) {
