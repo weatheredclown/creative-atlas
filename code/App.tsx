@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
+import { Project, Artifact, ProjectStatus, ArtifactType, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -732,7 +732,7 @@ export default function App() {
                         <ConlangLexiconEditor
                             artifact={selectedArtifact}
                             conlangName={selectedProject.title}
-                            onLexemesAdded={(id, lexemes) => handleUpdateArtifactData(id, [...(selectedArtifact.data as ConlangLexeme[]), ...lexemes])}
+                            onLexemesChange={(id, lexemes) => handleUpdateArtifactData(id, lexemes)}
                             addXp={addXp}
                         />
                     )}
