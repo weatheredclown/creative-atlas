@@ -20,7 +20,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Launch rich editors for core artifact types (storyboard, wiki pages, rulebooks) with status workflows (`idea → released`) surfaced inline.
 - [ ] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
 - [ ] Wire up release pipelines that pull from milestone tracker data to draft changelogs and publish-ready bundles.
-- [ ] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
+- [x] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
 
 ### Phase 4 — Showcase & Share (Weeks 13‑16)
 - [ ] Turn "Publish Site" into a one-click static export that bundles linked artifacts, media assets, and navigation scaffolding.
