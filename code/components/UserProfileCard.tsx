@@ -194,9 +194,19 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Achievements synced: <span className="text-slate-200 font-semibold">{profile.achievementsUnlocked.length}</span></span>
-            <span>Total XP: {profile.xp}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+            <span>
+              Achievements synced:{' '}
+              <span className="text-slate-200 font-semibold">{profile.achievementsUnlocked.length}</span>
+            </span>
+            <span>
+              Total XP:{' '}
+              <span className="text-slate-200 font-semibold">{profile.xp}</span>
+            </span>
+            <span>
+              XP to next level:{' '}
+              <span className="text-slate-200 font-semibold">{xpToNextLevel}</span>
+            </span>
           </div>
         </div>
       </div>
