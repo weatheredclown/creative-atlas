@@ -79,6 +79,17 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({ projectTi
     }
   }, [autoHighlights, hasEditedHighlights]);
 
+  useEffect(() => {
+    setGeneratedNotes('');
+    setNotes('');
+    setError(null);
+    setCopyStatus('idle');
+    setHasEditedHighlights(false);
+    setHighlights(autoHighlights);
+    // Reset when viewing a different project so earlier drafts don't leak across worlds.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit autoHighlights to keep manual edits when artifacts change.
+  }, [projectTitle]);
+
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
     setError(null);

@@ -59,14 +59,16 @@ describe('ReleaseNotesGenerator', () => {
     vi.clearAllMocks();
   });
 
-  it('prefills highlights from artifact activity', () => {
+  it('prefills highlights from artifact activity', async () => {
     const addXp = vi.fn();
     render(
       <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
-    expect(highlightsField.value).toContain('Completed quests:');
+    await waitFor(() => {
+      expect(highlightsField.value).toContain('Completed quests:');
+    });
     expect(highlightsField.value).toContain('Shipped artifacts:');
     expect(highlightsField.value).toContain('Lexicon now holds');
   });
@@ -81,6 +83,9 @@ describe('ReleaseNotesGenerator', () => {
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(highlightsField.value).toContain('Completed quests:');
+    });
     const generateButton = screen.getByRole('button', { name: /Generate release notes/i });
 
     await user.click(generateButton);
@@ -99,6 +104,40 @@ describe('ReleaseNotesGenerator', () => {
       }),
     );
     expect(addXp).toHaveBeenCalledWith(7);
+  });
+
+  it('clears generated notes when switching projects', async () => {
+    const user = userEvent.setup();
+    const addXp = vi.fn();
+    mockedGenerateReleaseNotes.mockResolvedValue('Here are the new release notes!');
+
+    const { rerender } = render(
+      <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
+    );
+
+    const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(highlightsField.value).toContain('Completed quests:');
+    });
+    const generateButton = screen.getByRole('button', { name: /Generate release notes/i });
+    await user.click(generateButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Here are the new release notes/i)).toBeInTheDocument();
+    });
+
+    rerender(
+      <ReleaseNotesGenerator projectTitle="Steamweave" artifacts={baseArtifacts} addXp={addXp} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Here are the new release notes/i)).not.toBeInTheDocument();
+    });
+
+    const newHighlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(newHighlightsField.value).toContain('Completed quests:');
+    });
   });
 
   it('retains manual edits when new artifact data arrives', async () => {
