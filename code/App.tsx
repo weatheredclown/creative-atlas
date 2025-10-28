@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
 import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
-import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
+import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
 import CreateProjectForm from './components/CreateProjectForm';
@@ -22,13 +22,12 @@ import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
-import Roadmap from './components/Roadmap';
-import AICopilotPanel from './components/AICopilotPanel';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
+import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -333,6 +332,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
 
   useEffect(() => {
     if (!projects.length) {
@@ -533,6 +533,8 @@ export default function App() {
   const xpProgress = profile.xp % 100;
   const level = Math.floor(profile.xp / 100) + 1;
   const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
+  const featuredAssistant = aiAssistants[0];
+  const upcomingMilestone = milestoneRoadmap[0];
 
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
@@ -775,10 +777,46 @@ export default function App() {
                     artifacts={projectArtifacts}
                     addXp={addXp}
                 />
-                <AICopilotPanel assistants={aiAssistants} />
-                <div className="xl:col-span-3">
-                    <Roadmap milestones={milestoneRoadmap} />
-                </div>
+                <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 flex flex-col gap-5">
+                    <header className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-xl bg-pink-500/10 border border-pink-500/40 p-2">
+                                <SparklesIcon className="w-5 h-5 text-pink-300" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-100">Creator Insights Hub</h3>
+                                <p className="text-sm text-slate-400">Visit the secondary panel when you&apos;re ready for copilots and roadmap lore.</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsInsightsOpen(true)}
+                            className="flex items-center gap-2 rounded-md border border-pink-500/40 bg-pink-500/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:border-pink-400 hover:bg-pink-500/30 transition-colors"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                            Open insights
+                        </button>
+                    </header>
+                    <div className="space-y-3 text-sm text-slate-300">
+                        {featuredAssistant && (
+                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-pink-300/80">Featured copilot</p>
+                                <p className="text-base font-semibold text-slate-100">{featuredAssistant.name}</p>
+                                <p className="text-xs text-slate-400">{featuredAssistant.focus}</p>
+                            </div>
+                        )}
+                        {upcomingMilestone && (
+                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/80">Next milestone</p>
+                                <p className="text-base font-semibold text-slate-100">{upcomingMilestone.title}</p>
+                                <p className="text-xs text-slate-400">{upcomingMilestone.focus}</p>
+                            </div>
+                        )}
+                        <p className="text-xs text-slate-500">
+                            Insights stay tucked away until you call for them, keeping the main workspace focused on capturing and shipping.
+                        </p>
+                    </div>
+                </section>
               </div>
             </>
           ) : (
@@ -808,6 +846,12 @@ export default function App() {
             onClose={() => setIsCreateProjectModalOpen(false)}
         />
       </Modal>
+      <SecondaryInsightsPanel
+        assistants={aiAssistants}
+        milestones={milestoneRoadmap}
+        isOpen={isInsightsOpen}
+        onClose={() => setIsInsightsOpen(false)}
+      />
     </div>
   );
 }
