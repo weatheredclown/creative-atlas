@@ -165,10 +165,10 @@ const AuthScreen: React.FC = () => {
 };
 
 const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isGuestMode } = useAuth();
   const { loading: dataLoading } = useUserData();
 
-  if (authLoading || (user && dataLoading)) {
+  if (authLoading || (!isGuestMode && user && dataLoading) || (isGuestMode && dataLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300">
         <div className="animate-pulse text-center">
@@ -179,7 +179,7 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuestMode) {
     return <AuthScreen />;
   }
 
