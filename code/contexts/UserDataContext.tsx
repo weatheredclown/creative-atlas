@@ -109,14 +109,26 @@ const writeWorkspace = (uid: string, workspace: StoredWorkspace) => {
 };
 
 export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
   const [projects, setProjectsState] = useState<Project[]>([]);
   const [artifacts, setArtifactsState] = useState<Artifact[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(isGuestMode);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (isGuestMode) {
+      setLoading(true);
+      const guestId = 'guest';
+      const seed = createSeedWorkspace(guestId);
+      setProjectsState(normalizeProjects(seed.projects, guestId));
+      setArtifactsState(normalizeArtifacts(seed.artifacts, guestId));
+      setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
+      setHydrated(true);
+      setLoading(false);
+      return;
+    }
+
     if (!user) {
       setProjectsState([]);
       setArtifactsState([]);
@@ -133,7 +145,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProfile(workspace.profile);
     setHydrated(true);
     setLoading(false);
-  }, [user]);
+  }, [user, isGuestMode]);
 
   useEffect(() => {
     if (!user || !profile) {
@@ -157,25 +169,27 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user, profile]);
 
   useEffect(() => {
-    if (!user || !hydrated || !profile) return;
+    if (!user || !hydrated || !profile || isGuestMode) return;
     writeWorkspace(user.uid, { projects, artifacts, profile });
-  }, [user, hydrated, projects, artifacts, profile]);
+  }, [user, hydrated, projects, artifacts, profile, isGuestMode]);
 
   const setProjects = useCallback((updater: React.SetStateAction<Project[]>) => {
-    if (!user) return;
+    if (!user && !isGuestMode) return;
     setProjectsState((current) => {
       const next = typeof updater === 'function' ? (updater as (value: Project[]) => Project[])(current) : updater;
-      return normalizeProjects(next, user.uid);
+      const ownerId = user?.uid ?? 'guest';
+      return normalizeProjects(next, ownerId);
     });
-  }, [user]);
+  }, [user, isGuestMode]);
 
   const setArtifacts = useCallback((updater: React.SetStateAction<Artifact[]>) => {
-    if (!user) return;
+    if (!user && !isGuestMode) return;
     setArtifactsState((current) => {
       const next = typeof updater === 'function' ? (updater as (value: Artifact[]) => Artifact[])(current) : updater;
-      return normalizeArtifacts(next, user.uid);
+      const ownerId = user?.uid ?? 'guest';
+      return normalizeArtifacts(next, ownerId);
     });
-  }, [user]);
+  }, [user, isGuestMode]);
 
   const updateProfile = useCallback((update: ProfileUpdate) => {
     setProfile((current) => {
