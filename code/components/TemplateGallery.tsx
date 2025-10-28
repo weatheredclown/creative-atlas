@@ -118,13 +118,20 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
       <header className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wide">
-          <SparklesIcon className="w-5 h-5 text-cyan-400" />
-          Template Library
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wide">
+            <SparklesIcon className="w-5 h-5 text-cyan-400" />
+            Template Library
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded-full px-3 py-1">
+            Artifact blueprints
+          </span>
         </div>
         <p className="text-sm text-slate-400">
-          Jump-start new artifacts with ready-made scaffolds tuned for recurring universes and genres. Search or pick from the
-          curated sets below.
+          Drop in single artifacts to expand a project a la carte. Each blueprint mirrors the categories above but won&apos;t touch dashboards or quests.
+        </p>
+        <p className="text-xs text-slate-500">
+          Want a whole world scaffolded at once? Use the Project Templates kits before dipping into the library.
         </p>
         <div className="relative">
           <MagnifyingGlassIcon className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />

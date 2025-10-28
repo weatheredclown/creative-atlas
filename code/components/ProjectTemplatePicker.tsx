@@ -114,13 +114,21 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wide">
-          <SparklesIcon className="w-5 h-5 text-cyan-400" />
-          Project Templates
+      <header className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wide">
+            <SparklesIcon className="w-5 h-5 text-cyan-400" />
+            Project Templates
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/50 rounded-full px-3 py-1">
+            Multi-artifact kit
+          </span>
         </div>
         <p className="text-sm text-slate-400">
-          Drop in curated starter artifacts to hydrate dashboards instantly. Existing entries are preserved—new templates only add what&apos;s missing.
+          Hydrate an entire project with dashboards, quests, and starter artifacts in one click. Apply a kit to fill gaps without overwriting the custom work you have already done.
+        </p>
+        <p className="text-xs text-slate-500">
+          Looking for single artifacts to mix and match? Browse the Template Library next door.
         </p>
       </header>
 
