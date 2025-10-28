@@ -8,7 +8,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
 - [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
 - [x] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
-- [ ] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
+- [x] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
 - [ ] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
 - [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
