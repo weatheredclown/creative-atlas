@@ -21,5 +21,6 @@ Welcome to the creative-atlas repository! Please follow these guidelines when ma
 - Provide a concise summary of the changes along with any notable implementation details.
 - Note any new dependencies introduced and justify their necessity.
 - Include screenshots or GIFs when modifying UI components.
+- Capture product screenshots using guest mode (`?guest=1`) so logged-in features are visible, unless you are intentionally showing the authentication screen.
 
 Thank you for contributing!
