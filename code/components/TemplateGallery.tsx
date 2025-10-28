@@ -1,14 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { TemplateCategory } from '../types';
-import { MagnifyingGlassIcon, SparklesIcon } from './Icons';
+import { ProjectTemplate, TemplateCategory } from '../types';
+import { MagnifyingGlassIcon, SparklesIcon, FolderPlusIcon } from './Icons';
 
 interface TemplateGalleryProps {
   categories: TemplateCategory[];
+  projectTemplates: ProjectTemplate[];
   activeProjectTitle?: string;
 }
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activeProjectTitle }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTemplates, activeProjectTitle }) => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  const templateLookup = useMemo(() => {
+    const lookup = new Map<string, ProjectTemplate>();
+    projectTemplates.forEach((template) => lookup.set(template.id, template));
+    return lookup;
+  }, [projectTemplates]);
 
   const { recommended, others } = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
@@ -17,6 +24,9 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
       const haystack = [
         category.title,
         category.description,
+        ...(category.projectTemplateIds ?? [])
+          .map((templateId) => templateLookup.get(templateId)?.name ?? '')
+          .filter(Boolean),
         ...category.templates.map((template) => `${template.name} ${template.description} ${template.tags?.join(' ') ?? ''}`),
       ]
         .join(' ')
@@ -41,9 +51,14 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
       recommended: recommendedCategories,
       others: otherCategories,
     };
-  }, [categories, searchTerm, activeProjectTitle]);
+  }, [categories, searchTerm, activeProjectTitle, templateLookup]);
 
-  const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => (
+  const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => {
+    const relatedProjectTemplates = (category.projectTemplateIds ?? [])
+      .map((templateId) => templateLookup.get(templateId))
+      .filter((template): template is ProjectTemplate => Boolean(template));
+
+    return (
     <div
       key={category.id}
       className="bg-slate-900/50 border border-slate-700/60 rounded-xl p-4 space-y-3 hover:border-cyan-500/60 transition-colors"
@@ -62,6 +77,24 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
           </span>
         )}
       </div>
+      {relatedProjectTemplates.length > 0 && (
+        <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg p-3 space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-2">
+            <FolderPlusIcon className="w-4 h-4 text-cyan-300" />
+            Project Kits Using This Library
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {relatedProjectTemplates.map((template) => (
+              <span
+                key={template.id}
+                className="text-xs font-semibold text-cyan-100 bg-cyan-500/20 border border-cyan-500/40 rounded-full px-2 py-0.5"
+              >
+                {template.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {category.templates.map((template) => (
           <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
@@ -84,6 +117,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
       </div>
     </div>
   );
+  };
 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">

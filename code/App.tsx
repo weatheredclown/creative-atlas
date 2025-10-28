@@ -65,6 +65,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Tamenzut Series',
         description: 'High-fantasy seeds that keep the Tamenzut saga consistent from novel to novel.',
         recommendedFor: ['Tamenzut'],
+        projectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad'],
         templates: [
             { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
             { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
@@ -80,6 +81,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Steamweave / Anya',
         description: 'Coal-punk ops boards for Anya’s guild drama and gadgeteering.',
         recommendedFor: ['Steamweave'],
+        projectTemplateIds: ['serial-comic-kit'],
         templates: [
             { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
             { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
@@ -94,6 +96,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Dustland RPG',
         description: 'Questline scaffolds for the Dustland tabletop campaign.',
         recommendedFor: ['Dustland'],
+        projectTemplateIds: ['game-design-lab'],
         templates: [
             { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
             { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
@@ -109,6 +112,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Spatch League',
         description: 'Sports-drama templates tuned for the Spatch comic universe.',
         recommendedFor: ['Spatch'],
+        projectTemplateIds: ['serial-comic-kit'],
         templates: [
             { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
             { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
@@ -122,6 +126,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Darv Conlang',
         description: 'Linguistic workbench for the ancient language of the Darv.',
         recommendedFor: ['Darv'],
+        projectTemplateIds: ['conlang-workbench'],
         templates: [
             { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
             { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
@@ -135,6 +140,7 @@ const templateLibrary: TemplateCategory[] = [
         title: 'Sacred Truth Dossiers',
         description: 'Supernatural investigation kits for the Sacred Truth vampire saga.',
         recommendedFor: ['Sacred Truth'],
+        projectTemplateIds: ['world-wiki-launchpad'],
         templates: [
             { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
             { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
@@ -151,6 +157,7 @@ const projectTemplates: ProjectTemplate[] = [
         description: 'Story arcs, cast rosters, and production tasks tuned for episodic comics.',
         recommendedFor: ['Spatch', 'Steamweave'],
         projectTags: ['comic', 'storyboard', 'production'],
+        libraryCategoryIds: ['spatch', 'steamweave'],
         artifacts: [
             {
                 title: 'Season Roadmap',
@@ -182,6 +189,7 @@ const projectTemplates: ProjectTemplate[] = [
         description: 'Lexicon, grammar notes, and workflow tasks for language-building.',
         recommendedFor: ['Tamenzut', 'Darv'],
         projectTags: ['conlang', 'language'],
+        libraryCategoryIds: ['tamenzut', 'darv'],
         artifacts: [
             {
                 title: 'Lexicon Seed',
@@ -217,6 +225,7 @@ const projectTemplates: ProjectTemplate[] = [
         description: 'Gameplay loops, system glossaries, and playtest backlogs for interactive worlds.',
         recommendedFor: ['Dustland'],
         projectTags: ['game', 'systems'],
+        libraryCategoryIds: ['dustland'],
         artifacts: [
             {
                 title: 'Core Loop Prototype',
@@ -256,6 +265,7 @@ const projectTemplates: ProjectTemplate[] = [
         description: 'Knowledge base scaffolding for lore-heavy worlds and collaborative wikis.',
         recommendedFor: ['Tamenzut', 'Sacred Truth'],
         projectTags: ['wiki', 'lore'],
+        libraryCategoryIds: ['tamenzut', 'sacred-truth'],
         artifacts: [
             {
                 title: 'World Encyclopedia',
@@ -1023,11 +1033,16 @@ export default function App() {
                 <div className="space-y-6 xl:col-span-2">
                   <ProjectTemplatePicker
                     templates={projectTemplates}
+                    categories={templateLibrary}
                     activeProjectTitle={selectedProject.title}
                     onApplyTemplate={handleApplyProjectTemplate}
                     isApplyDisabled={!selectedProjectId}
                   />
-                  <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+                  <TemplateGallery
+                    categories={templateLibrary}
+                    projectTemplates={projectTemplates}
+                    activeProjectTitle={selectedProject.title}
+                  />
                 </div>
                 <ReleaseNotesGenerator
                     projectTitle={selectedProject.title}

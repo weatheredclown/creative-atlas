@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { ProjectTemplate } from '../types';
+import { ProjectTemplate, TemplateCategory } from '../types';
 import { FolderPlusIcon, SparklesIcon } from './Icons';
 
 interface ProjectTemplatePickerProps {
   templates: ProjectTemplate[];
+  categories: TemplateCategory[];
   activeProjectTitle?: string;
   onApplyTemplate: (template: ProjectTemplate) => void;
   isApplyDisabled?: boolean;
@@ -11,10 +12,17 @@ interface ProjectTemplatePickerProps {
 
 const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
   templates,
+  categories,
   activeProjectTitle,
   onApplyTemplate,
   isApplyDisabled = false,
 }) => {
+  const categoryLookup = useMemo(() => {
+    const lookup = new Map<string, TemplateCategory>();
+    categories.forEach((category) => lookup.set(category.id, category));
+    return lookup;
+  }, [categories]);
+
   const { recommended, others } = useMemo(() => {
     if (!activeProjectTitle) {
       return { recommended: [], others: templates };
@@ -55,6 +63,25 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
           </div>
         )}
       </header>
+
+      {template.libraryCategoryIds && template.libraryCategoryIds.length > 0 && (
+        <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg p-3 space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Template Library Sources</div>
+          <div className="flex flex-wrap gap-2">
+            {template.libraryCategoryIds
+              .map((categoryId) => categoryLookup.get(categoryId))
+              .filter((category): category is TemplateCategory => Boolean(category))
+              .map((category) => (
+                <span
+                  key={category.id}
+                  className="text-xs font-semibold text-violet-100 bg-violet-500/20 border border-violet-500/40 rounded-full px-2 py-0.5"
+                >
+                  {category.title}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {template.artifacts.map((artifact) => (

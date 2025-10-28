@@ -171,6 +171,7 @@ export interface ProjectTemplate {
     description: string;
     recommendedFor?: string[];
     projectTags: string[];
+    libraryCategoryIds?: string[];
     artifacts: TemplateArtifactBlueprint[];
 }
 
@@ -188,6 +189,7 @@ export interface TemplateCategory {
     description: string;
     recommendedFor: string[];
     templates: TemplateEntry[];
+    projectTemplateIds?: string[];
 }
 
 export interface Milestone {
