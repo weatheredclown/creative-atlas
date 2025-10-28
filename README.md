@@ -6,14 +6,14 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### Phase 1 — Seed the Universe (Weeks 0‑4)
 - [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
-- [ ] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
+- [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
 - [ ] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
 - [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
 - [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
 - [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
-- [ ] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
+- [x] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
 - [x] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
 
 ### Phase 3 — Forge Systems (Weeks 9‑12)

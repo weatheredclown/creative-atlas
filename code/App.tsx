@@ -734,7 +734,7 @@ export default function App() {
                         <ConlangLexiconEditor
                             artifact={selectedArtifact}
                             conlangName={selectedProject.title}
-                            onLexemesAdded={(id, lexemes) => handleUpdateArtifactData(id, [...(selectedArtifact.data as ConlangLexeme[]), ...lexemes])}
+                            onLexemesChange={(id, lexemes) => handleUpdateArtifactData(id, lexemes)}
                             addXp={addXp}
                         />
                     )}

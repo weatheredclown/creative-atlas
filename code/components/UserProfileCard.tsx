@@ -37,6 +37,14 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
 
   const level = useMemo(() => levelFromXp(profile.xp), [profile.xp]);
   const xpProgress = useMemo(() => progressFromXp(profile.xp), [profile.xp]);
+  const xpPercent = useMemo(() => Math.min(xpProgress, 100), [xpProgress]);
+  const xpToNextLevel = useMemo(() => Math.max(100 - xpProgress, 0), [xpProgress]);
+  const xpRingStyle = useMemo(
+    () => ({
+      background: `conic-gradient(rgb(103 232 249) ${xpPercent * 3.6}deg, rgba(15, 23, 42, 0.8) ${xpPercent * 3.6}deg 360deg)`
+    }),
+    [xpPercent]
+  );
 
   useEffect(() => {
     setIsExpanded(false);
@@ -73,7 +81,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
 
   return (
     <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg shadow-slate-950/40">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           {profile.photoURL ? (
             <img src={profile.photoURL} alt={profile.displayName} className="w-12 h-12 rounded-full object-cover border border-slate-700" />
@@ -88,6 +96,21 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
             <p className="text-xs text-slate-400">{profile.email}</p>
           </div>
         </div>
+        <div className="flex flex-col items-center gap-1 text-xs text-slate-300">
+          <div className="relative">
+            <div
+              className="w-16 h-16 rounded-full border border-slate-800 shadow-inner shadow-slate-900/60"
+              style={xpRingStyle}
+              aria-hidden="true"
+            ></div>
+            <div className="absolute inset-1 rounded-full bg-slate-950/80 border border-slate-800 flex flex-col items-center justify-center">
+              <span className="text-[10px] uppercase tracking-wide text-slate-500">Level</span>
+              <span className="text-lg font-semibold text-cyan-200">{level}</span>
+            </div>
+          </div>
+          <span className="text-[11px] text-slate-400">{xpProgress} / 100 XP</span>
+          <span className="text-[10px] uppercase tracking-wide text-slate-500">{xpToNextLevel} to next</span>
+        </div>
         <button
           type="button"
           onClick={() => setIsExpanded((previous) => !previous)}
@@ -101,17 +124,6 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
 
       {isExpanded && (
         <div className="mt-5 space-y-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Progress</p>
-            <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
-              <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-violet-500 transition-all duration-500" style={{ width: `${Math.min(xpProgress, 100)}%` }}></div>
-            </div>
-            <div className="flex justify-between text-xs text-slate-400 mt-1">
-              <span>{xpProgress} / 100 XP</span>
-              <span>Total XP: {profile.xp}</span>
-            </div>
-          </div>
-
           <form onSubmit={handleNameSubmit} className="space-y-3">
             <div>
               <label htmlFor="display-name" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
@@ -174,7 +186,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
 
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span>Achievements synced: <span className="text-slate-200 font-semibold">{profile.achievementsUnlocked.length}</span></span>
-            <span>Last sync: Live</span>
+            <span>Total XP: {profile.xp}</span>
           </div>
         </div>
       )}
