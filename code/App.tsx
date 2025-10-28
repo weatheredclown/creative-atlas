@@ -23,6 +23,7 @@ import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import Roadmap from './components/Roadmap';
 import AICopilotPanel from './components/AICopilotPanel';
+import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
@@ -737,10 +738,15 @@ export default function App() {
                     )}
                 </div>
               )}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
                 <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+                <ReleaseNotesGenerator
+                    projectTitle={selectedProject.title}
+                    artifacts={projectArtifacts}
+                    addXp={addXp}
+                />
                 <AICopilotPanel assistants={aiAssistants} />
-                <div className="xl:col-span-2">
+                <div className="xl:col-span-3">
                     <Roadmap milestones={milestoneRoadmap} />
                 </div>
               </div>

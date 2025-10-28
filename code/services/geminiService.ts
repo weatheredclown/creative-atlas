@@ -139,3 +139,54 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
         throw new Error('An unknown error occurred while expanding the summary.');
     }
 };
+
+interface GenerateReleaseNotesParams {
+    projectTitle: string;
+    tone: string;
+    audience: string;
+    highlights: string;
+    additionalNotes?: string;
+}
+
+export const generateReleaseNotes = async ({
+    projectTitle,
+    tone,
+    audience,
+    highlights,
+    additionalNotes,
+}: GenerateReleaseNotesParams): Promise<string> => {
+    const prompt = `
+        You are Release Bard, an AI assistant who rewrites changelog bullet points into narrative release notes.
+        Project: ${projectTitle}
+        Tone requested: ${tone}
+        Primary audience: ${audience}
+
+        Highlights provided (Markdown list):
+        ${highlights}
+
+        ${additionalNotes ? `Calls to action or extra context: ${additionalNotes}` : ''}
+
+        Please craft 3-5 short paragraphs. Open with an inviting summary, weave the highlights into a cohesive story, and end with a friendly call-to-action tailored to the audience. Keep the language energetic but grounded, and respect the requested tone.
+    `;
+
+    try {
+        const response = await getClient().models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                role: 'user',
+                parts: [{ text: prompt }],
+            },
+            config: {
+                temperature: 0.75,
+            },
+        });
+
+        return response.text.trim();
+    } catch (error) {
+        console.error('Error generating release notes with Gemini:', error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate release notes. ${error.message}`);
+        }
+        throw new Error('An unknown error occurred while generating release notes.');
+    }
+};
