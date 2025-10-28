@@ -20,7 +20,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Implement optimistic UI updates with conflict resolution to keep the workspace fluid during network delays.
 - [ ] Add background draft syncing and local caching so editors remain usable when offline or during service interruptions.
 
-### AI Platform Hardening
+### AI Platform Hardening (low priority)
 - [ ] Proxy Gemini (and future model) calls through a secure backend to keep API keys out of the client.
 
 ### Robust Import/Export & Publishing
@@ -49,23 +49,6 @@ The interactive prototype lives in the `code/` directory and is a client-side Re
    cd code
    npm install
    ```
-
-### 2. Configure environment variables (optional, for AI copilots)
-
-The AI assistants call Gemini via the `@google/genai` SDK and expect a `VITE_API_KEY` environment variable at build time. Follow the steps below to create a key and expose it to the app:
-
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and sign in with the Google account you want to use for Gemini access.
-2. Click **Create API key**, then either select an existing Google Cloud project or create a new one. (Google will prompt you to enable the Gemini API and, if necessary, billing for that project.)
-3. After the key is generated, copy its value and keep it somewhere secure.
-4. Back in this repository, export the key before running any Vite commands, or add it to a `.env` file that Vite can read:
-
-   ```bash
-   export VITE_API_KEY="your-google-genai-key"
-   ```
-
-   For a persistent setup, create a file named `.env.local` inside `code/` with the line `VITE_API_KEY=your-google-genai-key`.
-
-Without the key, the rest of the interface still loads, but AI-powered actions will be unavailable.
 
 ### 3. Start the development server
 
