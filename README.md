@@ -13,7 +13,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
 - [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
 - [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
-- [ ] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
+- [x] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
 - [ ] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
 
 ### Phase 3 — Forge Systems (Weeks 9‑12)
