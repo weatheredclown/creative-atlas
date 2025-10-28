@@ -95,7 +95,7 @@ const parseCsvRow = (row: string): string[] => {
     return result;
 };
 
-export const importArtifactsFromCSV = (csvString: string, currentProjectId: string): Artifact[] => {
+export const importArtifactsFromCSV = (csvString: string, currentProjectId: string, ownerId: string): Artifact[] => {
     const importedArtifacts: Artifact[] = [];
     const rows = csvString.split('\n').filter(row => row.trim() !== '');
     if (rows.length < 2) {
@@ -133,6 +133,7 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
 
             const artifact: Artifact = {
                 id: rowData.id,
+                ownerId,
                 type: artifactType,
                 projectId: rowData.projectId || currentProjectId,
                 title: rowData.title,

@@ -3,6 +3,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './services/firebaseApp';
+import { AuthProvider } from './contexts/AuthContext';
+import { UserDataProvider } from './contexts/UserDataContext';
+import AuthGate from './components/AuthGate';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,6 +15,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <UserDataProvider>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </UserDataProvider>
+    </AuthProvider>
   </React.StrictMode>
 );
