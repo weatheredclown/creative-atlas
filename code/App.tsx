@@ -532,6 +532,7 @@ export default function App() {
 
   const xpProgress = profile.xp % 100;
   const level = Math.floor(profile.xp / 100) + 1;
+  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
 
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
@@ -558,7 +559,9 @@ export default function App() {
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <aside className="lg:col-span-3 space-y-6">
-          <UserProfileCard profile={profile} onUpdateProfile={handleProfileUpdate} />
+          {isViewingOwnWorkspace && (
+            <UserProfileCard profile={profile} onUpdateProfile={handleProfileUpdate} />
+          )}
           <div>
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
