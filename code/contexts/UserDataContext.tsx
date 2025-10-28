@@ -154,7 +154,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (Object.keys(updates).length > 0) {
       setProfile((current) => (current ? { ...current, ...updates } : current));
     }
-  }, [user?.displayName, user?.photoURL, user?.email]);
+  }, [user, profile]);
 
   useEffect(() => {
     if (!user || !hydrated || !profile) return;
@@ -180,11 +180,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateProfile = useCallback((update: ProfileUpdate) => {
     setProfile((current) => {
       if (!current) return current;
-      const nextSettings = update.settings ? { ...current.settings, ...update.settings } : current.settings;
-      const nextAchievements = update.achievementsUnlocked
-        ? Array.from(new Set([...current.achievementsUnlocked, ...update.achievementsUnlocked]))
+      const { settings: partialSettings, achievementsUnlocked: unlockedIds, ...rest } = update;
+      const nextSettings = partialSettings ? { ...current.settings, ...partialSettings } : current.settings;
+      const nextAchievements = unlockedIds
+        ? Array.from(new Set([...current.achievementsUnlocked, ...unlockedIds]))
         : current.achievementsUnlocked;
-      const { settings, achievementsUnlocked, ...rest } = update;
       return {
         ...current,
         ...rest,
