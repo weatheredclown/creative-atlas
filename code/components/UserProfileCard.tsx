@@ -108,8 +108,6 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
               <span className="text-lg font-semibold text-cyan-200">{level}</span>
             </div>
           </div>
-          <span className="text-[11px] text-slate-400">{xpProgress} / 100 XP</span>
-          <span className="text-[10px] uppercase tracking-wide text-slate-500">{xpToNextLevel} to next</span>
         </div>
         <button
           type="button"
