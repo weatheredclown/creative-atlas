@@ -3,12 +3,34 @@
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
 ## Product Roadmap
- - [ ] make user preferences/large XP bar a collapsable panel collapsed by default -- when not viewing yourself this collapsable panel would just be absent.
- - [ ] move progress into a smaller widget that fits on the line with creator level/name/portrait
- - [ ] make templates usable
- - [ ] Conlang editing requires the ability to add words individually as well as import/export the lexicon
- - [ ] milestones and the ai-copilots UI is interesting, but not worth the default screen real-estate, this is something that should be hidden in an about page
- - [ ] changing projects should clear out the ai generated draft release notes
+
+### Phase 1 — Seed the Universe (Weeks 0‑4)
+- [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
+- [ ] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
+- [ ] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
+- [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
+
+### Phase 2 — Grow Projects (Weeks 5‑8)
+- [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
+- [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
+- [ ] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
+- [ ] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
+
+### Phase 3 — Forge Systems (Weeks 9‑12)
+- [ ] Launch rich editors for core artifact types (storyboard, wiki pages, rulebooks) with status workflows (`idea → released`) surfaced inline.
+- [ ] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
+- [ ] Wire up release pipelines that pull from milestone tracker data to draft changelogs and publish-ready bundles.
+- [ ] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
+
+### Phase 4 — Showcase & Share (Weeks 13‑16)
+- [ ] Turn "Publish Site" into a one-click static export that bundles linked artifacts, media assets, and navigation scaffolding.
+- [ ] Offer reader-friendly gallery layouts and shareable preview links with visibility controls (`private | shared | public`).
+- [ ] Provide onboarding quests and tooltips that introduce graph navigation, publishing, and import/export power features.
+
+### Ongoing Quality & Ops
+- [ ] Migrate storage to the managed backend plan in `docs/firebase-backend-migration.md`, including auth, persistence, and role-aware access.
+- [ ] Harden AI integrations by proxying Gemini calls through a secure backend and logging usage for observability.
+- [ ] Maintain regression safety nets (lint, unit, e2e, build) and expand documentation as new artifact types or workflows land.
 
 ## Productionization Roadmap
 
