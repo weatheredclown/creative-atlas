@@ -156,11 +156,30 @@ export interface Achievement {
     isUnlocked: (artifacts: Artifact[], projects: Project[]) => boolean;
 }
 
+export interface TemplateArtifactBlueprint {
+    title: string;
+    type: ArtifactType;
+    summary: string;
+    status?: string;
+    tags?: string[];
+    data?: Artifact['data'];
+}
+
+export interface ProjectTemplate {
+    id: string;
+    name: string;
+    description: string;
+    recommendedFor?: string[];
+    projectTags: string[];
+    artifacts: TemplateArtifactBlueprint[];
+}
+
 export interface TemplateEntry {
     id: string;
     name: string;
     description: string;
     tags?: string[];
+    blueprint?: TemplateArtifactBlueprint;
 }
 
 export interface TemplateCategory {
