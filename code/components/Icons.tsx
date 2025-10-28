@@ -156,3 +156,10 @@ export const FlagIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path fillRule='evenodd' d='M3.75 2A.75.75 0 013 2.75v14.5a.75.75 0 001.5 0v-4.03c.399-.186.84-.22 1.276-.087l.805.241c1.172.351 2.42.267 3.545-.238a4.978 4.978 0 012.716-.357l2.05.341A.75.75 0 0015.75 12V3.25a.75.75 0 00-.88-.737l-2.477.413a4.478 4.478 0 01-2.506.327l-1.28-.256A5.977 5.977 0 005.5 3.5a4.5 4.5 0 01-1.75-.35V2.75A.75.75 0 013.75 2z' clipRule='evenodd' />
     </svg>
 );
+
+export const TagIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
+        <path d='M17.28 10.22l-6.5-6.5A1.75 1.75 0 009.54 3H4.25A1.75 1.75 0 002.5 4.75v5.29c0 .464.184.91.513 1.237l6.5 6.5a1.75 1.75 0 002.474 0l5.293-5.293a1.75 1.75 0 000-2.474z' />
+        <path d='M6.25 7.5a1.25 1.25 0 111.5-2 1.25 1.25 0 01-1.5 2z' />
+    </svg>
+);

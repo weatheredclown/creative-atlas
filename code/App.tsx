@@ -18,6 +18,7 @@ import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import { exportArtifactsToCSV, exportArtifactsToTSV, exportProjectAsStaticSite } from './utils/export';
 import { importArtifactsFromCSV } from './utils/import';
+import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
@@ -521,6 +522,10 @@ export default function App() {
   const hasActiveFilters = artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '';
   const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
 
+  const handleUpdateProject = useCallback((projectId: string, updater: (project: Project) => Project) => {
+    setProjects(currentProjects => currentProjects.map(project => project.id === projectId ? updater(project) : project));
+  }, [setProjects]);
+
   if (!profile) {
     return null;
   }
@@ -579,6 +584,10 @@ export default function App() {
         <section className="lg:col-span-9 space-y-8">
           {selectedProject ? (
             <>
+              <ProjectOverview
+                  project={selectedProject}
+                  onUpdateProject={handleUpdateProject}
+              />
               <ProjectInsights artifacts={projectArtifacts} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
