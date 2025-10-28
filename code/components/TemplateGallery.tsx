@@ -1,13 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { TemplateCategory } from '../types';
+import { TemplateCategory, TemplateEntry } from '../types';
 import { MagnifyingGlassIcon, SparklesIcon } from './Icons';
 
 interface TemplateGalleryProps {
   categories: TemplateCategory[];
   activeProjectTitle?: string;
+  onApplyTemplate?: (template: TemplateEntry) => void;
+  applyingTemplateId?: string | null;
+  statusMessage?: string | null;
 }
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activeProjectTitle }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({
+  categories,
+  activeProjectTitle,
+  onApplyTemplate,
+  applyingTemplateId,
+  statusMessage,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const { recommended, others } = useMemo(() => {
@@ -79,6 +88,18 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
                 ))}
               </div>
             )}
+            {template.hydrate ? (
+              <button
+                type="button"
+                onClick={() => onApplyTemplate?.(template)}
+                disabled={!onApplyTemplate || applyingTemplateId === template.id}
+                className="mt-3 inline-flex items-center justify-center rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/20 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {applyingTemplateId === template.id ? 'Adding kit…' : `Add ${template.hydrate.artifacts.length} seed${template.hydrate.artifacts.length === 1 ? '' : 's'}`}
+              </button>
+            ) : (
+              <p className="mt-3 text-[11px] uppercase tracking-wide text-slate-500">Hydration coming soon</p>
+            )}
           </div>
         ))}
       </div>
@@ -107,6 +128,12 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
           />
         </div>
       </header>
+
+      {statusMessage && (
+        <div className="rounded-lg border border-cyan-600/40 bg-cyan-900/20 px-4 py-3 text-xs text-cyan-100">
+          {statusMessage}
+        </div>
+      )}
 
       {recommended.length > 0 && (
         <div className="space-y-4">

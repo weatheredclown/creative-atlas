@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
+import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, TemplateEntry, TemplateArtifactBlueprint, Milestone, AIAssistant, UserProfile } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -28,6 +28,7 @@ import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import { hydrateTemplate } from './utils/templateHydration';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -42,6 +43,516 @@ const achievements: Achievement[] = [
     { id: 'ach-4', title: 'Connector', description: 'Link 3 artifacts together.', isUnlocked: (artifacts) => artifacts.reduce((acc, a) => acc + a.relations.length, 0) >= 3 },
 ];
 
+const createBlueprint = (
+  key: string,
+  type: ArtifactType,
+  title: string,
+  summary: string,
+  options: Partial<Omit<TemplateArtifactBlueprint, 'key' | 'type' | 'title' | 'summary'>> = {},
+): TemplateArtifactBlueprint => ({
+  key,
+  type,
+  title,
+  summary,
+  status: options.status ?? 'draft',
+  tags: options.tags,
+  data: options.data,
+  relations: options.relations,
+});
+
+const templateBlueprints: Record<string, { xpReward?: number; artifacts: TemplateArtifactBlueprint[] }> = {
+  'tam-magic-system': {
+    xpReward: 18,
+    artifacts: [
+      createBlueprint(
+        'codex',
+        ArtifactType.MagicSystem,
+        '{{project}} Threadweaving Codex',
+        'Document the axioms, costs, and taboos that govern your signature magic.',
+        { tags: ['magic', 'systems'] },
+      ),
+      createBlueprint(
+        'codex-playtest',
+        ArtifactType.Task,
+        'Audit threadweaving resonance debt',
+        'Simulate edge cases to ensure weaving costs stay balanced.',
+        {
+          status: 'in-progress',
+          tags: ['magic', 'playtest'],
+          data: { state: TaskState.InProgress },
+          relations: [{ to: 'codex', kind: 'USES' }],
+        },
+      ),
+    ],
+  },
+  'tam-rulebook': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'canon-rulebook',
+        ArtifactType.Wiki,
+        '{{project}} Canon Rulebook',
+        'Capture rulings, rituals, and lore codex entries for quick reference.',
+        { tags: ['canon', 'reference'], status: 'draft' },
+      ),
+    ],
+  },
+  'tam-city': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'metropolis',
+        ArtifactType.Location,
+        '{{project}} Metropolis Atlas',
+        'Map districts, factions, and sensory hooks for the capital city.',
+        { tags: ['location', 'lore'], status: 'draft' },
+      ),
+    ],
+  },
+  'tam-faction': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'faction-ledger',
+        ArtifactType.Faction,
+        '{{project}} Faction Ledger',
+        'Track loyalties, resources, and rival factions driving the saga.',
+        { tags: ['faction', 'relationships'], status: 'idea' },
+      ),
+    ],
+  },
+  'tam-edruel': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'edruel-ruins',
+        ArtifactType.Location,
+        'Edruel Excavation Log',
+        'Log discoveries, hazards, and unanswered questions from the ruin at the heart of the mystery.',
+        { tags: ['lore', 'mystery'], status: 'in-progress' },
+      ),
+    ],
+  },
+  'tam-thread-log': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'thread-log',
+        ArtifactType.Wiki,
+        'Threadweaving Legendary Log',
+        'Track legendary spells, casters, and cascading outcomes from high-risk weaving.',
+        { tags: ['magic', 'log'], status: 'draft' },
+      ),
+    ],
+  },
+  'tam-canon': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'canon-tracker',
+        ArtifactType.Wiki,
+        '{{project}} Continuity Tracker',
+        'Record pronunciation notes, foreshadowing beats, and continuity-sensitive facts.',
+        { tags: ['continuity'], status: 'draft' },
+      ),
+    ],
+  },
+  'steam-clan': {
+    xpReward: 16,
+    artifacts: [
+      createBlueprint(
+        'clan-ledger',
+        ArtifactType.Faction,
+        '{{project}} Clan Roster',
+        'Roster leadership, ranks, alliances, and rivalries inside the guild.',
+        { tags: ['faction'] },
+      ),
+      createBlueprint(
+        'clan-ops',
+        ArtifactType.Task,
+        'Schedule guild operation briefing',
+        'Prep the next high-stakes job with intel requests and crew assignments.',
+        {
+          status: 'todo',
+          tags: ['operations'],
+          data: { state: TaskState.Todo },
+          relations: [{ to: 'clan-ledger', kind: 'CONTAINS' }],
+        },
+      ),
+    ],
+  },
+  'steam-workshop': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'workshop-map',
+        ArtifactType.Location,
+        '{{project}} Workshop Layout',
+        'Lay out crafting stations, supply caches, and rotating experiments.',
+        { tags: ['location', 'operations'], status: 'draft' },
+      ),
+    ],
+  },
+  'steam-scene': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'steam-scene-seed',
+        ArtifactType.Scene,
+        'Coal-punk Set Piece Outline',
+        'Storyboard explosive reversals, NPC beats, and environmental hazards.',
+        { tags: ['story'], status: 'idea' },
+      ),
+    ],
+  },
+  'steam-villain': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'villain-profile',
+        ArtifactType.Character,
+        'Red-Eyes Opposition Dossier',
+        'Detail motives, tactics, leverage, and weaknesses of the guild nemesis.',
+        { tags: ['character', 'antagonist'], status: 'draft', data: { bio: '', traits: [] } },
+      ),
+    ],
+  },
+  'steam-triangle': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'relationship-map',
+        ArtifactType.Wiki,
+        'Love Triangle Momentum Map',
+        'Chart emotional stakes, secret alliances, and upcoming confrontations.',
+        { tags: ['relationships'], status: 'idea' },
+      ),
+    ],
+  },
+  'steam-release': {
+    xpReward: 14,
+    artifacts: [
+      createBlueprint(
+        'release-draft',
+        ArtifactType.Release,
+        '{{project}} Launch Notes Draft',
+        'Collect highlights, trailers, and call-to-action beats for the next release.',
+        {
+          tags: ['delivery'],
+          status: 'draft',
+          data: { tagName: 'v0.1.0', url: '', author: 'Launch crew', draft: true, prerelease: false },
+        },
+      ),
+    ],
+  },
+  'dust-module': {
+    xpReward: 18,
+    artifacts: [
+      createBlueprint(
+        'module-brief',
+        ArtifactType.Game,
+        '{{project}} Module Brief',
+        'Outline level bands, stakes, and key set pieces for the new adventure arc.',
+        { tags: ['campaign'], status: 'draft' },
+      ),
+      createBlueprint(
+        'module-task',
+        ArtifactType.Task,
+        'Plan encounter pacing',
+        'Draft a difficulty curve that escalates toward the climax encounter.',
+        {
+          tags: ['design'],
+          status: 'todo',
+          data: { state: TaskState.Todo },
+          relations: [{ to: 'module-brief', kind: 'RELATES_TO' }],
+        },
+      ),
+    ],
+  },
+  'dust-quest': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'quest-card',
+        ArtifactType.Task,
+        'Questline: Secure the Dust Relic',
+        'Track objectives, branching outcomes, and promised rewards for the party.',
+        { tags: ['quest'], status: 'in-progress', data: { state: TaskState.InProgress } },
+      ),
+    ],
+  },
+  'dust-mask': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'persona-mask',
+        ArtifactType.Character,
+        'Persona Mask Briefing',
+        'Capture roleplay cues, tells, and secret agendas for a signature persona.',
+        { tags: ['npc'], status: 'draft', data: { bio: '', traits: [] } },
+      ),
+    ],
+  },
+  'dust-npc': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'npc-profile',
+        ArtifactType.Character,
+        'Ally Roster Entry',
+        'Profile motivations, boons, and complications for a key NPC.',
+        { tags: ['npc'], status: 'idea', data: { bio: '', traits: [] } },
+      ),
+    ],
+  },
+  'dust-item': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'relic-catalog',
+        ArtifactType.Wiki,
+        'Rare Relic Catalog',
+        'Describe relic properties, attunement costs, and upgrade paths.',
+        { tags: ['loot'], status: 'draft' },
+      ),
+    ],
+  },
+  'dust-tileset': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'tileset-pack',
+        ArtifactType.Location,
+        'Tileset Hazard Index',
+        'List reusable battle maps, traversal hazards, and dynamic terrain notes.',
+        { tags: ['maps'], status: 'draft' },
+      ),
+    ],
+  },
+  'dust-build': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'playtest-build',
+        ArtifactType.Character,
+        'Playtest Build Tracker',
+        'Record leveling decisions, loadouts, and feedback from field tests.',
+        { tags: ['characters'], status: 'in-progress', data: { bio: '', traits: [] } },
+      ),
+    ],
+  },
+  'spatch-team': {
+    xpReward: 16,
+    artifacts: [
+      createBlueprint(
+        'team-roster',
+        ArtifactType.Faction,
+        '{{project}} Team Roster',
+        'List starters, bench depth, and rival matchups for the upcoming arc.',
+        { tags: ['team'], status: 'draft' },
+      ),
+      createBlueprint(
+        'team-drill',
+        ArtifactType.Task,
+        'Design highlight drill sequence',
+        'Outline drills that showcase the team’s unique playstyle.',
+        {
+          tags: ['training'],
+          status: 'todo',
+          data: { state: TaskState.Todo },
+          relations: [{ to: 'team-roster', kind: 'RELATES_TO' }],
+        },
+      ),
+    ],
+  },
+  'spatch-mentor': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'mentor-profile',
+        ArtifactType.Character,
+        'Mentor Character Sheet',
+        'Capture voice, coaching philosophy, and signature training beats.',
+        { tags: ['character'], status: 'draft', data: { bio: '', traits: [] } },
+      ),
+    ],
+  },
+  'spatch-rule': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'rule-variant',
+        ArtifactType.Game,
+        'Rule Variant Playbook',
+        'Document rule tweaks, balance impacts, and recommended matchups.',
+        { tags: ['rules'], status: 'draft' },
+      ),
+    ],
+  },
+  'spatch-match': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'match-outline',
+        ArtifactType.Scene,
+        'Match Highlight Outline',
+        'Plan panels, momentum swings, and cliffhanger moments.',
+        { tags: ['story'], status: 'idea' },
+      ),
+    ],
+  },
+  'spatch-board': {
+    xpReward: 10,
+    artifacts: [
+      createBlueprint(
+        'panel-board',
+        ArtifactType.Scene,
+        'Panel Board Layout',
+        'Block out pacing, spreads, and page-turn reveals.',
+        { tags: ['storyboard'], status: 'draft' },
+      ),
+    ],
+  },
+  'darv-lexicon': {
+    xpReward: 18,
+    artifacts: [
+      createBlueprint(
+        'lexicon-table',
+        ArtifactType.Conlang,
+        '{{project}} Lexicon Table',
+        'Seed the lexicon with core lemmas, glosses, and notes for pronunciation.',
+        {
+          tags: ['language'],
+          data: [
+            { id: 'lex-template-1', lemma: 'zor', pos: 'n', gloss: 'ember', etymology: '' },
+            { id: 'lex-template-2', lemma: 'tal', pos: 'v', gloss: 'to weave', etymology: '' },
+          ] as ConlangLexeme[],
+        },
+      ),
+      createBlueprint(
+        'lexicon-review',
+        ArtifactType.Task,
+        'Review phoneme balance',
+        'Ensure new lemmas respect the language’s phonotactics.',
+        {
+          tags: ['language'],
+          status: 'todo',
+          data: { state: TaskState.Todo },
+          relations: [{ to: 'lexicon-table', kind: 'RELATES_TO' }],
+        },
+      ),
+    ],
+  },
+  'darv-phonology': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'phonology-sheet',
+        ArtifactType.Wiki,
+        'Phonology Sheet',
+        'Summarize phoneme inventory, syllable structure, and stress rules.',
+        { tags: ['language'], status: 'draft' },
+      ),
+    ],
+  },
+  'darv-paradigm': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'paradigm-grid',
+        ArtifactType.Wiki,
+        'Paradigm Grid',
+        'Lay out conjugation or declension patterns with example lemmas.',
+        { tags: ['grammar'], status: 'draft' },
+      ),
+    ],
+  },
+  'darv-proverb': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'proverb-collection',
+        ArtifactType.Story,
+        'Proverb Collection',
+        'Capture idioms, cultural context, and literal translations.',
+        { tags: ['culture'], status: 'idea' },
+      ),
+    ],
+  },
+  'darv-myth': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'myth-outline',
+        ArtifactType.Story,
+        'Myth Outline',
+        'Outline legendary events, symbolism, and ties to linguistic lore.',
+        { tags: ['story'], status: 'draft' },
+      ),
+    ],
+  },
+  'sacred-episode': {
+    xpReward: 17,
+    artifacts: [
+      createBlueprint(
+        'episode-breakdown',
+        ArtifactType.Story,
+        'Episode Beat Breakdown',
+        'Structure cold opens, act turns, and cliffhangers for the supernatural case.',
+        { tags: ['story'], status: 'draft' },
+      ),
+      createBlueprint(
+        'episode-task',
+        ArtifactType.Task,
+        'Plan teaser stinger',
+        'Draft a teaser that threads next week’s lore reveal.',
+        {
+          tags: ['story'],
+          status: 'todo',
+          data: { state: TaskState.Todo },
+          relations: [{ to: 'episode-breakdown', kind: 'RELATES_TO' }],
+        },
+      ),
+    ],
+  },
+  'sacred-case': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'case-file',
+        ArtifactType.Wiki,
+        'Case File Dossier',
+        'Log evidence, suspects, alibis, and unresolved threads.',
+        { tags: ['mystery'], status: 'draft' },
+      ),
+    ],
+  },
+  'sacred-codex': {
+    xpReward: 12,
+    artifacts: [
+      createBlueprint(
+        'monster-codex',
+        ArtifactType.Wiki,
+        'Monster Codex Entry',
+        'Detail biology, tells, and countermeasures for a featured creature.',
+        { tags: ['bestiary'], status: 'draft' },
+      ),
+    ],
+  },
+  'sacred-cathedral': {
+    xpReward: 11,
+    artifacts: [
+      createBlueprint(
+        'cathedral-asset',
+        ArtifactType.Location,
+        'Cathedral Field Asset',
+        'Catalog lairs, safe houses, and reliquaries tied to the cathedral network.',
+        { tags: ['location'], status: 'draft' },
+      ),
+    ],
+  },
+};
+
 const templateLibrary: TemplateCategory[] = [
     {
         id: 'tamenzut',
@@ -49,13 +560,13 @@ const templateLibrary: TemplateCategory[] = [
         description: 'High-fantasy seeds that keep the Tamenzut saga consistent from novel to novel.',
         recommendedFor: ['Tamenzut'],
         templates: [
-            { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
-            { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
-            { id: 'tam-city', name: 'City', description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
-            { id: 'tam-faction', name: 'Faction', description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
-            { id: 'tam-edruel', name: 'Edruel Ruins', description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
-            { id: 'tam-thread-log', name: 'ThreadWeaving Log', description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
-            { id: 'tam-canon', name: 'Canon Tracker', description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
+            { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'], hydrate: templateBlueprints['tam-magic-system'] },
+            { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'], hydrate: templateBlueprints['tam-rulebook'] },
+            { id: 'tam-city', name: 'City', description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'], hydrate: templateBlueprints['tam-city'] },
+            { id: 'tam-faction', name: 'Faction', description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'], hydrate: templateBlueprints['tam-faction'] },
+            { id: 'tam-edruel', name: 'Edruel Ruins', description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'], hydrate: templateBlueprints['tam-edruel'] },
+            { id: 'tam-thread-log', name: 'ThreadWeaving Log', description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'], hydrate: templateBlueprints['tam-thread-log'] },
+            { id: 'tam-canon', name: 'Canon Tracker', description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'], hydrate: templateBlueprints['tam-canon'] },
         ],
     },
     {
@@ -64,12 +575,12 @@ const templateLibrary: TemplateCategory[] = [
         description: 'Coal-punk ops boards for Anya’s guild drama and gadgeteering.',
         recommendedFor: ['Steamweave'],
         templates: [
-            { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
-            { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
-            { id: 'steam-scene', name: 'Scene', description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
-            { id: 'steam-villain', name: 'Villain (Red-Eyes)', description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
-            { id: 'steam-triangle', name: 'Love Triangle Map', description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
-            { id: 'steam-release', name: 'Release Notes', description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
+            { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'], hydrate: templateBlueprints['steam-clan'] },
+            { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'], hydrate: templateBlueprints['steam-workshop'] },
+            { id: 'steam-scene', name: 'Scene', description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'], hydrate: templateBlueprints['steam-scene'] },
+            { id: 'steam-villain', name: 'Villain (Red-Eyes)', description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'], hydrate: templateBlueprints['steam-villain'] },
+            { id: 'steam-triangle', name: 'Love Triangle Map', description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'], hydrate: templateBlueprints['steam-triangle'] },
+            { id: 'steam-release', name: 'Release Notes', description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'], hydrate: templateBlueprints['steam-release'] },
         ],
     },
     {
@@ -78,13 +589,13 @@ const templateLibrary: TemplateCategory[] = [
         description: 'Questline scaffolds for the Dustland tabletop campaign.',
         recommendedFor: ['Dustland'],
         templates: [
-            { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
-            { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
-            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, mannerisms, and secret agendas.', tags: ['npc'] },
-            { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
-            { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
-            { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
-            { id: 'dust-build', name: 'Build', description: 'Record character progressions and loadouts for playtests.', tags: ['characters'] },
+            { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'], hydrate: templateBlueprints['dust-module'] },
+            { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'], hydrate: templateBlueprints['dust-quest'] },
+            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, mannerisms, and secret agendas.', tags: ['npc'], hydrate: templateBlueprints['dust-mask'] },
+            { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'], hydrate: templateBlueprints['dust-npc'] },
+            { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'], hydrate: templateBlueprints['dust-item'] },
+            { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'], hydrate: templateBlueprints['dust-tileset'] },
+            { id: 'dust-build', name: 'Build', description: 'Record character progressions and loadouts for playtests.', tags: ['characters'], hydrate: templateBlueprints['dust-build'] },
         ],
     },
     {
@@ -93,11 +604,11 @@ const templateLibrary: TemplateCategory[] = [
         description: 'Sports-drama templates tuned for the Spatch comic universe.',
         recommendedFor: ['Spatch'],
         templates: [
-            { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
-            { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
-            { id: 'spatch-rule', name: 'Rule Variant', description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
-            { id: 'spatch-match', name: 'Match', description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
-            { id: 'spatch-board', name: 'Panel Board', description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
+            { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'], hydrate: templateBlueprints['spatch-team'] },
+            { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'], hydrate: templateBlueprints['spatch-mentor'] },
+            { id: 'spatch-rule', name: 'Rule Variant', description: 'Document variant mechanics and how they change match flow.', tags: ['rules'], hydrate: templateBlueprints['spatch-rule'] },
+            { id: 'spatch-match', name: 'Match', description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'], hydrate: templateBlueprints['spatch-match'] },
+            { id: 'spatch-board', name: 'Panel Board', description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'], hydrate: templateBlueprints['spatch-board'] },
         ],
     },
     {
@@ -106,11 +617,11 @@ const templateLibrary: TemplateCategory[] = [
         description: 'Linguistic workbench for the ancient language of the Darv.',
         recommendedFor: ['Darv'],
         templates: [
-            { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
-            { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
-            { id: 'darv-paradigm', name: 'Paradigm', description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
-            { id: 'darv-proverb', name: 'Proverb', description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
-            { id: 'darv-myth', name: 'Myth', description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
+            { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'], hydrate: templateBlueprints['darv-lexicon'] },
+            { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'], hydrate: templateBlueprints['darv-phonology'] },
+            { id: 'darv-paradigm', name: 'Paradigm', description: 'Lay out conjugation or declension tables.', tags: ['grammar'], hydrate: templateBlueprints['darv-paradigm'] },
+            { id: 'darv-proverb', name: 'Proverb', description: 'Capture idioms with cultural context and translations.', tags: ['culture'], hydrate: templateBlueprints['darv-proverb'] },
+            { id: 'darv-myth', name: 'Myth', description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'], hydrate: templateBlueprints['darv-myth'] },
         ],
     },
     {
@@ -119,10 +630,10 @@ const templateLibrary: TemplateCategory[] = [
         description: 'Supernatural investigation kits for the Sacred Truth vampire saga.',
         recommendedFor: ['Sacred Truth'],
         templates: [
-            { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
-            { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
-            { id: 'sacred-codex', name: 'Monster Codex', description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
-            { id: 'sacred-cathedral', name: 'Cathedral Asset', description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
+            { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'], hydrate: templateBlueprints['sacred-episode'] },
+            { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'], hydrate: templateBlueprints['sacred-case'] },
+            { id: 'sacred-codex', name: 'Monster Codex', description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'], hydrate: templateBlueprints['sacred-codex'] },
+            { id: 'sacred-cathedral', name: 'Cathedral Asset', description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'], hydrate: templateBlueprints['sacred-cathedral'] },
         ],
     },
 ];
@@ -333,6 +844,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
+  const [templateStatus, setTemplateStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projects.length) {
@@ -491,6 +1004,42 @@ export default function App() {
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
+
+  const handleApplyTemplate = useCallback((template: TemplateEntry) => {
+    if (!selectedProject) {
+      setTemplateStatus('Select a project to apply templates.');
+      return;
+    }
+
+    if (!template.hydrate || template.hydrate.artifacts.length === 0) {
+      setTemplateStatus(`Template ${template.name} does not include starter artifacts yet.`);
+      return;
+    }
+
+    setTemplateStatus(null);
+    setApplyingTemplateId(template.id);
+    const { artifacts: generatedArtifacts, skippedKeys, xpReward } = hydrateTemplate({
+      template,
+      projectId: selectedProject.id,
+      projectTitle: selectedProject.title,
+      ownerId: selectedProject.ownerId,
+      existingArtifacts: projectArtifacts,
+    });
+
+    if (generatedArtifacts.length === 0) {
+      setTemplateStatus(skippedKeys.length > 0
+        ? `Every artifact from ${template.name} already exists in ${selectedProject.title}.`
+        : `Template ${template.name} does not include starter artifacts yet.`);
+      setApplyingTemplateId(null);
+      return;
+    }
+
+    setArtifacts(current => [...current, ...generatedArtifacts]);
+    setTemplateStatus(`Added ${generatedArtifacts.length} starter artifact${generatedArtifacts.length > 1 ? 's' : ''} from ${template.name}.`);
+    setApplyingTemplateId(null);
+    addXp(xpReward);
+    setSelectedArtifactId(generatedArtifacts[0].id);
+  }, [selectedProject, projectArtifacts, setArtifacts, addXp, setSelectedArtifactId]);
 
   const handleProfileUpdate = useCallback((updates: { displayName?: string; settings?: Partial<UserProfile['settings']> }) => {
     updateProfile(updates);
@@ -771,7 +1320,13 @@ export default function App() {
                 </div>
               )}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
-                <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+                <TemplateGallery
+                    categories={templateLibrary}
+                    activeProjectTitle={selectedProject.title}
+                    onApplyTemplate={handleApplyTemplate}
+                    applyingTemplateId={applyingTemplateId}
+                    statusMessage={templateStatus}
+                />
                 <ReleaseNotesGenerator
                     projectTitle={selectedProject.title}
                     artifacts={projectArtifacts}
