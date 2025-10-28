@@ -6,7 +6,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### Phase 1 — Seed the Universe (Weeks 0‑4)
 - [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
-- [ ] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
+- [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
 - [ ] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
 - [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
