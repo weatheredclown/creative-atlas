@@ -8,11 +8,14 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
 - [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
 - [x] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
+- [ ] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
+- [ ] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
 - [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
 - [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
 - [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
+- [ ] Document the current hard-coded template authoring workflow (`templateLibrary` + `projectTemplates` in `App.tsx`) and scope future admin/import tooling that can replace it post-MVP.
 - [x] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
 - [x] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
 
@@ -52,6 +55,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### AI Platform Hardening (low priority)
 - [ ] Proxy Gemini (and future model) calls through a secure backend to keep API keys out of the client.
+- [ ] Capture the current exact-title recommendation heuristic used by templates and schedule richer ranking once higher-priority systems land.
 
 ### Robust Import/Export & Publishing
 - [ ] Validate CSV/Markdown inputs on the server and return actionable schema errors to the client.
