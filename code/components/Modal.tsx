@@ -32,6 +32,20 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     return null;
   }
 
+  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
+  const handleBackdropTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in relative"
@@ -39,13 +53,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       aria-modal="true"
       aria-labelledby="modal-title"
       tabIndex={-1}
+      onMouseDown={handleBackdropMouseDown}
+      onTouchStart={handleBackdropTouchStart}
     >
-      <button
-        type="button"
-        className="absolute inset-0 w-full h-full cursor-default"
-        aria-label="Close modal"
-        onClick={onClose}
-      />
       <div
         ref={modalRef}
         className="relative bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg m-4 transform transition-all"
