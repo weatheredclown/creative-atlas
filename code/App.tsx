@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo, useCallback, useRef, KeyboardEvent } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData, TemplateCategory, Milestone, AIAssistant } from './types';
+import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
+import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -23,24 +23,9 @@ import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import Roadmap from './components/Roadmap';
 import AICopilotPanel from './components/AICopilotPanel';
-
-// Mock data based on the product spec
-const initialProjects: Project[] = [
-  { id: 'proj-1', title: 'Tamenzut', summary: 'A series of high-fantasy novels.', status: ProjectStatus.Active, tags: ['novel', 'fantasy'] },
-  { id: 'proj-2', title: 'Steamweave', summary: 'A coal-punk world of gears and magic.', status: ProjectStatus.Idea, tags: ['coal-punk', 'rpg'] },
-];
-
-const initialArtifacts: Artifact[] = [
-  { id: 'art-1', projectId: 'proj-1', type: ArtifactType.Conlang, title: 'Darv', summary: 'The ancient language of the Darv people.', status: 'draft', tags: ['language'], relations: [], data: [
-      { id: 'lex-1', lemma: 'brubber', pos: 'adj', gloss: 'strange; unusual', etymology: 'From Old Darv "brub", meaning "other".' },
-  ]},
-  { id: 'art-2', projectId: 'proj-1', type: ArtifactType.Character, title: 'Kaelen', summary: 'A rogue with a mysterious past.', status: 'draft', tags: ['protagonist'], relations: [{toId: 'art-1', kind: 'SPEAKS'}], data: { bio: 'Kaelen grew up on the streets of the Gilded City, learning to live by his wits.', traits: [{id: 't1', key: 'Age', value: '27'}] } },
-  { id: 'art-3', projectId: 'proj-2', type: ArtifactType.Story, title: 'Shroud and Gears', summary: 'An introductory short story.', status: 'idea', tags: ['short-story'], relations: [], data: [] },
-  { id: 'art-4', projectId: 'proj-2', type: ArtifactType.Task, title: 'Design main character', summary: 'Flesh out the protagonist for Shroud and Gears.', status: 'in-progress', tags: ['design'], relations: [], data: { state: TaskState.InProgress } },
-  { id: 'art-5', projectId: 'proj-2', type: ArtifactType.Task, title: 'Outline Chapter 1', summary: 'Create beat sheet for the first chapter.', status: 'todo', tags: ['writing'], relations: [], data: { state: TaskState.Todo } },
-  { id: 'art-6', projectId: 'proj-1', type: ArtifactType.Wiki, title: 'World Anvil', summary: 'Main wiki for the Tamenzut universe.', status: 'draft', tags: ['world-building'], relations: [], data: { content: '# Welcome to Tamenzut' } },
-  { id: 'art-7', projectId: 'proj-1', type: ArtifactType.Location, title: 'The Gilded City', summary: 'A bustling desert metropolis.', status: 'draft', tags: ['city'], relations: [], data: { description: 'A city built on an oasis, known for its vibrant trade and towering spires of sandstone and gold.', features: [{id: 'f1', name: 'The Sunstone Market', description: 'A sprawling bazaar.'}] } },
-];
+import { useUserData } from './contexts/UserDataContext';
+import { useAuth } from './contexts/AuthContext';
+import UserProfileCard from './components/UserProfileCard';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -234,18 +219,41 @@ const aiAssistants: AIAssistant[] = [
     },
 ];
 
-const Header: React.FC<{ xp: number }> = ({ xp }) => (
+const getInitials = (name: string) => {
+  if (!name) return 'C';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+};
+
+const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void }> = ({ profile, xpProgress, level, onSignOut }) => (
   <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
     <div className="flex items-center gap-3">
       <CubeIcon className="w-7 h-7 text-cyan-400" />
       <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
     </div>
     <div className="flex items-center gap-4">
-        <div className="text-sm font-medium text-slate-400">Creator Level 1</div>
-        <div className="relative w-32 h-6 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
-            <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${(xp/100)*100}%` }}></div>
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white tracking-wider">{xp} / 100 XP</span>
+      <div className="hidden sm:flex flex-col items-end">
+        <span className="text-sm font-semibold text-slate-200">{profile.displayName}</span>
+        <span className="text-xs text-slate-400">Level {level}</span>
+      </div>
+      <div className="relative w-32 h-6 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
+        <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${Math.min(xpProgress, 100)}%` }}></div>
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white tracking-wider">{xpProgress} / 100 XP</span>
+      </div>
+      {profile.photoURL ? (
+        <img src={profile.photoURL} alt={profile.displayName} className="hidden sm:block w-9 h-9 rounded-full object-cover border border-slate-600" />
+      ) : (
+        <div className="hidden sm:flex w-9 h-9 rounded-full bg-cyan-600/20 border border-cyan-500/40 items-center justify-center text-sm font-semibold text-cyan-200">
+          {getInitials(profile.displayName)}
         </div>
+      )}
+      <button
+        onClick={() => { void onSignOut(); }}
+        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
+      >
+        Sign out
+      </button>
     </div>
   </header>
 );
@@ -311,11 +319,10 @@ const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) =>
 
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [artifacts, setArtifacts] = useState<Artifact[]>(initialArtifacts);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjects[0]?.id || null);
+  const { projects, setProjects, artifacts, setArtifacts, profile, addXp, updateProfile } = useUserData();
+  const { signOutUser } = useAuth();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
-  const [xp, setXp] = useState<number>(25);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
@@ -324,12 +331,29 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addXp = useCallback((amount: number) => {
-    setXp(currentXp => Math.min(currentXp + amount, 100));
-  }, []);
+  useEffect(() => {
+    if (!projects.length) {
+      setSelectedProjectId(null);
+      setSelectedArtifactId(null);
+      return;
+    }
+    if (!selectedProjectId || !projects.some(project => project.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0].id);
+      setSelectedArtifactId(null);
+    }
+  }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const unlocked = achievements.filter(achievement => achievement.isUnlocked(artifacts, projects)).map(achievement => achievement.id);
+    const missing = unlocked.filter(id => !profile.achievementsUnlocked.includes(id));
+    if (missing.length > 0) {
+      updateProfile({ achievementsUnlocked: unlocked });
+    }
+  }, [profile, artifacts, projects, updateProfile]);
 
   const handleUpdateArtifactData = useCallback((artifactId: string, data: Artifact['data']) => {
-    setArtifacts(currentArtifacts => 
+    setArtifacts(currentArtifacts =>
         currentArtifacts.map(art => {
             if (art.id === artifactId) {
                 if (art.type === ArtifactType.Task && (data as TaskData).state === TaskState.Done && (art.data as TaskData).state !== TaskState.Done) {
@@ -340,11 +364,11 @@ export default function App() {
             return art;
         })
     );
-  }, [addXp]);
+  }, [addXp, setArtifacts]);
 
   const handleUpdateArtifact = useCallback((updatedArtifact: Artifact) => {
     setArtifacts(currentArtifacts => currentArtifacts.map(art => art.id === updatedArtifact.id ? updatedArtifact : art));
-  }, []);
+  }, [setArtifacts]);
 
   const handleAddRelation = useCallback((fromId: string, toId: string, kind: string) => {
     setArtifacts(currentArtifacts => currentArtifacts.map(art => {
@@ -354,7 +378,7 @@ export default function App() {
         }
         return art;
     }));
-  }, []);
+  }, [setArtifacts]);
 
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
@@ -365,8 +389,10 @@ export default function App() {
   };
 
   const handleCreateProject = useCallback(({ title, summary }: { title: string; summary: string }) => {
+    if (!profile) return;
     const newProject: Project = {
       id: `proj-${Date.now()}`,
+      ownerId: profile.uid,
       title,
       summary,
       status: ProjectStatus.Active,
@@ -378,10 +404,10 @@ export default function App() {
     setIsCreateProjectModalOpen(false);
     setSelectedProjectId(newProject.id);
     setSelectedArtifactId(null);
-  }, [addXp]);
+  }, [profile, setProjects, addXp]);
 
   const handleCreateArtifact = useCallback(({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !profile) return;
 
     let data: Artifact['data'] = {};
     if (type === ArtifactType.Conlang) data = [];
@@ -393,6 +419,7 @@ export default function App() {
 
     const newArtifact: Artifact = {
       id: `art-${Date.now()}`,
+      ownerId: profile.uid,
       projectId: selectedProjectId,
       title,
       type,
@@ -407,7 +434,7 @@ export default function App() {
     addXp(5);
     setIsCreateModalOpen(false);
     setSelectedArtifactId(newArtifact.id);
-  }, [selectedProjectId, addXp]);
+  }, [profile, selectedProjectId, addXp, setArtifacts]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -415,17 +442,17 @@ export default function App() {
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !selectedProjectId) return;
+    if (!file || !selectedProjectId || !profile) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
             const content = e.target?.result as string;
-            const imported = importArtifactsFromCSV(content, selectedProjectId);
-            
+            const imported = importArtifactsFromCSV(content, selectedProjectId, profile.uid);
+
             const existingIds = new Set(artifacts.map(a => a.id));
             const newArtifacts = imported.filter(i => !existingIds.has(i.id));
-            
+
             if (newArtifacts.length > 0) {
                 setArtifacts(prev => [...prev, ...newArtifacts]);
                 alert(`${newArtifacts.length} new artifacts imported successfully!`);
@@ -449,10 +476,22 @@ export default function App() {
     }
   };
 
+  const safeProfile = profile;
+  if (!safeProfile) {
+    return null;
+  }
+
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
+
+  const xpProgress = safeProfile.xp % 100;
+  const level = Math.floor(safeProfile.xp / 100) + 1;
+
+  const handleProfileUpdate = useCallback((updates: { displayName?: string; settings?: Partial<UserProfile['settings']> }) => {
+    updateProfile(updates);
+  }, [updateProfile]);
 
   const filteredArtifacts = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
@@ -502,13 +541,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header xp={xp} />
+      <Header profile={safeProfile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <aside className="lg:col-span-3 space-y-6">
+          <UserProfileCard profile={safeProfile} onUpdateProfile={handleProfileUpdate} />
           <div>
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
-                <button 
+                <button
                     onClick={() => setIsCreateProjectModalOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-cyan-300 bg-cyan-900/50 hover:bg-cyan-800/50 rounded-md transition-colors"
                     title="Create New Project"

@@ -8,6 +8,7 @@ export enum ProjectStatus {
 
 export interface Project {
   id: string;
+  ownerId: string;
   title: string;
   summary: string;
   status: ProjectStatus;
@@ -78,6 +79,7 @@ export interface LocationData {
 
 export interface Artifact {
   id: string;
+  ownerId: string;
   projectId: string;
   type: ArtifactType;
   title:string;
@@ -142,4 +144,21 @@ export interface AIAssistant {
     description: string;
     focus: string;
     promptSlots: string[];
+}
+
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+export interface UserSettings {
+    theme: ThemePreference;
+    aiTipsEnabled: boolean;
+}
+
+export interface UserProfile {
+    uid: string;
+    email: string;
+    displayName: string;
+    photoURL?: string;
+    xp: number;
+    achievementsUnlocked: string[];
+    settings: UserSettings;
 }
