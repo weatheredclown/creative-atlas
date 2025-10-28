@@ -476,18 +476,10 @@ export default function App() {
     }
   };
 
-  const safeProfile = profile;
-  if (!safeProfile) {
-    return null;
-  }
-
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
-
-  const xpProgress = safeProfile.xp % 100;
-  const level = Math.floor(safeProfile.xp / 100) + 1;
 
   const handleProfileUpdate = useCallback((updates: { displayName?: string; settings?: Partial<UserProfile['settings']> }) => {
     updateProfile(updates);
@@ -518,6 +510,13 @@ export default function App() {
 
   const hasActiveFilters = artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '';
   const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
+
+  if (!profile) {
+    return null;
+  }
+
+  const xpProgress = profile.xp % 100;
+  const level = Math.floor(profile.xp / 100) + 1;
 
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
