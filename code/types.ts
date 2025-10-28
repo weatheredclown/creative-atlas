@@ -170,6 +170,7 @@ export interface ProjectTemplate {
     name: string;
     description: string;
     recommendedFor?: string[];
+    relatedCategoryIds?: string[];
     projectTags: string[];
     artifacts: TemplateArtifactBlueprint[];
 }
@@ -187,6 +188,7 @@ export interface TemplateCategory {
     title: string;
     description: string;
     recommendedFor: string[];
+    relatedProjectTemplateIds?: string[];
     templates: TemplateEntry[];
 }
 

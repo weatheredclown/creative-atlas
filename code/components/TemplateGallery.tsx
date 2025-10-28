@@ -1,14 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { TemplateCategory } from '../types';
+import { ProjectTemplate, TemplateCategory } from '../types';
 import { MagnifyingGlassIcon, SparklesIcon } from './Icons';
 
 interface TemplateGalleryProps {
   categories: TemplateCategory[];
+  projectTemplates: ProjectTemplate[];
   activeProjectTitle?: string;
 }
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activeProjectTitle }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTemplates, activeProjectTitle }) => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  const projectTemplateIndex = useMemo(() => {
+    const index = new Map<string, ProjectTemplate>();
+    projectTemplates.forEach((template) => {
+      index.set(template.id, template);
+    });
+    return index;
+  }, [projectTemplates]);
 
   const { recommended, others } = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
@@ -43,47 +52,68 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
     };
   }, [categories, searchTerm, activeProjectTitle]);
 
-  const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => (
-    <div
-      key={category.id}
-      className="bg-slate-900/50 border border-slate-700/60 rounded-xl p-4 space-y-3 hover:border-cyan-500/60 transition-colors"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            {isRecommended && <SparklesIcon className="w-4 h-4 text-cyan-400" />}
-            {category.title}
-          </h4>
-          <p className="text-sm text-slate-400 mt-1">{category.description}</p>
+  const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => {
+    const linkedProjectTemplates = (category.relatedProjectTemplateIds ?? [])
+      .map((templateId) => projectTemplateIndex.get(templateId))
+      .filter((template): template is ProjectTemplate => Boolean(template));
+
+    return (
+      <div
+        key={category.id}
+        className="bg-slate-900/50 border border-slate-700/60 rounded-xl p-4 space-y-3 hover:border-cyan-500/60 transition-colors"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+              {isRecommended && <SparklesIcon className="w-4 h-4 text-cyan-400" />}
+              {category.title}
+            </h4>
+            <p className="text-sm text-slate-400 mt-1">{category.description}</p>
+          </div>
+          {isRecommended && (
+            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300 bg-cyan-900/50 border border-cyan-700/40 rounded-full px-2 py-1">
+              Recommended
+            </span>
+          )}
         </div>
-        {isRecommended && (
-          <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300 bg-cyan-900/50 border border-cyan-700/40 rounded-full px-2 py-1">
-            Recommended
-          </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {category.templates.map((template) => (
+            <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+              <h5 className="text-sm font-semibold text-slate-200">{template.name}</h5>
+              <p className="text-xs text-slate-400 mt-1">{template.description}</p>
+              {template.tags && template.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-3">
+                  {template.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {linkedProjectTemplates.length > 0 && (
+          <div className="pt-3 border-t border-slate-800/60">
+            <div className="text-[10px] uppercase tracking-wide text-slate-400">Bundled in project templates</div>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {linkedProjectTemplates.map((template) => (
+                <span
+                  key={template.id}
+                  className="text-[10px] uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/40 rounded-full px-2 py-0.5"
+                >
+                  {template.name}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {category.templates.map((template) => (
-          <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-            <h5 className="text-sm font-semibold text-slate-200">{template.name}</h5>
-            <p className="text-xs text-slate-400 mt-1">{template.description}</p>
-            {template.tags && template.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-3">
-                {template.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">

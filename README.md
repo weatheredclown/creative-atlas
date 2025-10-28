@@ -9,7 +9,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
 - [x] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
 - [ ] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
-- [ ] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
+- [x] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
 - [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
