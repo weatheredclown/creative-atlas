@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ThemePreference, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDownIcon } from './Icons';
 
 interface UserProfileCardProps {
   profile: UserProfile;
@@ -79,17 +78,35 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
     onUpdateProfile({ settings: { aiTipsEnabled: !profile.settings.aiTipsEnabled } });
   };
 
+  const preferencesPanelId = `preferences-panel-${profile.uid}`;
+
   return (
     <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg shadow-slate-950/40">
       <header className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {profile.photoURL ? (
-            <img src={profile.photoURL} alt={profile.displayName} className="w-12 h-12 rounded-full object-cover border border-slate-700" />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center text-lg font-semibold text-cyan-200">
-              {initialsFromName(profile.displayName)}
-            </div>
-          )}
+        <div className="flex items-start gap-3">
+          <div className="flex flex-col items-center gap-2">
+            {profile.photoURL ? (
+              <img
+                src={profile.photoURL}
+                alt={profile.displayName}
+                className="w-12 h-12 rounded-full object-cover border border-slate-700"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center text-lg font-semibold text-cyan-200">
+                {initialsFromName(profile.displayName)}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsExpanded((previous) => !previous)}
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-cyan-500/60 bg-slate-800/70 text-sm font-semibold text-cyan-200 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              aria-label={isExpanded ? 'Hide preferences' : 'Show preferences'}
+              aria-expanded={isExpanded}
+              aria-controls={preferencesPanelId}
+            >
+              {isExpanded ? 'v' : '>'}
+            </button>
+          </div>
           <div>
             <p className="text-sm font-medium text-cyan-300">Creator Level {level}</p>
             <h2 className="text-lg font-semibold text-white">{profile.displayName}</h2>
@@ -111,19 +128,14 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
           <span className="text-[11px] text-slate-400">{xpProgress} / 100 XP</span>
           <span className="text-[10px] uppercase tracking-wide text-slate-500">{xpToNextLevel} to next</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsExpanded((previous) => !previous)}
-          className="flex items-center gap-2 px-3 py-1 text-xs font-semibold text-cyan-200 bg-slate-800/70 hover:bg-slate-800 rounded-md transition-colors"
-          aria-expanded={isExpanded}
-        >
-          {isExpanded ? 'Hide preferences' : 'Show preferences'}
-          <ChevronDownIcon className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-        </button>
       </header>
 
-      {isExpanded && (
-        <div className="mt-5 space-y-5">
+      <div
+        id={preferencesPanelId}
+        className={`mt-5 overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px]' : 'max-h-0'}`}
+        aria-hidden={!isExpanded}
+      >
+        <div className={`space-y-5 transition-opacity duration-300 ease-in-out ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
           <form onSubmit={handleNameSubmit} className="space-y-3">
             <div>
               <label htmlFor="display-name" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
@@ -189,7 +201,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
             <span>Total XP: {profile.xp}</span>
           </div>
         </div>
-      )}
+      </div>
     </section>
   );
 };
