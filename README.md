@@ -2,6 +2,14 @@
 
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
+## Product Roadmap
+ - [ ] make user preferences/large XP bar a collapsable panel collapsed by default -- when not viewing yourself this collapsable panel would just be absent.
+ - [ ] move progress into a smaller widget that fits on the line with creator level/name/portrait
+ - [ ] make templates usable
+ - [ ] Conlang editing requires the ability to add words individually as well as import/export the lexicon
+ - [ ] milestones and the ai-copilots UI is interesting, but not worth the default screen real-estate, this is something that should be hidden in an about page
+ - [ ] changing projects should clear out the ai generated draft release notes
+
 ## Productionization Roadmap
 
 ### Persistent, Multi-User Data Layer
