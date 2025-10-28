@@ -5,10 +5,19 @@ import { MagnifyingGlassIcon, SparklesIcon } from './Icons';
 interface TemplateGalleryProps {
   categories: TemplateCategory[];
   activeProjectTitle?: string;
+  onApplyTemplate?: (category: TemplateCategory) => TemplateApplyResult;
+  canApply?: boolean;
 }
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activeProjectTitle }) => {
+interface TemplateApplyResult {
+  createdCount: number;
+  skippedCount: number;
+  message: string;
+}
+
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activeProjectTitle, onApplyTemplate, canApply }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [feedbackByCategory, setFeedbackByCategory] = useState<Record<string, TemplateApplyResult>>({});
 
   const { recommended, others } = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
@@ -43,6 +52,12 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
     };
   }, [categories, searchTerm, activeProjectTitle]);
 
+  const handleApply = (category: TemplateCategory) => {
+    if (!onApplyTemplate) return;
+    const result = onApplyTemplate(category);
+    setFeedbackByCategory((current) => ({ ...current, [category.id]: result }));
+  };
+
   const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => (
     <div
       key={category.id}
@@ -55,6 +70,18 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
             {category.title}
           </h4>
           <p className="text-sm text-slate-400 mt-1">{category.description}</p>
+          {category.dashboardHints && category.dashboardHints.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {category.dashboardHints.map((hint) => (
+                <span
+                  key={hint}
+                  className="text-[10px] uppercase tracking-wide text-cyan-200/80 bg-cyan-900/30 border border-cyan-700/30 rounded-full px-2 py-0.5"
+                >
+                  {hint}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {isRecommended && (
           <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300 bg-cyan-900/50 border border-cyan-700/40 rounded-full px-2 py-1">
@@ -81,6 +108,58 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, activePro
             )}
           </div>
         ))}
+      </div>
+      <div className="border-t border-slate-800/60 pt-3 space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Starter seeds</span>
+          <button
+            type="button"
+            onClick={() => handleApply(category)}
+            disabled={!canApply || !onApplyTemplate || category.starterArtifacts.length === 0}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-cyan-600/40 bg-cyan-600/10 text-cyan-200 hover:bg-cyan-600/20 hover:border-cyan-500/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={canApply ? undefined : 'Select a project to apply a template kit.'}
+          >
+            Apply kit
+          </button>
+        </div>
+        <ul className="space-y-2">
+          {category.starterArtifacts.map((seed) => (
+            <li
+              key={`${category.id}-${seed.title}`}
+              className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-200">{seed.title}</p>
+                  <p className="text-xs text-slate-400 mt-1">{seed.summary}</p>
+                </div>
+                <span className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5">
+                  {seed.type}
+                </span>
+              </div>
+              {seed.tags && seed.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {seed.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+          {category.starterArtifacts.length === 0 && (
+            <li className="text-xs text-slate-500">Template kit coming soon.</li>
+          )}
+        </ul>
+        {feedbackByCategory[category.id] && (
+          <div className="text-xs text-cyan-200 bg-cyan-900/30 border border-cyan-700/40 rounded-md px-3 py-2">
+            {feedbackByCategory[category.id].message}
+          </div>
+        )}
       </div>
     </div>
   );

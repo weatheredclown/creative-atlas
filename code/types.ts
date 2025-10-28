@@ -163,12 +163,29 @@ export interface TemplateEntry {
     tags?: string[];
 }
 
+export interface TemplateSeedRelation {
+    toTitle: string;
+    kind: string;
+}
+
+export interface TemplateSeed {
+    title: string;
+    type: ArtifactType;
+    summary: string;
+    status?: string;
+    tags?: string[];
+    data?: Artifact['data'];
+    relations?: TemplateSeedRelation[];
+}
+
 export interface TemplateCategory {
     id: string;
     title: string;
     description: string;
     recommendedFor: string[];
     templates: TemplateEntry[];
+    starterArtifacts: TemplateSeed[];
+    dashboardHints?: string[];
 }
 
 export interface Milestone {
