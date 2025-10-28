@@ -71,8 +71,9 @@ Development has reached a state of feature completeness for the primary mileston
 
 ### 6. Import / Export (Round-Trip)
 
-- **CSV/TSV:** **Implemented**. Artifacts can be imported from and exported to a single CSV file.
+- **CSV/TSV:** **Implemented**. Artifacts can be imported from and exported to both CSV and TSV files with automatic delimiter detection.
 - **Markdown Bundles:** **Implemented**. Individual artifacts can be exported to a `.md` file with YAML frontmatter.
+- **GitHub Import:** **Implemented**. Repository metadata, open issues, and recent releases can be pulled directly into a project workspace.
 
 ---
 

@@ -26,6 +26,9 @@ export enum ArtifactType {
   Faction = 'Faction',
   MagicSystem = 'MagicSystem',
   Task = 'Task',
+  Repository = 'Repository',
+  Issue = 'Issue',
+  Release = 'Release',
 }
 
 export enum TaskState {
@@ -77,6 +80,34 @@ export interface LocationData {
     features: LocationFeature[];
 }
 
+export interface RepositoryData {
+    url: string;
+    stars: number;
+    forks: number;
+    watchers: number;
+    defaultBranch: string;
+    language?: string;
+    openIssues: number;
+}
+
+export interface IssueData {
+    number: number;
+    url: string;
+    state: string;
+    author: string;
+    labels: string[];
+    comments: number;
+}
+
+export interface ReleaseData {
+    tagName: string;
+    url: string;
+    publishedAt?: string;
+    author: string;
+    draft: boolean;
+    prerelease: boolean;
+}
+
 export interface Artifact {
   id: string;
   ownerId: string;
@@ -88,7 +119,17 @@ export interface Artifact {
   tags: string[];
   relations: Relation[];
   // A flexible field for type-specific data
-  data: ConlangLexeme[] | Scene[] | TaskData | CharacterData | WikiData | LocationData | Record<string, unknown>;
+  data:
+    | ConlangLexeme[]
+    | Scene[]
+    | TaskData
+    | CharacterData
+    | WikiData
+    | LocationData
+    | RepositoryData
+    | IssueData
+    | ReleaseData
+    | Record<string, unknown>;
 }
 
 export interface ConlangLexeme {
