@@ -1,6 +1,22 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile, ProjectTemplate } from './types';
+import {
+    AIAssistant,
+    Achievement,
+    Artifact,
+    ArtifactType,
+    ConlangLexeme,
+    Milestone,
+    Project,
+    ProjectStatus,
+    ProjectTemplate,
+    Quest,
+    Relation,
+    TaskData,
+    TaskState,
+    TemplateCategory,
+    UserProfile,
+} from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
