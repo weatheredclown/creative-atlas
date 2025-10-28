@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
+import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile, ProjectTemplate } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -22,6 +22,7 @@ import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
+import ProjectTemplatePicker from './components/ProjectTemplatePicker';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
@@ -126,6 +127,171 @@ const templateLibrary: TemplateCategory[] = [
         ],
     },
 ];
+
+const projectTemplates: ProjectTemplate[] = [
+    {
+        id: 'serial-comic-kit',
+        name: 'Serial Comic Kit',
+        description: 'Story arcs, cast rosters, and production tasks tuned for episodic comics.',
+        recommendedFor: ['Spatch', 'Steamweave'],
+        projectTags: ['comic', 'storyboard', 'production'],
+        artifacts: [
+            {
+                title: 'Season Roadmap',
+                type: ArtifactType.Story,
+                summary: 'Outline upcoming arcs, spotlight issues, and publishing cadence.',
+                status: 'draft',
+                tags: ['roadmap', 'issues'],
+            },
+            {
+                title: 'Cast Gallery',
+                type: ArtifactType.Character,
+                summary: 'Snapshot bios, motivations, and relationship notes for the main cast.',
+                status: 'idea',
+                tags: ['characters', 'reference'],
+            },
+            {
+                title: 'Issue Sprint Backlog',
+                type: ArtifactType.Task,
+                summary: 'Track page breakdowns, lettering, and marketing beats for the next drop.',
+                status: 'in-progress',
+                tags: ['sprint', 'release'],
+                data: { state: TaskState.InProgress } as TaskData,
+            },
+        ],
+    },
+    {
+        id: 'conlang-workbench',
+        name: 'Conlang Workbench',
+        description: 'Lexicon, grammar notes, and workflow tasks for language-building.',
+        recommendedFor: ['Tamenzut', 'Darv'],
+        projectTags: ['conlang', 'language'],
+        artifacts: [
+            {
+                title: 'Lexicon Seed',
+                type: ArtifactType.Conlang,
+                summary: 'Kick off vocabulary batches with phonotactics and thematic tags.',
+                status: 'draft',
+                tags: ['lexicon'],
+                data: [
+                    { id: 'tmpl-lex-1', lemma: 'salar', pos: 'n', gloss: 'ember-forged song' },
+                    { id: 'tmpl-lex-2', lemma: 'vith', pos: 'adj', gloss: 'woven with starlight' },
+                ] as ConlangLexeme[],
+            },
+            {
+                title: 'Grammar Notes',
+                type: ArtifactType.Wiki,
+                summary: 'Document morphology, syntax quirks, and inspiration languages.',
+                status: 'idea',
+                tags: ['reference'],
+                data: { content: '## Phonology\n- Consonant harmony sketch\n\n## Morphology\n- Case markers TBD' },
+            },
+            {
+                title: 'Phonology Recording Sprint',
+                type: ArtifactType.Task,
+                summary: 'Capture sound samples and finalize the consonant inventory.',
+                status: 'todo',
+                tags: ['audio', 'phonology'],
+            },
+        ],
+    },
+    {
+        id: 'game-design-lab',
+        name: 'Game Design Lab',
+        description: 'Gameplay loops, system glossaries, and playtest backlogs for interactive worlds.',
+        recommendedFor: ['Dustland'],
+        projectTags: ['game', 'systems'],
+        artifacts: [
+            {
+                title: 'Core Loop Prototype',
+                type: ArtifactType.Game,
+                summary: 'Define what players do minute-to-minute and the rewards that fuel repeat sessions.',
+                status: 'draft',
+                tags: ['core-loop', 'prototype'],
+            },
+            {
+                title: 'Mechanics Glossary',
+                type: ArtifactType.MagicSystem,
+                summary: 'Catalog resources, ability cooldowns, and failure states.',
+                status: 'idea',
+                tags: ['mechanics'],
+            },
+            {
+                title: 'Playtest Feedback Backlog',
+                type: ArtifactType.Task,
+                summary: 'Triage insights from the latest playtest into actionable follow-ups.',
+                status: 'in-progress',
+                tags: ['playtest'],
+                data: { state: TaskState.InProgress } as TaskData,
+            },
+            {
+                title: 'Design Log',
+                type: ArtifactType.Wiki,
+                summary: 'Chronicle key decisions, questions, and experiments.',
+                status: 'draft',
+                tags: ['journal'],
+                data: { content: '## Decisions\n- Note major pivots here\n\n## Open Questions\n- Capture follow-ups from playtests' },
+            },
+        ],
+    },
+    {
+        id: 'world-wiki-launchpad',
+        name: 'World Wiki Launchpad',
+        description: 'Knowledge base scaffolding for lore-heavy worlds and collaborative wikis.',
+        recommendedFor: ['Tamenzut', 'Sacred Truth'],
+        projectTags: ['wiki', 'lore'],
+        artifacts: [
+            {
+                title: 'World Encyclopedia',
+                type: ArtifactType.Wiki,
+                summary: 'Master index for timelines, factions, and canon checkpoints.',
+                status: 'draft',
+                tags: ['index'],
+                data: { content: '# World Encyclopedia\n\n## Overview\n- Establish tone and era\n\n## Canon Queue\n- Pending lore to verify' },
+            },
+            {
+                title: 'Starting Region Profile',
+                type: ArtifactType.Location,
+                summary: 'Describe the primary hub with landmarks, cultures, and conflicts.',
+                status: 'draft',
+                tags: ['location', 'hub'],
+                data: {
+                    description: 'Sketch the climate, sensory beats, and why this region matters to newcomers.',
+                    features: [
+                        { id: 'tmpl-feature-1', name: 'Beacon Market', description: 'Central plaza where rumors and quests surface.' },
+                    ],
+                },
+            },
+            {
+                title: 'Faction Briefs Backlog',
+                type: ArtifactType.Task,
+                summary: 'List the organizations you still need to document and their urgency.',
+                status: 'todo',
+                tags: ['factions', 'backlog'],
+            },
+        ],
+    },
+];
+
+const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['data'] => {
+    switch (type) {
+        case ArtifactType.Conlang:
+            return [];
+        case ArtifactType.Story:
+        case ArtifactType.Scene:
+            return [];
+        case ArtifactType.Task:
+            return { state: TaskState.Todo } as TaskData;
+        case ArtifactType.Character:
+            return { bio: '', traits: [] };
+        case ArtifactType.Wiki:
+            return { content: `# ${title ?? 'Untitled'}\n\n` };
+        case ArtifactType.Location:
+            return { description: '', features: [] };
+        default:
+            return {};
+    }
+};
 
 const milestoneRoadmap: Milestone[] = [
     {
@@ -412,13 +578,7 @@ export default function App() {
   const handleCreateArtifact = useCallback(({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
     if (!selectedProjectId || !profile) return;
 
-    let data: Artifact['data'] = {};
-    if (type === ArtifactType.Conlang) data = [];
-    if (type === ArtifactType.Story) data = [];
-    if (type === ArtifactType.Task) data = { state: TaskState.Todo };
-    if (type === ArtifactType.Character) data = { bio: '', traits: [] };
-    if (type === ArtifactType.Wiki) data = { content: `# ${title}\n\n` };
-    if (type === ArtifactType.Location) data = { description: '', features: [] };
+    const data: Artifact['data'] = getDefaultDataForType(type, title);
 
     const newArtifact: Artifact = {
       id: `art-${Date.now()}`,
@@ -438,6 +598,56 @@ export default function App() {
     setIsCreateModalOpen(false);
     setSelectedArtifactId(newArtifact.id);
   }, [profile, selectedProjectId, addXp, setArtifacts]);
+
+  const handleApplyProjectTemplate = useCallback((template: ProjectTemplate) => {
+    if (!profile || !selectedProjectId) return;
+
+    const projectArtifactsForSelection = artifacts.filter(artifact => artifact.projectId === selectedProjectId);
+    const existingTitles = new Set(projectArtifactsForSelection.map(artifact => artifact.title.toLowerCase()));
+    const timestamp = Date.now();
+
+    const newArtifacts = template.artifacts
+      .filter(blueprint => !existingTitles.has(blueprint.title.toLowerCase()))
+      .map((blueprint, index) => ({
+        id: `art-${timestamp + index}`,
+        ownerId: profile.uid,
+        projectId: selectedProjectId,
+        title: blueprint.title,
+        type: blueprint.type,
+        summary: blueprint.summary,
+        status: blueprint.status ?? 'draft',
+        tags: blueprint.tags ? [...blueprint.tags] : [],
+        relations: [],
+        data: blueprint.data ?? getDefaultDataForType(blueprint.type, blueprint.title),
+      }));
+
+    if (newArtifacts.length > 0) {
+      setArtifacts(prev => [...prev, ...newArtifacts]);
+      addXp(newArtifacts.length * 5);
+      setSelectedArtifactId(newArtifacts[0].id);
+      alert(`Added ${newArtifacts.length} starter artifact${newArtifacts.length > 1 ? 's' : ''} from the ${template.name} template.`);
+    } else {
+      alert('All of the template\'s starter artifacts already exist in this project.');
+    }
+
+    if (template.projectTags.length > 0) {
+      setProjects(prev => {
+        let changed = false;
+        const next = prev.map(project => {
+          if (project.id !== selectedProjectId) {
+            return project;
+          }
+          const mergedTags = Array.from(new Set([...project.tags, ...template.projectTags]));
+          if (mergedTags.length !== project.tags.length) {
+            changed = true;
+            return { ...project, tags: mergedTags };
+          }
+          return project;
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [profile, selectedProjectId, artifacts, setArtifacts, addXp, setProjects]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -770,8 +980,16 @@ export default function App() {
                     )}
                 </div>
               )}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
-                <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
+                <div className="space-y-6 xl:col-span-2">
+                  <ProjectTemplatePicker
+                    templates={projectTemplates}
+                    activeProjectTitle={selectedProject.title}
+                    onApplyTemplate={handleApplyProjectTemplate}
+                    isApplyDisabled={!selectedProjectId}
+                  />
+                  <TemplateGallery categories={templateLibrary} activeProjectTitle={selectedProject.title} />
+                </div>
                 <ReleaseNotesGenerator
                     projectTitle={selectedProject.title}
                     artifacts={projectArtifacts}
