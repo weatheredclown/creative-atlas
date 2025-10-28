@@ -540,13 +540,26 @@ export default function App() {
   }, [setArtifacts]);
 
   const handleAddRelation = useCallback((fromId: string, toId: string, kind: string) => {
-    setArtifacts(currentArtifacts => currentArtifacts.map(art => {
+    setArtifacts(currentArtifacts =>
+      currentArtifacts.map(art => {
         if (art.id === fromId) {
-            const newRelation: Relation = { toId, kind };
-            return { ...art, relations: [...art.relations, newRelation] };
+          const newRelation: Relation = { toId, kind };
+          return { ...art, relations: [...art.relations, newRelation] };
         }
         return art;
-    }));
+      }),
+    );
+  }, [setArtifacts]);
+
+  const handleRemoveRelation = useCallback((fromId: string, relationIndex: number) => {
+    setArtifacts(currentArtifacts =>
+      currentArtifacts.map(art => {
+        if (art.id === fromId) {
+          return { ...art, relations: art.relations.filter((_, index) => index !== relationIndex) };
+        }
+        return art;
+      }),
+    );
   }, [setArtifacts]);
 
   const handleSelectProject = (id: string) => {
@@ -938,6 +951,7 @@ export default function App() {
                         projectArtifacts={projectArtifacts}
                         onUpdateArtifact={handleUpdateArtifact}
                         onAddRelation={handleAddRelation}
+                        onRemoveRelation={handleRemoveRelation}
                         addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
@@ -952,12 +966,18 @@ export default function App() {
                         <StoryEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, scenes) => handleUpdateArtifactData(id, scenes)}
+                            projectArtifacts={projectArtifacts}
+                            onAddRelation={handleAddRelation}
+                            onRemoveRelation={handleRemoveRelation}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Character && (
                         <CharacterEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                            projectArtifacts={projectArtifacts}
+                            onAddRelation={handleAddRelation}
+                            onRemoveRelation={handleRemoveRelation}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Wiki && (
@@ -970,6 +990,9 @@ export default function App() {
                         <LocationEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                            projectArtifacts={projectArtifacts}
+                            onAddRelation={handleAddRelation}
+                            onRemoveRelation={handleRemoveRelation}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Task && (

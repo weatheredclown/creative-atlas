@@ -10,12 +10,20 @@ interface ArtifactDetailProps {
   projectArtifacts: Artifact[];
   onUpdateArtifact: (updatedArtifact: Artifact) => void;
   onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onRemoveRelation: (fromId: string, relationIndex: number) => void;
   addXp: (amount: number) => void;
 }
 
 const BASE_STATUS_OPTIONS = ['idea', 'draft', 'in-progress', 'todo', 'alpha', 'beta', 'released', 'done'];
 
-const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifacts, onUpdateArtifact, onAddRelation, addXp }) => {
+const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
+  artifact,
+  projectArtifacts,
+  onUpdateArtifact,
+  onAddRelation,
+  onRemoveRelation,
+  addXp,
+}) => {
   const [isExpanding, setIsExpanding] = useState(false);
   const [expandError, setExpandError] = useState<string | null>(null);
   const [showAddRelation, setShowAddRelation] = useState(false);
@@ -71,8 +79,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({ artifact, projectArtifa
   };
 
   const handleRemoveRelation = (indexToRemove: number) => {
-    const updatedRelations = artifact.relations.filter((_, index) => index !== indexToRemove);
-    onUpdateArtifact({ ...artifact, relations: updatedRelations });
+    onRemoveRelation(artifact.id, indexToRemove);
   };
 
   const handleSaveSummary = () => {
