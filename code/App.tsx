@@ -16,7 +16,7 @@ import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
-import { exportArtifactsToCSV, exportProjectAsStaticSite } from './utils/export';
+import { exportArtifactsToCSV, exportArtifactsToTSV, exportProjectAsStaticSite } from './utils/export';
 import { importArtifactsFromCSV } from './utils/import';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
@@ -27,6 +27,7 @@ import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
+import GitHubImportPanel from './components/GitHubImportPanel';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -468,6 +469,14 @@ export default function App() {
     event.target.value = '';
   };
 
+  const handleGitHubArtifactsImported = useCallback((newArtifacts: Artifact[]) => {
+    if (newArtifacts.length === 0) {
+      return;
+    }
+
+    setArtifacts(prev => [...prev, ...newArtifacts]);
+  }, [setArtifacts]);
+
   const handlePublish = () => {
     if (selectedProject && projectArtifacts.length > 0) {
         exportProjectAsStaticSite(selectedProject, projectArtifacts);
@@ -571,17 +580,27 @@ export default function App() {
           {selectedProject ? (
             <>
               <ProjectInsights artifacts={projectArtifacts} />
+              <GitHubImportPanel
+                  projectId={selectedProject.id}
+                  ownerId={profile.uid}
+                  existingArtifacts={projectArtifacts}
+                  onArtifactsImported={handleGitHubArtifactsImported}
+                  addXp={addXp}
+              />
 
               <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
                     <div className="flex items-center gap-2">
-                        <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv" className="hidden" />
-                        <button onClick={handleImportClick} title="Import from CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                        <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv,.tsv" className="hidden" />
+                        <button onClick={handleImportClick} title="Import from CSV or TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowUpTrayIcon className="w-5 h-5" />
                         </button>
                         <button onClick={() => exportArtifactsToCSV(projectArtifacts, selectedProject.title)} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowDownTrayIcon className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => exportArtifactsToTSV(projectArtifacts, selectedProject.title)} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                            <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
                         </button>
                         <ViewSwitcher />
                         <button onClick={handlePublish} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 rounded-md transition-colors shadow-lg hover:shadow-green-500/50">

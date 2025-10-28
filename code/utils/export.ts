@@ -1,11 +1,25 @@
 
-import { Artifact, Project, ArtifactType, Scene, CharacterData, LocationData, ConlangLexeme, TaskData, TaskState, WikiData } from '../types';
+import {
+    Artifact,
+    Project,
+    ArtifactType,
+    Scene,
+    CharacterData,
+    LocationData,
+    ConlangLexeme,
+    TaskData,
+    TaskState,
+    WikiData,
+    RepositoryData,
+    IssueData,
+    ReleaseData,
+} from '../types';
 import JSZip from 'jszip';
 import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
 
 function escapeCsvCell(cell: unknown): string {
     const cellStr = String(cell ?? '');
-    if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+    if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n') || cellStr.includes('\t')) {
         return `"${cellStr.replace(/"/g, '""')}"`;
     }
     return cellStr;
@@ -24,14 +38,15 @@ const serializeArtifactData = (artifact: Artifact): string => {
     }
 };
 
-export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string) {
+const exportArtifactsToDelimitedFile = (artifacts: Artifact[], projectName: string, delimiter: string, extension: string) => {
     if (artifacts.length === 0) {
         alert('No artifacts to export.');
         return;
     }
 
     const headers = ['id', 'type', 'projectId', 'title', 'summary', 'status', 'tags', 'relations', 'data'];
-    const csvRows = [headers.join(',')];
+    const joiner = delimiter === '\t' ? '\t' : ',';
+    const rows = [headers.join(joiner)];
 
     for (const artifact of artifacts) {
         const relationsStr = artifact.relations.map(r => `${r.kind}:${r.toId}`).join(';');
@@ -46,16 +61,17 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
             escapeCsvCell(relationsStr),
             escapeCsvCell(serializeArtifactData(artifact)),
         ];
-        csvRows.push(row.join(','));
+        rows.push(row.join(joiner));
     }
 
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const fileString = rows.join('\n');
+    const mimeType = delimiter === '\t' ? 'text/tab-separated-values' : 'text/csv';
+    const blob = new Blob([fileString], { type: `${mimeType};charset=utf-8;` });
 
     const link = document.createElement('a');
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
-        const filename = `${projectName.replace(/\s+/g, '_').toLowerCase()}_artifacts.csv`;
+        const filename = `${projectName.replace(/\s+/g, '_').toLowerCase()}_artifacts.${extension}`;
         link.setAttribute('download', filename);
         link.href = url;
         link.style.visibility = 'hidden';
@@ -63,6 +79,14 @@ export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string)
         link.click();
         document.body.removeChild(link);
     }
+};
+
+export function exportArtifactsToCSV(artifacts: Artifact[], projectName: string) {
+    exportArtifactsToDelimitedFile(artifacts, projectName, ',', 'csv');
+}
+
+export function exportArtifactsToTSV(artifacts: Artifact[], projectName: string) {
+    exportArtifactsToDelimitedFile(artifacts, projectName, '\t', 'tsv');
 }
 
 const generateArtifactMarkdownBody = (artifact: Artifact): string => {
@@ -132,6 +156,40 @@ const generateArtifactMarkdownBody = (artifact: Artifact): string => {
             if (task?.assignee) body += `- Assignee: ${task.assignee}\n`;
             if (task?.due) body += `- Due: ${task.due}\n`;
             body += '\n';
+            break;
+        }
+        case ArtifactType.Repository: {
+            const repo = artifact.data as RepositoryData;
+            body += '## Repository\n';
+            body += `- URL: ${repo?.url ?? ''}\n`;
+            body += `- Default Branch: ${repo?.defaultBranch ?? ''}\n`;
+            body += `- Language: ${repo?.language ?? 'Unknown'}\n`;
+            body += `- Stars: ${repo?.stars ?? 0}\n`;
+            body += `- Forks: ${repo?.forks ?? 0}\n`;
+            body += `- Watchers: ${repo?.watchers ?? 0}\n`;
+            body += `- Open Issues: ${repo?.openIssues ?? 0}\n\n`;
+            break;
+        }
+        case ArtifactType.Issue: {
+            const issue = artifact.data as IssueData;
+            body += '## Issue Details\n';
+            body += `- Number: #${issue?.number ?? 0}\n`;
+            body += `- URL: ${issue?.url ?? ''}\n`;
+            body += `- State: ${issue?.state ?? 'open'}\n`;
+            body += `- Author: ${issue?.author ?? 'Unknown'}\n`;
+            body += `- Labels: ${(issue?.labels ?? []).join(', ') || 'None'}\n`;
+            body += `- Comments: ${issue?.comments ?? 0}\n\n`;
+            break;
+        }
+        case ArtifactType.Release: {
+            const release = artifact.data as ReleaseData;
+            body += '## Release Details\n';
+            body += `- Tag: ${release?.tagName ?? ''}\n`;
+            body += `- URL: ${release?.url ?? ''}\n`;
+            body += `- Author: ${release?.author ?? 'Unknown'}\n`;
+            body += `- Published: ${release?.publishedAt ?? 'Unpublished'}\n`;
+            body += `- Draft: ${release?.draft ? 'Yes' : 'No'}\n`;
+            body += `- Pre-release: ${release?.prerelease ? 'Yes' : 'No'}\n\n`;
             break;
         }
         default: {
@@ -277,6 +335,42 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         if (task?.due) {
             content += `<p><span class='text-slate-400'>Due:</span> ${task.due}</p>`;
         }
+        content += '</div>';
+    } else if (artifact.type === ArtifactType.Repository) {
+        const repo = artifact.data as RepositoryData;
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Repository Stats</h2>";
+        content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 space-y-2 text-slate-300'>";
+        content += `<p><span class='text-slate-400'>URL:</span> <a href='${repo.url}' class='text-cyan-400 hover:underline'>${repo.url}</a></p>`;
+        content += `<p><span class='text-slate-400'>Default Branch:</span> ${repo.defaultBranch}</p>`;
+        content += `<p><span class='text-slate-400'>Language:</span> ${repo.language ?? 'Unknown'}</p>`;
+        content += `<p><span class='text-slate-400'>Stars:</span> ${repo.stars}</p>`;
+        content += `<p><span class='text-slate-400'>Forks:</span> ${repo.forks}</p>`;
+        content += `<p><span class='text-slate-400'>Watchers:</span> ${repo.watchers}</p>`;
+        content += `<p><span class='text-slate-400'>Open Issues:</span> ${repo.openIssues}</p>`;
+        content += '</div>';
+    } else if (artifact.type === ArtifactType.Issue) {
+        const issue = artifact.data as IssueData;
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Issue Details</h2>";
+        content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 space-y-2 text-slate-300'>";
+        content += `<p><span class='text-slate-400'>Number:</span> #${issue.number}</p>`;
+        content += `<p><span class='text-slate-400'>State:</span> ${issue.state}</p>`;
+        content += `<p><span class='text-slate-400'>Author:</span> ${issue.author}</p>`;
+        if (issue.labels.length > 0) {
+            content += `<p><span class='text-slate-400'>Labels:</span> ${issue.labels.join(', ')}</p>`;
+        }
+        content += `<p><span class='text-slate-400'>Comments:</span> ${issue.comments}</p>`;
+        content += `<a href='${issue.url}' class='text-cyan-400 hover:underline'>View on GitHub</a>`;
+        content += '</div>';
+    } else if (artifact.type === ArtifactType.Release) {
+        const release = artifact.data as ReleaseData;
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Release Details</h2>";
+        content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 space-y-2 text-slate-300'>";
+        content += `<p><span class='text-slate-400'>Tag:</span> ${release.tagName}</p>`;
+        content += `<p><span class='text-slate-400'>Author:</span> ${release.author}</p>`;
+        content += `<p><span class='text-slate-400'>Published:</span> ${release.publishedAt ?? 'Unpublished'}</p>`;
+        content += `<p><span class='text-slate-400'>Draft:</span> ${release.draft ? 'Yes' : 'No'}</p>`;
+        content += `<p><span class='text-slate-400'>Pre-release:</span> ${release.prerelease ? 'Yes' : 'No'}</p>`;
+        content += `<a href='${release.url}' class='text-cyan-400 hover:underline'>View on GitHub</a>`;
         content += '</div>';
     }
     // Add more specific renderers here for other types...

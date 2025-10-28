@@ -2,6 +2,11 @@
 import React, { useState } from 'react';
 import { ArtifactType } from '../types';
 
+const HIDDEN_TYPES: ArtifactType[] = [ArtifactType.Repository, ArtifactType.Issue, ArtifactType.Release];
+const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as ArtifactType[]).filter(
+  (artifactType) => !HIDDEN_TYPES.includes(artifactType)
+);
+
 interface CreateArtifactFormProps {
   onCreate: (data: { title: string; type: ArtifactType; summary: string }) => void;
   onClose: () => void;
@@ -9,7 +14,7 @@ interface CreateArtifactFormProps {
 
 const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClose }) => {
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<ArtifactType>(ArtifactType.Story);
+  const [type, setType] = useState<ArtifactType>(AVAILABLE_TYPES[0] ?? ArtifactType.Story);
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
 
@@ -54,7 +59,7 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClo
           onChange={(e) => setType(e.target.value as ArtifactType)}
           className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
         >
-          {Object.values(ArtifactType).map((artifactType) => (
+          {AVAILABLE_TYPES.map((artifactType) => (
             <option key={artifactType} value={artifactType}>
               {artifactType}
             </option>
