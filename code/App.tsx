@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
-import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, Scene, TaskData, TaskState, CharacterData, WikiData, LocationData, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
+import { Project, Artifact, ProjectStatus, ArtifactType, ConlangLexeme, Quest, Relation, Achievement, TaskData, TaskState, TemplateCategory, Milestone, AIAssistant, UserProfile } from './types';
 import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon } from './components/Icons';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -541,10 +541,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header profile={safeProfile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
+      <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <aside className="lg:col-span-3 space-y-6">
-          <UserProfileCard profile={safeProfile} onUpdateProfile={handleProfileUpdate} />
+          <UserProfileCard profile={profile} onUpdateProfile={handleProfileUpdate} />
           <div>
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>

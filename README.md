@@ -11,7 +11,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - 📘 See [`docs/firebase-backend-migration.md`](docs/firebase-backend-migration.md) for the recommended Firebase + Firestore architecture and step-by-step migration plan (starting with authentication setup).
 
 ### Authentication, Authorization, and Profiles
-- [ ] Add sign-up and login flows with token-based authentication for the web client.
+- [x] Add sign-up and login flows with token-based authentication for the web client.
 - [ ] Associate every project and artifact with an owner and enforce row-level authorization rules.
 - [ ] Persist user-specific settings, XP totals, and achievements so progress follows accounts across devices.
 
