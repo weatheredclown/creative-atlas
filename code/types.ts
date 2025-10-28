@@ -156,6 +156,12 @@ export interface Achievement {
     isUnlocked: (artifacts: Artifact[], projects: Project[]) => boolean;
 }
 
+export interface TemplateRelationBlueprint {
+    toBlueprintId?: string;
+    toExistingTitle?: string;
+    kind: string;
+}
+
 export interface TemplateArtifactBlueprint {
     title: string;
     type: ArtifactType;
@@ -163,6 +169,9 @@ export interface TemplateArtifactBlueprint {
     status?: string;
     tags?: string[];
     data?: Artifact['data'];
+    relations?: TemplateRelationBlueprint[];
+    xpReward?: number;
+    blueprintId?: string;
 }
 
 export interface ProjectTemplate {
@@ -173,6 +182,16 @@ export interface ProjectTemplate {
     relatedCategoryIds?: string[];
     projectTags: string[];
     artifacts: TemplateArtifactBlueprint[];
+    xpReward?: number;
+    artifactXpReward?: number;
+    dashboardHints?: string[];
+}
+
+export interface TemplateApplicationSummary {
+    templateId: string;
+    createdTitles: string[];
+    skippedTitles: string[];
+    xpAwarded: number;
 }
 
 export interface TemplateEntry {
