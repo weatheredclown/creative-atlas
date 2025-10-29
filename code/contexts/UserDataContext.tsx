@@ -352,7 +352,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode, profile],
+    [getIdToken, isGuestMode, profile],
   );
 
   const updateProject = useCallback(
@@ -385,7 +385,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode, projects],
+    [getIdToken, isGuestMode, projects],
   );
 
   const createArtifactsBulk = useCallback(
@@ -426,7 +426,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [];
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode, mergeArtifacts, profile?.uid],
+    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid],
   );
 
   const createArtifact = useCallback(
@@ -487,22 +487,28 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [artifacts, getIdToken, isDataApiConfigured, isGuestMode],
+    [artifacts, getIdToken, isGuestMode],
   );
 
   const updateProfile = useCallback(
     async (update: ProfileUpdate) => {
+      let shouldPersist = false;
+      let nextAchievements: string[] | undefined;
+      let nextQuestlines: string[] | undefined;
+      let nextSettings: UserSettings | undefined;
+
       setProfile((current) => {
         if (!current) {
           return current;
         }
-        const nextAchievements = update.achievementsUnlocked
+        shouldPersist = true;
+        nextAchievements = update.achievementsUnlocked
           ? Array.from(new Set([...current.achievementsUnlocked, ...update.achievementsUnlocked]))
           : current.achievementsUnlocked;
-        const nextQuestlines = update.questlinesClaimed
+        nextQuestlines = update.questlinesClaimed
           ? Array.from(new Set([...current.questlinesClaimed, ...update.questlinesClaimed]))
           : current.questlinesClaimed;
-        const nextSettings = update.settings
+        nextSettings = update.settings
           ? { ...current.settings, ...update.settings }
           : current.settings;
         return {
@@ -513,6 +519,10 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           settings: nextSettings,
         };
       });
+
+      if (!shouldPersist) {
+        return;
+      }
 
       if (isGuestMode || !isDataApiConfigured) {
         return;
@@ -535,7 +545,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.error('Failed to persist profile update', error);
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode],
+    [getIdToken, isGuestMode],
   );
 
   const addXp = useCallback(
@@ -584,7 +594,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.error('Failed to persist XP changes', error);
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode],
+    [getIdToken, isGuestMode],
   );
 
   const value = useMemo<UserDataContextValue>(

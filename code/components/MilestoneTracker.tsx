@@ -30,11 +30,11 @@ const StatusIcon: React.FC<{ status: ObjectiveStatus; className?: string }> = ({
 };
 
 const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ items }) => {
+  const [isTrackerOpen, setIsTrackerOpen] = useState(true);
+
   if (items.length === 0) {
     return null;
   }
-
-  const [isTrackerOpen, setIsTrackerOpen] = useState(true);
 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
