@@ -11,6 +11,7 @@ interface TemplateGalleryProps {
 
 const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTemplates, activeProjectTitle }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
 
   const projectTemplateIndex = useMemo(() => {
     const index = new Map<string, ProjectTemplate>();
@@ -161,9 +162,23 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
             <SparklesIcon className="w-5 h-5 text-cyan-400" />
             Template Library
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded-full px-3 py-1">
-            Artifact blueprints
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded-full px-3 py-1">
+              Artifact blueprints
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsLibraryOpen((previous) => !previous)}
+              className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-300"
+              aria-expanded={isLibraryOpen}
+              aria-controls="template-library-content"
+            >
+              {isLibraryOpen ? 'Hide library' : 'Show library'}
+              <ChevronDownIcon
+                className={`w-4 h-4 text-slate-400 transition-transform ${isLibraryOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </div>
         </div>
         <p className="text-sm text-slate-400">
           Drop in single artifacts to expand a project a la carte. Each blueprint mirrors the categories above but won&apos;t touch dashboards or quests.
@@ -183,26 +198,28 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
         </div>
       </header>
 
-      {recommended.length > 0 && (
-        <div className="space-y-4">
-          <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
+      <Zippy isOpen={isLibraryOpen} id="template-library-content" className="space-y-6">
+        {recommended.length > 0 && (
           <div className="space-y-4">
-            {recommended.map((category) => renderCategoryCard(category, true))}
+            <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
+            <div className="space-y-4">
+              {recommended.map((category) => renderCategoryCard(category, true))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {recommended.length > 0 && (
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More creative kits</div>
+          )}
+          <div className="space-y-4">
+            {others.map((category) => renderCategoryCard(category, false))}
+            {recommended.length === 0 && others.length === 0 && (
+              <p className="text-sm text-slate-500">No templates match that search just yet. Try a different keyword.</p>
+            )}
           </div>
         </div>
-      )}
-
-      <div className="space-y-4">
-        {recommended.length > 0 && (
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More creative kits</div>
-        )}
-        <div className="space-y-4">
-          {others.map((category) => renderCategoryCard(category, false))}
-          {recommended.length === 0 && others.length === 0 && (
-            <p className="text-sm text-slate-500">No templates match that search just yet. Try a different keyword.</p>
-          )}
-        </div>
-      </div>
+      </Zippy>
     </section>
   );
 };

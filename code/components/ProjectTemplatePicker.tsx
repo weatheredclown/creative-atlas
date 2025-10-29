@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ProjectTemplate, TemplateCategory } from '../types';
-import { FolderPlusIcon, SparklesIcon } from './Icons';
+import { ChevronDownIcon, FolderPlusIcon, SparklesIcon } from './Icons';
+import Zippy from './Zippy';
 
 interface ProjectTemplatePickerProps {
   templates: ProjectTemplate[];
@@ -17,6 +18,7 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
   onApplyTemplate,
   isApplyDisabled = false,
 }) => {
+  const [isPickerOpen, setIsPickerOpen] = useState(true);
   const categoryIndex = useMemo(() => {
     const index = new Map<string, TemplateCategory>();
     categories.forEach((category) => {
@@ -120,9 +122,23 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
             <SparklesIcon className="w-5 h-5 text-cyan-400" />
             Project Templates
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/50 rounded-full px-3 py-1">
-            Multi-artifact kit
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/50 rounded-full px-3 py-1">
+              Multi-artifact kit
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsPickerOpen((previous) => !previous)}
+              className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-300"
+              aria-expanded={isPickerOpen}
+              aria-controls="project-templates-content"
+            >
+              {isPickerOpen ? 'Hide kits' : 'Show kits'}
+              <ChevronDownIcon
+                className={`w-4 h-4 text-slate-400 transition-transform ${isPickerOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </div>
         </div>
         <p className="text-sm text-slate-400">
           Hydrate an entire project with dashboards, quests, and starter artifacts in one click. Apply a kit to fill gaps without overwriting the custom work you have already done.
@@ -132,23 +148,28 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
         </p>
       </header>
 
-      {recommended.length > 0 && (
-        <div className="space-y-4">
-          <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
+      <Zippy isOpen={isPickerOpen} id="project-templates-content" className="space-y-6">
+        {recommended.length > 0 && (
           <div className="space-y-4">
-            {recommended.map((template) => renderTemplateCard(template, true))}
+            <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
+            <div className="space-y-4">
+              {recommended.map((template) => renderTemplateCard(template, true))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {recommended.length > 0 && (
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More kits</div>
+          )}
+          <div className="space-y-4">
+            {others.map((template) => renderTemplateCard(template, false))}
+            {recommended.length === 0 && others.length === 0 && (
+              <p className="text-sm text-slate-500">No project templates match that search just yet. Try a different keyword.</p>
+            )}
           </div>
         </div>
-      )}
-
-      <div className="space-y-4">
-        {recommended.length > 0 && (
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More kits</div>
-        )}
-        <div className="space-y-4">
-          {others.map((template) => renderTemplateCard(template, false))}
-        </div>
-      </div>
+      </Zippy>
     </section>
   );
 };

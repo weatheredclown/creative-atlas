@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MilestoneProgressOverview, ObjectiveStatus } from '../utils/milestoneProgress';
-import { FlagIcon, SparklesIcon, CheckCircleIcon, XMarkIcon } from './Icons';
+import { FlagIcon, SparklesIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon } from './Icons';
+import Zippy from './Zippy';
 
 interface MilestoneTrackerProps {
   items: MilestoneProgressOverview[];
@@ -33,19 +34,33 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ items }) => {
     return null;
   }
 
+  const [isTrackerOpen, setIsTrackerOpen] = useState(true);
+
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
-      <header className="flex items-center gap-3">
-        <FlagIcon className="w-5 h-5 text-cyan-400" />
-        <div>
-          <h3 className="text-lg font-semibold text-slate-100">Milestone tracker</h3>
-          <p className="text-sm text-slate-400">
-            Layer-two progress signals show how close this project is to each roadmap milestone.
-          </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <FlagIcon className="w-5 h-5 text-cyan-400" />
+          <div>
+            <h3 className="text-lg font-semibold text-slate-100">Milestone tracker</h3>
+            <p className="text-sm text-slate-400">
+              Layer-two progress signals show how close this project is to each roadmap milestone.
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsTrackerOpen((previous) => !previous)}
+          className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-300"
+          aria-expanded={isTrackerOpen}
+          aria-controls="milestone-tracker-content"
+        >
+          {isTrackerOpen ? 'Hide milestones' : 'Show milestones'}
+          <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform ${isTrackerOpen ? 'rotate-180' : ''}`} />
+        </button>
       </header>
 
-      <div className="space-y-5">
+      <Zippy isOpen={isTrackerOpen} id="milestone-tracker-content" className="space-y-5">
         {items.map(({ milestone, objectives, completion }) => {
           const percent = Math.round(completion * 100);
 
@@ -95,7 +110,7 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ items }) => {
             </article>
           );
         })}
-      </div>
+      </Zippy>
     </section>
   );
 };
