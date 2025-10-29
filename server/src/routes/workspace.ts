@@ -300,60 +300,80 @@ router.patch('/profile', async (req: AuthenticatedRequest, res) => {
   const docRef = firestore.collection('users').doc(uid);
   const parsed = profileUpdateSchema.parse(req.body);
 
-  const snapshot = await docRef.get();
-  if (!snapshot.exists) {
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(docRef);
     const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
-    await docRef.set(
-      {
-        uid,
-        email: defaults.email,
-        displayName: defaults.displayName,
-        photoURL: defaults.photoURL ?? null,
-        xp: defaults.xp,
-        streakCount: defaults.streakCount,
-        bestStreak: defaults.bestStreak,
-        lastActiveDate: defaults.lastActiveDate ?? null,
-        achievementsUnlocked: defaults.achievementsUnlocked,
-        questlinesClaimed: defaults.questlinesClaimed,
-        settings: defaults.settings,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: false },
-    );
-  }
 
-  const payload: Record<string, unknown> = {
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-
-  if (parsed.displayName !== undefined) {
-    payload.displayName = parsed.displayName;
-  }
-
-  if (parsed.photoURL !== undefined) {
-    const trimmed = parsed.photoURL.trim();
-    payload.photoURL = trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (parsed.achievementsUnlocked !== undefined) {
-    payload.achievementsUnlocked = parsed.achievementsUnlocked;
-  }
-
-  if (parsed.questlinesClaimed !== undefined) {
-    payload.questlinesClaimed = parsed.questlinesClaimed;
-  }
-
-  if (parsed.settings) {
-    if (parsed.settings.theme !== undefined) {
-      payload['settings.theme'] = parsed.settings.theme;
+    let currentProfile: UserProfile;
+    if (!snapshot.exists) {
+      currentProfile = defaults;
+      transaction.set(
+        docRef,
+        {
+          uid,
+          email: defaults.email,
+          displayName: defaults.displayName,
+          photoURL: defaults.photoURL ?? null,
+          xp: defaults.xp,
+          streakCount: defaults.streakCount,
+          bestStreak: defaults.bestStreak,
+          lastActiveDate: defaults.lastActiveDate ?? null,
+          achievementsUnlocked: defaults.achievementsUnlocked,
+          questlinesClaimed: defaults.questlinesClaimed,
+          settings: defaults.settings,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: false },
+      );
+    } else {
+      currentProfile = mapProfileFromSnapshot(snapshot, defaults);
     }
-    if (parsed.settings.aiTipsEnabled !== undefined) {
-      payload['settings.aiTipsEnabled'] = parsed.settings.aiTipsEnabled;
-    }
-  }
 
-  await docRef.set(payload, { merge: true });
+    const nextProfile: UserProfile = {
+      ...currentProfile,
+      achievementsUnlocked: [...currentProfile.achievementsUnlocked],
+      questlinesClaimed: [...currentProfile.questlinesClaimed],
+      settings: { ...currentProfile.settings },
+    };
+
+    if (parsed.displayName !== undefined) {
+      nextProfile.displayName = parsed.displayName;
+    }
+
+    if (parsed.photoURL !== undefined) {
+      const trimmed = parsed.photoURL.trim();
+      nextProfile.photoURL = trimmed.length > 0 ? trimmed : undefined;
+    }
+
+    if (parsed.achievementsUnlocked !== undefined) {
+      const merged = new Set([...nextProfile.achievementsUnlocked, ...parsed.achievementsUnlocked]);
+      nextProfile.achievementsUnlocked = Array.from(merged);
+    }
+
+    if (parsed.questlinesClaimed !== undefined) {
+      const merged = new Set([...nextProfile.questlinesClaimed, ...parsed.questlinesClaimed]);
+      nextProfile.questlinesClaimed = Array.from(merged);
+    }
+
+    if (parsed.settings) {
+      nextProfile.settings = {
+        ...nextProfile.settings,
+        ...parsed.settings,
+      };
+    }
+
+    const update: Record<string, unknown> = {
+      displayName: nextProfile.displayName,
+      photoURL: nextProfile.photoURL ?? null,
+      achievementsUnlocked: nextProfile.achievementsUnlocked,
+      questlinesClaimed: nextProfile.questlinesClaimed,
+      settings: nextProfile.settings,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    transaction.set(docRef, update, { merge: true });
+  });
 
   const updatedSnapshot = await docRef.get();
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
