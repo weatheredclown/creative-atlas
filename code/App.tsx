@@ -1027,16 +1027,6 @@ export default function App() {
     updateProfile({ questlinesClaimed: [questlineId] });
   }, [profile, addXp, updateProfile]);
 
-  if (!profile) {
-    return null;
-  }
-
-  const xpProgress = profile.xp % 100;
-  const level = Math.floor(profile.xp / 100) + 1;
-  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
-  const featuredAssistant = aiAssistants[0];
-  const upcomingMilestone = milestoneRoadmap[0];
-
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
     setStatusFilter('ALL');
