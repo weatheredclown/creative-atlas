@@ -7,7 +7,7 @@ interface GitHubImportPanelProps {
   projectId: string;
   ownerId: string;
   existingArtifacts: Artifact[];
-  onArtifactsImported: (artifacts: Artifact[]) => void;
+  onArtifactsImported: (artifacts: Artifact[]) => Promise<void> | void;
   addXp: (amount: number) => void;
 }
 
@@ -147,7 +147,7 @@ const GitHubImportPanel: React.FC<GitHubImportPanelProps> = ({ projectId, ownerI
         return;
       }
 
-      onArtifactsImported(newArtifacts);
+      await onArtifactsImported(newArtifacts);
       const xpAward = Math.min(25, Math.max(8, newArtifacts.length * 3));
       addXp(xpAward);
       setImportSummary(`Imported ${newArtifacts.length} artifact${newArtifacts.length === 1 ? '' : 's'} from GitHub (+${xpAward} XP).`);
