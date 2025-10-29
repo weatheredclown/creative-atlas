@@ -3,22 +3,31 @@ import { AIAssistant, Milestone } from '../types';
 import { SparklesIcon, XMarkIcon } from './Icons';
 import AICopilotPanel from './AICopilotPanel';
 import Roadmap from './Roadmap';
+import MilestoneTracker from './MilestoneTracker';
+import { MilestoneProgressOverview } from '../utils/milestoneProgress';
 
 interface SecondaryInsightsPanelProps {
   assistants: AIAssistant[];
   milestones: Milestone[];
+  milestoneProgress: MilestoneProgressOverview[];
   isOpen: boolean;
   onClose: () => void;
 }
 
-const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assistants, milestones, isOpen, onClose }) => {
+const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({
+  assistants,
+  milestones,
+  milestoneProgress,
+  isOpen,
+  onClose,
+}) => {
   if (!isOpen) {
     return null;
   }
 
   return (
     <div
-      className="fixed inset-0 z-40 flex"
+      className="fixed inset-0 z-40"
       role="dialog"
       aria-modal="true"
       aria-label="Creator insights"
@@ -28,8 +37,8 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
         aria-hidden="true"
         onClick={onClose}
       />
-      <aside className="relative ml-auto h-full w-full max-w-4xl bg-slate-950/95 border-l border-slate-800 shadow-2xl shadow-slate-900/70 overflow-y-auto">
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-800 bg-slate-950/95 px-6 py-5">
+      <div className="relative z-10 flex h-full w-full flex-col bg-slate-950/95">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-slate-950/95 px-8 py-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
               <SparklesIcon className="w-4 h-4 text-pink-400" />
@@ -37,7 +46,7 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
             </div>
             <h2 className="text-xl font-semibold text-slate-100">Copilots &amp; Milestone Lore</h2>
             <p className="text-sm text-slate-400">
-              Explore opt-in AI companions and revisit the milestone roadmap without crowding your main workspace.
+              Review roadmap signals and optional copilots in a distraction-free fullscreen workspace.
             </p>
           </div>
           <button
@@ -50,11 +59,14 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
           </button>
         </div>
 
-        <div className="space-y-6 p-6">
-          <AICopilotPanel assistants={assistants} />
-          <Roadmap milestones={milestones} />
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8">
+            <MilestoneTracker items={milestoneProgress} />
+            <Roadmap milestones={milestones} />
+            <AICopilotPanel assistants={assistants} />
+          </div>
         </div>
-      </aside>
+      </div>
     </div>
   );
 };
