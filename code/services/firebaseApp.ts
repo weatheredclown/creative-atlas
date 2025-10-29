@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 
 const getFirebaseConfig = () => {
+  const cleanEnvValue = (value: string | undefined) => value?.trim();
+
   const {
     VITE_FIREBASE_API_KEY,
     VITE_FIREBASE_AUTH_DOMAIN,
@@ -25,12 +27,12 @@ const getFirebaseConfig = () => {
   }
 
   return {
-    apiKey: VITE_FIREBASE_API_KEY,
-    authDomain: VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: VITE_FIREBASE_PROJECT_ID,
-    storageBucket: VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: VITE_FIREBASE_APP_ID,
+    apiKey: cleanEnvValue(VITE_FIREBASE_API_KEY),
+    authDomain: cleanEnvValue(VITE_FIREBASE_AUTH_DOMAIN),
+    projectId: cleanEnvValue(VITE_FIREBASE_PROJECT_ID),
+    storageBucket: cleanEnvValue(VITE_FIREBASE_STORAGE_BUCKET),
+    messagingSenderId: cleanEnvValue(VITE_FIREBASE_MESSAGING_SENDER_ID),
+    appId: cleanEnvValue(VITE_FIREBASE_APP_ID),
   };
 };
 
