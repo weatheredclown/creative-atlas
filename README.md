@@ -2,6 +2,8 @@
 
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
+📘 Lore reference: see [`docs/darv-language.md`](docs/darv-language.md) for the Darv language primer that anchors Tamenzut rituals, myths, and conlang work.
+
 ## Product Roadmap
 
 ### Phase 1 — Seed the Universe (Weeks 0‑4)
