@@ -118,6 +118,12 @@ npm run dev
 
 The server expects Firebase Admin credentials via environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`). When these are set, the API automatically provisions Firestore reads/writes on behalf of the signed-in user.
 
+Set `ALLOWED_ORIGINS` (comma-separated) so deployed environments return the proper CORS headers during browser preflight checks. For example:
+
+```
+ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.web.app
+```
+
 ### 4. Start the development server
 
 Use the Vite dev server to run the app with hot reloading:
