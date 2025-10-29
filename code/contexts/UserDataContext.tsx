@@ -198,7 +198,8 @@ const persistProjectsDiff = async (previous: Project[], next: Project[]) => {
     }
 
     if (!areProjectsEqual(existing, project)) {
-      const { id: _id, ...rest } = project;
+      const rest = { ...project };
+      delete rest.id;
       batch.set(ref, {
         ...sanitizeForFirestore(rest),
         updatedAt: serverTimestamp(),
@@ -239,7 +240,8 @@ const persistArtifactsDiff = async (previous: Artifact[], next: Artifact[]) => {
     }
 
     if (!areArtifactsEqual(existing, artifact)) {
-      const { id: _id, ...rest } = artifact;
+      const rest = { ...artifact };
+      delete rest.id;
       batch.set(ref, {
         ...sanitizeForFirestore(rest),
         updatedAt: serverTimestamp(),
