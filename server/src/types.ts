@@ -37,3 +37,24 @@ export interface ConlangLexeme {
   etymology?: string;
   tags?: string[];
 }
+
+export interface UserSettings {
+  theme: 'system' | 'light' | 'dark';
+  aiTipsEnabled: boolean;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  xp: number;
+  streakCount: number;
+  bestStreak: number;
+  lastActiveDate?: string;
+  achievementsUnlocked: string[];
+  questlinesClaimed: string[];
+  settings: UserSettings;
+  createdAt?: string;
+  updatedAt?: string;
+}
