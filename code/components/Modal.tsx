@@ -28,23 +28,28 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (modalRef.current && target && !modalRef.current.contains(target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
-
-  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      event.preventDefault();
-      onClose();
-    }
-  };
-
-  const handleBackdropTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      event.preventDefault();
-      onClose();
-    }
-  };
 
   return (
     <div
@@ -53,8 +58,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       aria-modal="true"
       aria-labelledby="modal-title"
       tabIndex={-1}
-      onMouseDown={handleBackdropMouseDown}
-      onTouchStart={handleBackdropTouchStart}
     >
       <div
         ref={modalRef}
