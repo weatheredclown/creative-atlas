@@ -48,7 +48,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### Authentication, Authorization, and Profiles
 - [x] Add sign-up and login flows with token-based authentication for the web client.
-- [ ] Associate every project and artifact with an owner and enforce row-level authorization rules.
+- [x] Associate every project and artifact with an owner and enforce row-level authorization rules.
 - [ ] Persist user-specific settings, XP totals, and achievements so progress follows accounts across devices.
 
 ### Collaboration & Offline-Resilient UX (do not implement yet)

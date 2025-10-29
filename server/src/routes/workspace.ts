@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
-import type { DocumentSnapshot, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import type { DocumentSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore';
 import { firestore } from '../firebaseAdmin.js';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
@@ -82,7 +82,7 @@ const parseDateKey = (key?: string): number | null => {
 const formatDateKey = (date: Date): string => date.toISOString().slice(0, 10);
 
 const advanceStreakSnapshot = (
-  snapshot: { streakCount: number; bestStreak: number; lastActiveDate?: string },
+  snapshot: { streakCount: number; bestStreak: number; lastActiveDate: string | undefined },
   todayKey: string,
 ) => {
   const todayValue = parseDateKey(todayKey);
@@ -109,7 +109,7 @@ const advanceStreakSnapshot = (
     return {
       streakCount: normalizedCurrent,
       bestStreak: normalizedBest,
-      lastActiveDate: snapshot.lastActiveDate ?? todayKey,
+      lastActiveDate: snapshot.lastActiveDate,
     };
   }
 
@@ -190,8 +190,8 @@ const mapProfileFromSnapshot = (doc: DocumentSnapshot | null, defaults: UserProf
     achievementsUnlocked: achievements,
     questlinesClaimed: questlines,
     settings: mappedSettings,
-    createdAt: timestampToIso((data as { createdAt?: unknown }).createdAt),
-    updatedAt: timestampToIso((data as { updatedAt?: unknown }).updatedAt),
+    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
 };
 
@@ -240,8 +240,8 @@ const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: stri
     summary: typeof data.summary === 'string' ? data.summary : '',
     status: typeof data.status === 'string' ? data.status : 'active',
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-    createdAt: timestampToIso(data.createdAt),
-    updatedAt: timestampToIso(data.updatedAt),
+    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
 };
 
@@ -258,8 +258,8 @@ const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: str
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
     relations: Array.isArray(data.relations) ? (data.relations as Artifact['relations']) : [],
     data: data.data ?? {},
-    createdAt: timestampToIso(data.createdAt),
-    updatedAt: timestampToIso(data.updatedAt),
+    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
 };
 
@@ -463,6 +463,16 @@ router.post('/projects', async (req: AuthenticatedRequest, res) => {
     ? firestore.collection('projects').doc(parsed.id)
     : firestore.collection('projects').doc();
 
+  if (parsed.id) {
+    const existing = await docRef.get();
+    if (existing.exists) {
+      if (existing.get('ownerId') !== uid) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      return res.status(409).json({ error: 'Project already exists' });
+    }
+  }
+
   const payload = {
     ownerId: uid,
     title: parsed.title,
@@ -552,14 +562,44 @@ router.post('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, 
   const bodySchema = z.object({ artifacts: z.array(artifactSchema) });
   const parsed = bodySchema.parse(req.body);
 
+  const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+  if (!projectSnapshot.exists) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  if (projectSnapshot.get('ownerId') !== uid) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const artifactEntries = parsed.artifacts.map((artifactInput) => ({
+    input: artifactInput,
+    ref: artifactInput.id
+      ? firestore.collection('artifacts').doc(artifactInput.id)
+      : firestore.collection('artifacts').doc(),
+  }));
+
+  const seenIds = new Set<string>();
+  for (const entry of artifactEntries) {
+    const artifactId = entry.ref.id;
+    if (seenIds.has(artifactId)) {
+      return res.status(400).json({ error: `Duplicate artifact id detected: ${artifactId}` });
+    }
+    seenIds.add(artifactId);
+
+    if (entry.input.id) {
+      const existing = await entry.ref.get();
+      if (existing.exists) {
+        if (existing.get('ownerId') !== uid) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+        return res.status(409).json({ error: `Artifact already exists: ${artifactId}` });
+      }
+    }
+  }
+
   const created: Artifact[] = [];
 
   await firestore.runTransaction(async (transaction) => {
-    parsed.artifacts.forEach((artifactInput, index) => {
-      const docRef = artifactInput.id
-        ? firestore.collection('artifacts').doc(artifactInput.id)
-        : firestore.collection('artifacts').doc();
-
+    for (const { input: artifactInput, ref: docRef } of artifactEntries) {
       const artifact: Artifact = {
         id: docRef.id,
         ownerId: uid,
@@ -588,7 +628,7 @@ router.post('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, 
       });
 
       created.push({ ...artifact });
-    });
+    }
   });
 
   res.status(201).json({ artifacts: created });
@@ -642,6 +682,31 @@ router.post('/projects/:projectId/import-artifacts', async (req: AuthenticatedRe
 
   const artifacts = importArtifactsFromCsv(content, projectId, uid);
   const persisted: Artifact[] = [];
+
+  const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+  if (!projectSnapshot.exists) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  if (projectSnapshot.get('ownerId') !== uid) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const seenIds = new Set<string>();
+  for (const artifact of artifacts) {
+    if (seenIds.has(artifact.id)) {
+      return res.status(400).json({ error: `Duplicate artifact id detected: ${artifact.id}` });
+    }
+    seenIds.add(artifact.id);
+
+    const docRef = firestore.collection('artifacts').doc(artifact.id);
+    const existing = await docRef.get();
+    if (existing.exists) {
+      if (existing.get('ownerId') !== uid) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      return res.status(409).json({ error: `Artifact already exists: ${artifact.id}` });
+    }
+  }
 
   await firestore.runTransaction(async (transaction) => {
     artifacts.forEach((artifact) => {
