@@ -4,39 +4,51 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  getFirestore,
-  query,
-  runTransaction,
-  serverTimestamp,
-  updateDoc,
-  where,
-  writeBatch,
-} from 'firebase/firestore';
 import { Artifact, Project, ProjectStatus, UserProfile, UserSettings } from '../types';
 import { createSeedWorkspace } from '../seedData';
 import { advanceStreak, formatDateKey } from '../utils/streak';
 import { useAuth } from './AuthContext';
-import { firebaseApp } from '../services/firebaseApp';
+import {
+  ArtifactDraft,
+  createArtifactsViaApi,
+  createProjectViaApi,
+  fetchProfile,
+  fetchProjectArtifacts,
+  fetchProjects,
+  incrementProfileXp,
+  isDataApiConfigured,
+  updateArtifactViaApi,
+  updateProfileViaApi,
+  updateProjectViaApi,
+} from '../services/dataApi';
 
-type ProfileUpdate = Partial<Omit<UserProfile, 'settings'>> & { settings?: Partial<UserSettings> };
+interface ProfileUpdate
+  extends Partial<Omit<UserProfile, 'settings' | 'achievementsUnlocked' | 'questlinesClaimed'>> {
+  achievementsUnlocked?: string[];
+  questlinesClaimed?: string[];
+  settings?: Partial<UserSettings>;
+}
 
 interface UserDataContextValue {
   projects: Project[];
-  setProjects: (updater: React.SetStateAction<Project[]>) => void;
   artifacts: Artifact[];
-  setArtifacts: (updater: React.SetStateAction<Artifact[]>) => void;
   profile: UserProfile | null;
-  updateProfile: (update: ProfileUpdate) => void;
-  addXp: (amount: number) => void;
   loading: boolean;
+  canLoadMoreProjects: boolean;
+  loadMoreProjects: () => Promise<void>;
+  ensureProjectArtifacts: (projectId: string) => Promise<void>;
+  canLoadMoreArtifacts: (projectId: string) => boolean;
+  loadMoreArtifacts: (projectId: string) => Promise<void>;
+  createProject: (input: { title: string; summary?: string }) => Promise<Project | null>;
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<Project | null>;
+  createArtifact: (projectId: string, draft: ArtifactDraft) => Promise<Artifact | null>;
+  createArtifactsBulk: (projectId: string, drafts: ArtifactDraft[]) => Promise<Artifact[]>;
+  updateArtifact: (artifactId: string, updates: Partial<Artifact>) => Promise<Artifact | null>;
+  mergeArtifacts: (projectId: string, artifacts: Artifact[]) => void;
+  updateProfile: (update: ProfileUpdate) => Promise<void>;
+  addXp: (amount: number) => Promise<void>;
 }
 
 const UserDataContext = createContext<UserDataContextValue | undefined>(undefined);
@@ -46,21 +58,6 @@ const defaultSettings: UserSettings = {
   aiTipsEnabled: true,
 };
 
-const db = getFirestore(firebaseApp);
-
-const sanitizeForFirestore = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
-
-const areProjectsEqual = (a: Project, b: Project): boolean =>
-  a.id === b.id &&
-  a.ownerId === b.ownerId &&
-  a.title === b.title &&
-  a.summary === b.summary &&
-  a.status === b.status &&
-  a.tags.length === b.tags.length &&
-  a.tags.every((tag, index) => tag === b.tags[index]);
-
-const areArtifactsEqual = (a: Artifact, b: Artifact): boolean => JSON.stringify(a) === JSON.stringify(b);
-
 const createDefaultProfile = (
   uid: string,
   email: string | null,
@@ -68,12 +65,14 @@ const createDefaultProfile = (
   photoURL: string | null,
   xp: number,
 ): UserProfile => {
+  const normalizedEmail = email ?? '';
+  const fallbackDisplayName = normalizedEmail ? normalizedEmail.split('@')[0] ?? 'Creator' : 'Creator';
   const todayKey = formatDateKey(new Date());
   const hasXp = xp > 0;
   return {
     uid,
-    email: email ?? '',
-    displayName: displayName ?? email?.split('@')[0] ?? 'Creator',
+    email: normalizedEmail,
+    displayName: displayName && displayName.trim().length > 0 ? displayName : fallbackDisplayName,
     photoURL: photoURL ?? undefined,
     xp,
     streakCount: hasXp ? 1 : 0,
@@ -91,211 +90,37 @@ const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
 const normalizeArtifacts = (artifacts: Artifact[], ownerId: string): Artifact[] =>
   artifacts.map((artifact) => ({ ...artifact, ownerId }));
 
-const loadWorkspace = async (
-  uid: string,
-  email: string | null,
-  displayName: string | null,
-  photoURL: string | null,
-) => {
-  const profileRef = doc(db, 'users', uid);
-  const profileSnap = await getDoc(profileRef);
-
-  let profile: UserProfile;
-  if (profileSnap.exists()) {
-    const raw = profileSnap.data() as Partial<UserProfile>;
-    const base = createDefaultProfile(uid, email, displayName, photoURL, typeof raw.xp === 'number' ? raw.xp : 0);
-    profile = {
-      ...base,
-      ...raw,
-      email: typeof raw.email === 'string' ? raw.email : base.email,
-      displayName: typeof raw.displayName === 'string' ? raw.displayName : base.displayName,
-      photoURL: raw.photoURL ?? base.photoURL,
-      achievementsUnlocked: Array.isArray(raw.achievementsUnlocked)
-        ? raw.achievementsUnlocked
-        : base.achievementsUnlocked,
-      questlinesClaimed: Array.isArray(raw.questlinesClaimed)
-        ? raw.questlinesClaimed
-        : base.questlinesClaimed,
-      settings: {
-        ...base.settings,
-        ...(raw.settings ?? {}),
-      },
-    };
-  } else {
-    profile = createDefaultProfile(uid, email, displayName, photoURL, 0);
-    await updateDoc(profileRef, {
-      ...sanitizeForFirestore(profile),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }).catch(async () => {
-      // updateDoc will fail if the document does not exist; fall back to set via runTransaction
-      await runTransaction(db, async (transaction) => {
-        transaction.set(profileRef, {
-          ...sanitizeForFirestore(profile),
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      });
-    });
-  }
-
-  const projectsQuery = query(collection(db, 'projects'), where('ownerId', '==', uid));
-  const projectsSnapshot = await getDocs(projectsQuery);
-  const projects: Project[] = projectsSnapshot.docs.map((projectDoc) => {
-    const data = projectDoc.data();
-    return {
-      id: projectDoc.id,
-      ownerId: data.ownerId ?? uid,
-      title: typeof data.title === 'string' ? data.title : 'Untitled Project',
-      summary: typeof data.summary === 'string' ? data.summary : '',
-      status: (data.status as ProjectStatus) ?? ProjectStatus.Active,
-      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-    };
-  });
-
-  const artifactsQuery = query(collection(db, 'artifacts'), where('ownerId', '==', uid));
-  const artifactsSnapshot = await getDocs(artifactsQuery);
-  const artifacts: Artifact[] = artifactsSnapshot.docs.map((artifactDoc) => {
-    const data = artifactDoc.data();
-    return {
-      id: artifactDoc.id,
-      ownerId: data.ownerId ?? uid,
-      projectId: typeof data.projectId === 'string' ? data.projectId : '',
-      type: data.type,
-      title: typeof data.title === 'string' ? data.title : 'Untitled Artifact',
-      summary: typeof data.summary === 'string' ? data.summary : '',
-      status: typeof data.status === 'string' ? data.status : 'idea',
-      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-      relations: Array.isArray(data.relations) ? (data.relations as Artifact['relations']) : [],
-      data: data.data ?? {},
-    };
-  });
-
-  return {
-    projects: normalizeProjects(projects, uid),
-    artifacts: normalizeArtifacts(artifacts, uid),
-    profile,
-  };
+const groupArtifactsByProject = (artifacts: Artifact[]): Record<string, Artifact[]> => {
+  return artifacts.reduce<Record<string, Artifact[]>>((acc, artifact) => {
+    if (!acc[artifact.projectId]) {
+      acc[artifact.projectId] = [];
+    }
+    acc[artifact.projectId].push(artifact);
+    return acc;
+  }, {});
 };
 
-const persistProjectsDiff = async (previous: Project[], next: Project[]) => {
-  const batch = writeBatch(db);
-  const previousMap = new Map(previous.map((project) => [project.id, project]));
-  const nextMap = new Map(next.map((project) => [project.id, project]));
-  let hasChanges = false;
-
-  nextMap.forEach((project) => {
-    const existing = previousMap.get(project.id);
-    const ref = doc(db, 'projects', project.id);
-    if (!existing) {
-      batch.set(ref, {
-        ...sanitizeForFirestore(project),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      hasChanges = true;
-      return;
-    }
-
-    if (!areProjectsEqual(existing, project)) {
-      const rest = { ...project };
-      delete rest.id;
-      batch.set(ref, {
-        ...sanitizeForFirestore(rest),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      hasChanges = true;
-    }
-  });
-
-  previousMap.forEach((_project, id) => {
-    if (!nextMap.has(id)) {
-      batch.delete(doc(db, 'projects', id));
-      hasChanges = true;
-    }
-  });
-
-  if (hasChanges) {
-    await batch.commit();
+const mergeArtifactLists = (existing: Artifact[], incoming: Artifact[]): Artifact[] => {
+  if (incoming.length === 0) {
+    return existing;
   }
-};
-
-const persistArtifactsDiff = async (previous: Artifact[], next: Artifact[]) => {
-  const batch = writeBatch(db);
-  const previousMap = new Map(previous.map((artifact) => [artifact.id, artifact]));
-  const nextMap = new Map(next.map((artifact) => [artifact.id, artifact]));
-  let hasChanges = false;
-
-  nextMap.forEach((artifact) => {
-    const existing = previousMap.get(artifact.id);
-    const ref = doc(db, 'artifacts', artifact.id);
-    if (!existing) {
-      batch.set(ref, {
-        ...sanitizeForFirestore(artifact),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      hasChanges = true;
-      return;
-    }
-
-    if (!areArtifactsEqual(existing, artifact)) {
-      const rest = { ...artifact };
-      delete rest.id;
-      batch.set(ref, {
-        ...sanitizeForFirestore(rest),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      hasChanges = true;
-    }
+  const map = new Map(existing.map((artifact) => [artifact.id, artifact]));
+  incoming.forEach((artifact) => {
+    map.set(artifact.id, artifact);
   });
-
-  previousMap.forEach((_artifact, id) => {
-    if (!nextMap.has(id)) {
-      batch.delete(doc(db, 'artifacts', id));
-      hasChanges = true;
-    }
-  });
-
-  if (hasChanges) {
-    await batch.commit();
-  }
-};
-
-const persistProfileUpdate = async (uid: string, update: ProfileUpdate & { achievementsUnlocked?: string[]; questlinesClaimed?: string[] }) => {
-  const ref = doc(db, 'users', uid);
-  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
-
-  const { settings, ...rest } = update;
-  Object.assign(payload, sanitizeForFirestore(rest));
-
-  if (settings) {
-    Object.entries(settings).forEach(([key, value]) => {
-      payload[`settings.${key}`] = value;
-    });
-  }
-
-  await updateDoc(ref, payload);
+  return Array.from(map.values());
 };
 
 export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isGuestMode } = useAuth();
-  const [projects, setProjectsState] = useState<Project[]>([]);
-  const [artifacts, setArtifactsState] = useState<Artifact[]>([]);
+  const { user, isGuestMode, getIdToken } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectPageToken, setProjectPageToken] = useState<string | null | undefined>(undefined);
+  const [artifactsByProject, setArtifactsByProject] = useState<Record<string, Artifact[]>>({});
+  const [artifactPageTokens, setArtifactPageTokens] = useState<Record<string, string | null | undefined>>({});
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const projectsRef = useRef<Project[]>([]);
-  const artifactsRef = useRef<Artifact[]>([]);
 
-  const applyProjectsState = useCallback((next: Project[]) => {
-    projectsRef.current = next;
-    setProjectsState(next);
-  }, []);
-
-  const applyArtifactsState = useCallback((next: Artifact[]) => {
-    artifactsRef.current = next;
-    setArtifactsState(next);
-  }, []);
+  const artifacts = useMemo(() => Object.values(artifactsByProject).flat(), [artifactsByProject]);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,18 +129,27 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setLoading(true);
       const guestId = 'guest';
       const seed = createSeedWorkspace(guestId);
-      applyProjectsState(normalizeProjects(seed.projects, guestId));
-      applyArtifactsState(normalizeArtifacts(seed.artifacts, guestId));
-      setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
-      setLoading(false);
+      const seededProjects = normalizeProjects(seed.projects, guestId);
+      const seededArtifacts = normalizeArtifacts(seed.artifacts, guestId);
+      const grouped = groupArtifactsByProject(seededArtifacts);
+      if (!cancelled) {
+        setProjects(seededProjects);
+        setArtifactsByProject(grouped);
+        setArtifactPageTokens({});
+        setProjectPageToken(null);
+        setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
+        setLoading(false);
+      }
       return () => {
         cancelled = true;
       };
     }
 
     if (!user) {
-      applyProjectsState([]);
-      applyArtifactsState([]);
+      setProjects([]);
+      setArtifactsByProject({});
+      setArtifactPageTokens({});
+      setProjectPageToken(undefined);
       setProfile(null);
       setLoading(false);
       return () => {
@@ -325,152 +159,394 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setLoading(true);
 
-    loadWorkspace(user.uid, user.email, user.displayName, user.photoURL)
-      .then(({ projects: loadedProjects, artifacts: loadedArtifacts, profile: loadedProfile }) => {
+    void (async () => {
+      try {
+        const token = await getIdToken();
+        if (!token || !isDataApiConfigured) {
+          throw new Error('Data API is not available.');
+        }
+        const [profileData, projectData] = await Promise.all([
+          fetchProfile(token),
+          fetchProjects(token),
+        ]);
         if (cancelled) {
           return;
         }
-        applyProjectsState(loadedProjects);
-        applyArtifactsState(loadedArtifacts);
-        setProfile(loadedProfile);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Failed to load workspace from Firestore', error);
+        setProfile(profileData);
+        setProjects(projectData.projects);
+        setProjectPageToken(projectData.nextPageToken ?? null);
+        setArtifactsByProject({});
+        setArtifactPageTokens({});
+      } catch (error) {
+        console.error('Failed to load workspace from API', error);
         if (!cancelled) {
-          applyProjectsState([]);
-          applyArtifactsState([]);
           setProfile(createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, 0));
+          setProjects([]);
+          setArtifactsByProject({});
+          setArtifactPageTokens({});
+          setProjectPageToken(null);
+        }
+      } finally {
+        if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [user, isGuestMode, applyProjectsState, applyArtifactsState]);
+  }, [user, isGuestMode, getIdToken]);
 
-  const setProjects = useCallback(
-    (updater: React.SetStateAction<Project[]>) => {
-      setProjectsState(() => {
-        const next =
-          typeof updater === 'function'
-            ? (updater as (value: Project[]) => Project[])(projectsRef.current)
-            : updater;
+  const loadProjectArtifacts = useCallback(
+    async (projectId: string, { reset = false }: { reset?: boolean } = {}) => {
+      if (isGuestMode) {
+        return;
+      }
 
-        if (!Array.isArray(next)) {
-          console.warn('setProjects updater must return an array of projects.');
-          return projectsRef.current;
+      const nextToken = reset ? undefined : artifactPageTokens[projectId];
+      if (!reset && nextToken === null) {
+        return;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token || !isDataApiConfigured) {
+          throw new Error('Data API is not available.');
         }
-
-        const previous = projectsRef.current;
-        const unchanged =
-          previous.length === next.length && previous.every((project, index) => areProjectsEqual(project, next[index]));
-
-        if (!unchanged) {
-          projectsRef.current = next;
-
-          if (user && !isGuestMode) {
-            void persistProjectsDiff(previous, next).catch((error) => {
-              console.error('Failed to persist project changes', error);
-            });
-          }
-
-          return next;
-        }
-
-        return previous;
-      });
+        const response = await fetchProjectArtifacts(token, projectId, {
+          pageToken: nextToken,
+        });
+        setArtifactsByProject((current) => {
+          const existing = reset ? [] : current[projectId] ?? [];
+          const merged = mergeArtifactLists(existing, response.artifacts);
+          return {
+            ...current,
+            [projectId]: merged,
+          };
+        });
+        setArtifactPageTokens((current) => ({
+          ...current,
+          [projectId]: response.nextPageToken ?? null,
+        }));
+      } catch (error) {
+        console.error('Failed to load project artifacts', error);
+      }
     },
-    [isGuestMode, user],
+    [artifactPageTokens, getIdToken, isGuestMode],
   );
 
-  const setArtifacts = useCallback(
-    (updater: React.SetStateAction<Artifact[]>) => {
-      setArtifactsState(() => {
-        const next =
-          typeof updater === 'function'
-            ? (updater as (value: Artifact[]) => Artifact[])(artifactsRef.current)
-            : updater;
-
-        if (!Array.isArray(next)) {
-          console.warn('setArtifacts updater must return an array of artifacts.');
-          return artifactsRef.current;
-        }
-
-        const previous = artifactsRef.current;
-        const unchanged =
-          previous.length === next.length && previous.every((artifact, index) => areArtifactsEqual(artifact, next[index]));
-
-        if (!unchanged) {
-          artifactsRef.current = next;
-
-          if (user && !isGuestMode) {
-            void persistArtifactsDiff(previous, next).catch((error) => {
-              console.error('Failed to persist artifact changes', error);
-            });
-          }
-
-          return next;
-        }
-
-        return previous;
-      });
+  const ensureProjectArtifacts = useCallback(
+    async (projectId: string) => {
+      if (isGuestMode) {
+        return;
+      }
+      if ((artifactsByProject[projectId] ?? []).length > 0) {
+        return;
+      }
+      await loadProjectArtifacts(projectId, { reset: true });
     },
-    [isGuestMode, user],
+    [artifactsByProject, isGuestMode, loadProjectArtifacts],
+  );
+
+  const loadMoreArtifacts = useCallback(
+    async (projectId: string) => {
+      if (isGuestMode) {
+        return;
+      }
+      if (artifactPageTokens[projectId] === null) {
+        return;
+      }
+      await loadProjectArtifacts(projectId);
+    },
+    [artifactPageTokens, isGuestMode, loadProjectArtifacts],
+  );
+
+  const canLoadMoreArtifacts = useCallback(
+    (projectId: string) => {
+      const token = artifactPageTokens[projectId];
+      if (typeof token === 'undefined') {
+        // Not loaded yet; allow callers to trigger a load.
+        return true;
+      }
+      return token !== null;
+    },
+    [artifactPageTokens],
+  );
+
+  const loadMoreProjects = useCallback(async () => {
+    if (isGuestMode) {
+      return;
+    }
+    if (!projectPageToken) {
+      return;
+    }
+    try {
+      const token = await getIdToken();
+      if (!token || !isDataApiConfigured) {
+        throw new Error('Data API is not available.');
+      }
+      const response = await fetchProjects(token, { pageToken: projectPageToken });
+      setProjects((current) => [...current, ...response.projects]);
+      setProjectPageToken(response.nextPageToken ?? null);
+    } catch (error) {
+      console.error('Failed to load additional projects', error);
+    }
+  }, [getIdToken, isGuestMode, projectPageToken]);
+
+  const mergeArtifacts = useCallback((projectId: string, incoming: Artifact[]) => {
+    if (incoming.length === 0) {
+      return;
+    }
+    setArtifactsByProject((current) => {
+      const existing = current[projectId] ?? [];
+      return {
+        ...current,
+        [projectId]: mergeArtifactLists(existing, incoming),
+      };
+    });
+    setArtifactPageTokens((current) => ({
+      ...current,
+      [projectId]: current[projectId] ?? null,
+    }));
+  }, []);
+
+  const createProject = useCallback(
+    async ({ title, summary }: { title: string; summary?: string }) => {
+      if (!profile) {
+        return null;
+      }
+
+      if (isGuestMode || !isDataApiConfigured) {
+        const project: Project = {
+          id: `proj-${Date.now()}`,
+          ownerId: profile.uid,
+          title,
+          summary: summary ?? '',
+          status: ProjectStatus.Active,
+          tags: [],
+        };
+        setProjects((current) => [...current, project]);
+        setArtifactsByProject((current) => ({ ...current, [project.id]: [] }));
+        setArtifactPageTokens((current) => ({ ...current, [project.id]: null }));
+        return project;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const created = await createProjectViaApi(token, {
+          title,
+          summary,
+          status: ProjectStatus.Active,
+          tags: [],
+        });
+        setProjects((current) => [...current, created]);
+        setArtifactsByProject((current) => ({ ...current, [created.id]: [] }));
+        setArtifactPageTokens((current) => ({ ...current, [created.id]: null }));
+        return created;
+      } catch (error) {
+        console.error('Failed to create project', error);
+        return null;
+      }
+    },
+    [getIdToken, isDataApiConfigured, isGuestMode, profile],
+  );
+
+  const updateProject = useCallback(
+    async (projectId: string, updates: Partial<Project>) => {
+      setProjects((current) =>
+        current.map((project) => (project.id === projectId ? { ...project, ...updates } : project)),
+      );
+
+      if (isGuestMode || !isDataApiConfigured) {
+        return projects.find((project) => project.id === projectId) ?? null;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const sanitized: Partial<Project> = {};
+        if (updates.title !== undefined) sanitized.title = updates.title;
+        if (updates.summary !== undefined) sanitized.summary = updates.summary;
+        if (updates.status !== undefined) sanitized.status = updates.status;
+        if (updates.tags !== undefined) sanitized.tags = updates.tags;
+        const updated = await updateProjectViaApi(token, projectId, sanitized);
+        setProjects((current) =>
+          current.map((project) => (project.id === projectId ? { ...project, ...updated } : project)),
+        );
+        return updated;
+      } catch (error) {
+        console.error('Failed to update project', error);
+        return null;
+      }
+    },
+    [getIdToken, isDataApiConfigured, isGuestMode, projects],
+  );
+
+  const createArtifactsBulk = useCallback(
+    async (projectId: string, drafts: ArtifactDraft[]) => {
+      if (drafts.length === 0) {
+        return [];
+      }
+
+      if (isGuestMode || !isDataApiConfigured) {
+        const ownerId = profile?.uid ?? 'guest';
+        const timestamp = Date.now();
+        const artifactsToAdd = drafts.map((draft, index) => ({
+          id: draft.id ?? `art-${timestamp + index}`,
+          ownerId,
+          projectId,
+          type: draft.type,
+          title: draft.title,
+          summary: draft.summary ?? '',
+          status: draft.status ?? 'idea',
+          tags: draft.tags ?? [],
+          relations: draft.relations ?? [],
+          data: draft.data ?? {},
+        }));
+        mergeArtifacts(projectId, artifactsToAdd);
+        return artifactsToAdd;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const created = await createArtifactsViaApi(token, projectId, drafts);
+        mergeArtifacts(projectId, created);
+        return created;
+      } catch (error) {
+        console.error('Failed to create artifacts', error);
+        return [];
+      }
+    },
+    [getIdToken, isDataApiConfigured, isGuestMode, mergeArtifacts, profile?.uid],
+  );
+
+  const createArtifact = useCallback(
+    async (projectId: string, draft: ArtifactDraft) => {
+      const results = await createArtifactsBulk(projectId, [draft]);
+      return results[0] ?? null;
+    },
+    [createArtifactsBulk],
+  );
+
+  const updateArtifact = useCallback(
+    async (artifactId: string, updates: Partial<Artifact>) => {
+      setArtifactsByProject((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((projectId) => {
+          const list = next[projectId];
+          if (list.some((artifact) => artifact.id === artifactId)) {
+            next[projectId] = list.map((artifact) =>
+              artifact.id === artifactId ? { ...artifact, ...updates } : artifact,
+            );
+          }
+        });
+        return next;
+      });
+
+      if (isGuestMode || !isDataApiConfigured) {
+        return artifacts.find((artifact) => artifact.id === artifactId) ?? null;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const sanitized: Partial<Artifact> = {};
+        if (updates.title !== undefined) sanitized.title = updates.title;
+        if (updates.summary !== undefined) sanitized.summary = updates.summary;
+        if (updates.status !== undefined) sanitized.status = updates.status;
+        if (updates.tags !== undefined) sanitized.tags = updates.tags;
+        if (updates.relations !== undefined) sanitized.relations = updates.relations;
+        if (updates.data !== undefined) sanitized.data = updates.data;
+        const updated = await updateArtifactViaApi(token, artifactId, sanitized);
+        setArtifactsByProject((current) => {
+          const next = { ...current };
+          Object.keys(next).forEach((projectId) => {
+            const list = next[projectId];
+            if (list.some((artifact) => artifact.id === artifactId)) {
+              next[projectId] = list.map((artifact) =>
+                artifact.id === artifactId ? updated : artifact,
+              );
+            }
+          });
+          return next;
+        });
+        return updated;
+      } catch (error) {
+        console.error('Failed to update artifact', error);
+        return null;
+      }
+    },
+    [artifacts, getIdToken, isDataApiConfigured, isGuestMode],
   );
 
   const updateProfile = useCallback(
-    (update: ProfileUpdate) => {
+    async (update: ProfileUpdate) => {
       setProfile((current) => {
-        if (!current) return current;
-
-        const {
-          settings: partialSettings,
-          achievementsUnlocked: unlockedIds,
-          questlinesClaimed: claimedQuestlines,
-          ...rest
-        } = update;
-
-        const nextSettings = partialSettings ? { ...current.settings, ...partialSettings } : current.settings;
-        const nextAchievements = unlockedIds
-          ? Array.from(new Set([...current.achievementsUnlocked, ...unlockedIds]))
+        if (!current) {
+          return current;
+        }
+        const nextAchievements = update.achievementsUnlocked
+          ? Array.from(new Set([...current.achievementsUnlocked, ...update.achievementsUnlocked]))
           : current.achievementsUnlocked;
-        const nextQuestlinesClaimed = claimedQuestlines
-          ? Array.from(new Set([...current.questlinesClaimed, ...claimedQuestlines]))
+        const nextQuestlines = update.questlinesClaimed
+          ? Array.from(new Set([...current.questlinesClaimed, ...update.questlinesClaimed]))
           : current.questlinesClaimed;
-
-        const nextProfile: UserProfile = {
+        const nextSettings = update.settings
+          ? { ...current.settings, ...update.settings }
+          : current.settings;
+        return {
           ...current,
-          ...rest,
+          ...update,
           achievementsUnlocked: nextAchievements,
-          questlinesClaimed: nextQuestlinesClaimed,
+          questlinesClaimed: nextQuestlines,
           settings: nextSettings,
         };
-
-        if (user && !isGuestMode) {
-          void persistProfileUpdate(user.uid, {
-            ...rest,
-            achievementsUnlocked: nextAchievements,
-            questlinesClaimed: nextQuestlinesClaimed,
-            settings: nextSettings,
-          }).catch((error) => {
-            console.error('Failed to persist profile changes', error);
-          });
-        }
-
-        return nextProfile;
       });
+
+      if (isGuestMode || !isDataApiConfigured) {
+        return;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const payload: ProfileUpdate = {
+          ...update,
+          achievementsUnlocked: nextAchievements,
+          questlinesClaimed: nextQuestlines,
+          settings: nextSettings,
+        };
+        const response = await updateProfileViaApi(token, payload);
+        setProfile(response);
+      } catch (error) {
+        console.error('Failed to persist profile update', error);
+      }
     },
-    [isGuestMode, user],
+    [getIdToken, isDataApiConfigured, isGuestMode],
   );
 
   const addXp = useCallback(
-    (amount: number) => {
-      if (amount === 0) return;
-
+    async (amount: number) => {
+      if (amount === 0) {
+        return;
+      }
       setProfile((current) => {
-        if (!current) return current;
+        if (!current) {
+          return current;
+        }
         const nextXp = Math.max(0, current.xp + amount);
         if (amount > 0) {
           const todayKey = formatDateKey(new Date());
@@ -493,72 +569,63 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { ...current, xp: nextXp };
       });
 
-      if (user && !isGuestMode) {
-        void runTransaction(db, async (transaction) => {
-          const profileRef = doc(db, 'users', user.uid);
-          const snapshot = await transaction.get(profileRef);
-          const raw = snapshot.exists() ? (snapshot.data() as Partial<UserProfile>) : {};
-          const base = createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, typeof raw.xp === 'number' ? raw.xp : 0);
-          const currentProfile: UserProfile = {
-            ...base,
-            ...raw,
-            achievementsUnlocked: Array.isArray(raw.achievementsUnlocked)
-              ? raw.achievementsUnlocked
-              : base.achievementsUnlocked,
-            questlinesClaimed: Array.isArray(raw.questlinesClaimed)
-              ? raw.questlinesClaimed
-              : base.questlinesClaimed,
-            settings: {
-              ...base.settings,
-              ...(raw.settings ?? {}),
-            },
-          };
+      if (isGuestMode || !isDataApiConfigured) {
+        return;
+      }
 
-          const nextXp = Math.max(0, currentProfile.xp + amount);
-          let payload: Record<string, unknown> = {
-            xp: nextXp,
-            updatedAt: serverTimestamp(),
-          };
-
-          if (amount > 0) {
-            const todayKey = formatDateKey(new Date());
-            const nextStreak = advanceStreak(
-              {
-                streakCount: currentProfile.streakCount,
-                bestStreak: currentProfile.bestStreak,
-                lastActiveDate: currentProfile.lastActiveDate,
-              },
-              todayKey,
-            );
-            payload = {
-              ...payload,
-              streakCount: nextStreak.streakCount,
-              bestStreak: nextStreak.bestStreak,
-              lastActiveDate: nextStreak.lastActiveDate,
-            };
-          }
-
-          transaction.set(profileRef, payload, { merge: true });
-        }).catch((error) => {
-          console.error('Failed to persist XP changes', error);
-        });
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        const updated = await incrementProfileXp(token, amount);
+        setProfile(updated);
+      } catch (error) {
+        console.error('Failed to persist XP changes', error);
       }
     },
-    [isGuestMode, user],
+    [getIdToken, isDataApiConfigured, isGuestMode],
   );
 
   const value = useMemo<UserDataContextValue>(
     () => ({
       projects,
-      setProjects,
       artifacts,
-      setArtifacts,
       profile,
+      loading,
+      canLoadMoreProjects: Boolean(projectPageToken),
+      loadMoreProjects,
+      ensureProjectArtifacts,
+      canLoadMoreArtifacts,
+      loadMoreArtifacts,
+      createProject,
+      updateProject,
+      createArtifact,
+      createArtifactsBulk,
+      updateArtifact,
+      mergeArtifacts,
       updateProfile,
       addXp,
-      loading,
     }),
-    [projects, setProjects, artifacts, setArtifacts, profile, updateProfile, addXp, loading],
+    [
+      projects,
+      artifacts,
+      profile,
+      loading,
+      projectPageToken,
+      loadMoreProjects,
+      ensureProjectArtifacts,
+      canLoadMoreArtifacts,
+      loadMoreArtifacts,
+      createProject,
+      updateProject,
+      createArtifact,
+      createArtifactsBulk,
+      updateArtifact,
+      mergeArtifacts,
+      updateProfile,
+      addXp,
+    ],
   );
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
