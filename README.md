@@ -13,7 +13,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 - [x] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
 - [x] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
 - [x] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
-- [ ] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
+- [x] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
 - [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.

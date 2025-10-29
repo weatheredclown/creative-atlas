@@ -160,6 +160,47 @@ describe('ReleaseNotesGenerator', () => {
     });
   });
 
+  it('resets configuration when switching projects', async () => {
+    const user = userEvent.setup();
+    const addXp = vi.fn();
+
+    const { rerender } = render(
+      <ReleaseNotesGenerator
+        projectId="project-tamenzut"
+        projectTitle="Tamenzut"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />, 
+    );
+
+    const toneSelect = screen.getByLabelText(/Tone/i) as HTMLSelectElement;
+    const audienceSelect = screen.getByLabelText(/Audience/i) as HTMLSelectElement;
+    const notesField = screen.getByLabelText(/Optional calls-to-action/i) as HTMLTextAreaElement;
+
+    await user.selectOptions(toneSelect, 'formal');
+    await user.selectOptions(audienceSelect, 'players');
+    await user.type(notesField, 'Join us for the next launch!');
+
+    expect(toneSelect.value).toBe('formal');
+    expect(audienceSelect.value).toBe('players');
+    expect(notesField.value).toContain('Join us for the next launch!');
+
+    rerender(
+      <ReleaseNotesGenerator
+        projectId="project-steamweave"
+        projectTitle="Steamweave"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />, 
+    );
+
+    await waitFor(() => {
+      expect((screen.getByLabelText(/Tone/i) as HTMLSelectElement).value).toBe('playful');
+    });
+    expect((screen.getByLabelText(/Audience/i) as HTMLSelectElement).value).toBe('collaborators');
+    expect((screen.getByLabelText(/Optional calls-to-action/i) as HTMLTextAreaElement).value).toBe('');
+  });
+
   it('retains manual edits when new artifact data arrives', async () => {
     const user = userEvent.setup();
     const addXp = vi.fn();
