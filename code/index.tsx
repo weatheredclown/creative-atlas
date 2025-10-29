@@ -6,6 +6,7 @@ import './services/firebaseApp';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserDataProvider } from './contexts/UserDataContext';
 import AuthGate from './components/AuthGate';
+import { ToastProvider } from './components/ToastProvider';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,9 +18,11 @@ root.render(
   <React.StrictMode>
     <AuthProvider>
       <UserDataProvider>
-        <AuthGate>
-          <App />
-        </AuthGate>
+        <ToastProvider>
+          <AuthGate>
+            <App />
+          </AuthGate>
+        </ToastProvider>
       </UserDataProvider>
     </AuthProvider>
   </React.StrictMode>

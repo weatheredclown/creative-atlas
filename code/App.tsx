@@ -51,6 +51,7 @@ import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
+import { useToast } from './components/ToastProvider';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -642,6 +643,7 @@ export default function App() {
   const { projects, setProjects, artifacts, addArtifact, addArtifacts, updateArtifact, profile, addXp, updateProfile } =
     useUserData();
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
+  const { showToast } = useToast();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -863,9 +865,16 @@ export default function App() {
       addArtifacts(newArtifacts);
       addXp(newArtifacts.length * 5);
       setSelectedArtifactId(newArtifacts[0].id);
-      alert(`Added ${newArtifacts.length} starter artifact${newArtifacts.length > 1 ? 's' : ''} from the ${template.name} template.`);
+      showToast({
+        title: 'Template applied',
+        description: `Added ${newArtifacts.length} starter artifact${newArtifacts.length > 1 ? 's' : ''} from the ${template.name} template.`,
+        variant: 'success',
+      });
     } else {
-      alert('All of the template\'s starter artifacts already exist in this project.');
+      showToast({
+        title: 'Nothing new to add',
+        description: "All of the template's starter artifacts already exist in this project.",
+      });
     }
 
     if (template.projectTags.length > 0) {
@@ -885,7 +894,7 @@ export default function App() {
         return changed ? next : prev;
       });
     }
-  }, [profile, selectedProjectId, artifacts, addArtifacts, addXp, setProjects]);
+  }, [profile, selectedProjectId, artifacts, setArtifacts, addArtifacts, addXp, setProjects, showToast]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
