@@ -6,6 +6,7 @@ Welcome to the creative-atlas repository! Please follow these guidelines when ma
 - The interactive prototype lives in `code/` and is a Vite + React + TypeScript app. Make all frontend changes inside that directory unless a task specifies otherwise.
 - Run `npm install` inside `code/` the first time you work in this repo so the Vite toolchain is available.
 - Use `npm run build` from `code/` before opening a pull request. It runs the TypeScript compiler and catches most integration issues for this prototype.
+- Run `npm run test:e2e` from `code/` before opening a pull request so CI end-to-end tests pass locally.
 - If you add or rename npm scripts, document them in `README.md` so others know how to run them.
 - Favor descriptive variable and function names; avoid abbreviations that are not widely understood.
 - Keep commits focused and well-described in their messages.
