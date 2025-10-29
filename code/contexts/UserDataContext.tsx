@@ -20,6 +20,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { FirebaseError } from 'firebase/app';
 import { Artifact, Project, ProjectStatus, UserProfile, UserSettings } from '../types';
 import { createSeedWorkspace } from '../seedData';
 import { advanceStreak, formatDateKey } from '../utils/streak';
@@ -335,14 +336,27 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setProfile(loadedProfile);
         setLoading(false);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error('Failed to load workspace from Firestore', error);
-        if (!cancelled) {
-          applyProjectsState([]);
-          applyArtifactsState([]);
-          setProfile(createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, 0));
-          setLoading(false);
+        if (cancelled) {
+          return;
         }
+
+        if (error instanceof FirebaseError && error.code === 'permission-denied') {
+          const fallback = createSeedWorkspace(user.uid);
+          applyProjectsState(normalizeProjects(fallback.projects, user.uid));
+          applyArtifactsState(normalizeArtifacts(fallback.artifacts, user.uid));
+          setProfile(
+            createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, fallback.xp ?? 0),
+          );
+          setLoading(false);
+          return;
+        }
+
+        applyProjectsState([]);
+        applyArtifactsState([]);
+        setProfile(createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, 0));
+        setLoading(false);
       });
 
     return () => {
