@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ProjectTemplate, TemplateCategory } from '../types';
-import { MagnifyingGlassIcon, SparklesIcon } from './Icons';
+import { ChevronDownIcon, MagnifyingGlassIcon, SparklesIcon } from './Icons';
+import Zippy from './Zippy';
 
 interface TemplateGalleryProps {
   categories: TemplateCategory[];
@@ -52,65 +53,102 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
     };
   }, [categories, searchTerm, activeProjectTitle]);
 
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
+
+  const toggleCategoryExpansion = useCallback((categoryId: string) => {
+    setExpandedCategoryIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  }, []);
+
   const renderCategoryCard = (category: TemplateCategory, isRecommended: boolean) => {
     const linkedProjectTemplates = (category.relatedProjectTemplateIds ?? [])
       .map((templateId) => projectTemplateIndex.get(templateId))
       .filter((template): template is ProjectTemplate => Boolean(template));
+
+    const isExpanded = expandedCategoryIds.has(category.id);
+    const contentId = `template-category-${category.id}`;
+    const templateCount = category.templates.length;
 
     return (
       <div
         key={category.id}
         className="bg-slate-900/50 border border-slate-700/60 rounded-xl p-4 space-y-3 hover:border-cyan-500/60 transition-colors"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <button
+          type="button"
+          onClick={() => toggleCategoryExpansion(category.id)}
+          className="flex w-full items-start justify-between gap-3 text-left"
+          aria-expanded={isExpanded}
+          aria-controls={contentId}
+        >
+          <div className="flex-1">
             <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
               {isRecommended && <SparklesIcon className="w-4 h-4 text-cyan-400" />}
               {category.title}
             </h4>
             <p className="text-sm text-slate-400 mt-1">{category.description}</p>
+            <p className="text-xs text-slate-500 mt-2">
+              {templateCount} {templateCount === 1 ? 'template' : 'templates'} available
+            </p>
           </div>
-          {isRecommended && (
-            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300 bg-cyan-900/50 border border-cyan-700/40 rounded-full px-2 py-1">
-              Recommended
+          <div className="flex flex-col items-end gap-2">
+            {isRecommended && (
+              <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300 bg-cyan-900/50 border border-cyan-700/40 rounded-full px-2 py-1">
+                Recommended
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+              {isExpanded ? 'Hide templates' : 'Show templates'}
+              <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
             </span>
-          )}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {category.templates.map((template) => (
-            <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-              <h5 className="text-sm font-semibold text-slate-200">{template.name}</h5>
-              <p className="text-xs text-slate-400 mt-1">{template.description}</p>
-              {template.tags && template.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-3">
-                  {template.tags.map((tag) => (
+          </div>
+        </button>
+        <Zippy isOpen={isExpanded} id={contentId} className="w-full">
+          <div className="mt-3 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {category.templates.map((template) => (
+                <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+                  <h5 className="text-sm font-semibold text-slate-200">{template.name}</h5>
+                  <p className="text-xs text-slate-400 mt-1">{template.description}</p>
+                  {template.tags && template.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {template.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {linkedProjectTemplates.length > 0 && (
+              <div className="pt-3 border-t border-slate-800/60">
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Bundled in project templates</div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {linkedProjectTemplates.map((template) => (
                     <span
-                      key={tag}
-                      className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5"
+                      key={template.id}
+                      className="text-[10px] uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/40 rounded-full px-2 py-0.5"
                     >
-                      {tag}
+                      {template.name}
                     </span>
                   ))}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-        {linkedProjectTemplates.length > 0 && (
-          <div className="pt-3 border-t border-slate-800/60">
-            <div className="text-[10px] uppercase tracking-wide text-slate-400">Bundled in project templates</div>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {linkedProjectTemplates.map((template) => (
-                <span
-                  key={template.id}
-                  className="text-[10px] uppercase tracking-wide text-cyan-200 bg-cyan-900/40 border border-cyan-700/40 rounded-full px-2 py-0.5"
-                >
-                  {template.name}
-                </span>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </Zippy>
       </div>
     );
   };
