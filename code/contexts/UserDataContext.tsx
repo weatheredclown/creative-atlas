@@ -1,21 +1,30 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Artifact, Project, UserProfile, UserSettings } from '../types';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  query,
+  runTransaction,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
+import { Artifact, Project, ProjectStatus, UserProfile, UserSettings } from '../types';
 import { createSeedWorkspace } from '../seedData';
 import { advanceStreak, formatDateKey } from '../utils/streak';
 import { useAuth } from './AuthContext';
-
-interface StoredWorkspace {
-  projects: Project[];
-  artifacts: Artifact[];
-  profile: UserProfile;
-}
-
-const STORAGE_PREFIX = 'creative-atlas:workspace:';
-
-const defaultSettings: UserSettings = {
-  theme: 'system',
-  aiTipsEnabled: true,
-};
+import { firebaseApp } from '../services/firebaseApp';
 
 type ProfileUpdate = Partial<Omit<UserProfile, 'settings'>> & { settings?: Partial<UserSettings> };
 
@@ -32,24 +41,25 @@ interface UserDataContextValue {
 
 const UserDataContext = createContext<UserDataContextValue | undefined>(undefined);
 
-const isStorageAvailable = (): boolean => {
-  try {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return false;
-    }
-    const testKey = '__creative_atlas_test__';
-    window.localStorage.setItem(testKey, testKey);
-    window.localStorage.removeItem(testKey);
-    return true;
-  } catch (error) {
-    console.warn('LocalStorage unavailable, workspace will not persist across sessions.', error);
-    return false;
-  }
+const defaultSettings: UserSettings = {
+  theme: 'system',
+  aiTipsEnabled: true,
 };
 
-const storageAvailable = isStorageAvailable();
+const db = getFirestore(firebaseApp);
 
-const getStorageKey = (uid: string) => `${STORAGE_PREFIX}${uid}`;
+const sanitizeForFirestore = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const areProjectsEqual = (a: Project, b: Project): boolean =>
+  a.id === b.id &&
+  a.ownerId === b.ownerId &&
+  a.title === b.title &&
+  a.summary === b.summary &&
+  a.status === b.status &&
+  a.tags.length === b.tags.length &&
+  a.tags.every((tag, index) => tag === b.tags[index]);
+
+const areArtifactsEqual = (a: Artifact, b: Artifact): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 const createDefaultProfile = (
   uid: string,
@@ -81,69 +91,189 @@ const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
 const normalizeArtifacts = (artifacts: Artifact[], ownerId: string): Artifact[] =>
   artifacts.map((artifact) => ({ ...artifact, ownerId }));
 
-const readWorkspace = (uid: string, email: string | null, displayName: string | null, photoURL: string | null): StoredWorkspace => {
-  if (storageAvailable) {
-    try {
-      const raw = window.localStorage.getItem(getStorageKey(uid));
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<StoredWorkspace>;
-        const rawProfile = parsed.profile ?? null;
-        const baseProfile = createDefaultProfile(
-          uid,
-          email,
-          displayName,
-          photoURL,
-          rawProfile?.xp ?? 0,
-        );
-        const achievementsUnlocked = Array.isArray(rawProfile?.achievementsUnlocked)
-          ? rawProfile!.achievementsUnlocked
-          : baseProfile.achievementsUnlocked;
-        const questlinesClaimed = Array.isArray(rawProfile?.questlinesClaimed)
-          ? rawProfile!.questlinesClaimed
-          : baseProfile.questlinesClaimed;
-        return {
-          projects: normalizeProjects(parsed.projects ?? [], uid),
-          artifacts: normalizeArtifacts(parsed.artifacts ?? [], uid),
-          profile: {
-            ...baseProfile,
-            ...(rawProfile ?? {}),
-            streakCount:
-              typeof rawProfile?.streakCount === 'number' ? rawProfile.streakCount : baseProfile.streakCount,
-            bestStreak:
-              typeof rawProfile?.bestStreak === 'number' ? rawProfile.bestStreak : baseProfile.bestStreak,
-            lastActiveDate:
-              typeof rawProfile?.lastActiveDate === 'string'
-                ? rawProfile.lastActiveDate
-                : baseProfile.lastActiveDate,
-            achievementsUnlocked,
-            questlinesClaimed,
-            settings: {
-              ...baseProfile.settings,
-              ...(rawProfile?.settings ?? {}),
-            },
-          },
-        };
-      }
-    } catch (error) {
-      console.warn('Failed to read workspace from storage, falling back to seed data.', error);
-    }
+const loadWorkspace = async (
+  uid: string,
+  email: string | null,
+  displayName: string | null,
+  photoURL: string | null,
+) => {
+  const profileRef = doc(db, 'users', uid);
+  const profileSnap = await getDoc(profileRef);
+
+  let profile: UserProfile;
+  if (profileSnap.exists()) {
+    const raw = profileSnap.data() as Partial<UserProfile>;
+    const base = createDefaultProfile(uid, email, displayName, photoURL, typeof raw.xp === 'number' ? raw.xp : 0);
+    profile = {
+      ...base,
+      ...raw,
+      email: typeof raw.email === 'string' ? raw.email : base.email,
+      displayName: typeof raw.displayName === 'string' ? raw.displayName : base.displayName,
+      photoURL: raw.photoURL ?? base.photoURL,
+      achievementsUnlocked: Array.isArray(raw.achievementsUnlocked)
+        ? raw.achievementsUnlocked
+        : base.achievementsUnlocked,
+      questlinesClaimed: Array.isArray(raw.questlinesClaimed)
+        ? raw.questlinesClaimed
+        : base.questlinesClaimed,
+      settings: {
+        ...base.settings,
+        ...(raw.settings ?? {}),
+      },
+    };
+  } else {
+    profile = createDefaultProfile(uid, email, displayName, photoURL, 0);
+    await updateDoc(profileRef, {
+      ...sanitizeForFirestore(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }).catch(async () => {
+      // updateDoc will fail if the document does not exist; fall back to set via runTransaction
+      await runTransaction(db, async (transaction) => {
+        transaction.set(profileRef, {
+          ...sanitizeForFirestore(profile),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+    });
   }
 
-  const seed = createSeedWorkspace(uid);
+  const projectsQuery = query(collection(db, 'projects'), where('ownerId', '==', uid));
+  const projectsSnapshot = await getDocs(projectsQuery);
+  const projects: Project[] = projectsSnapshot.docs.map((projectDoc) => {
+    const data = projectDoc.data();
+    return {
+      id: projectDoc.id,
+      ownerId: data.ownerId ?? uid,
+      title: typeof data.title === 'string' ? data.title : 'Untitled Project',
+      summary: typeof data.summary === 'string' ? data.summary : '',
+      status: (data.status as ProjectStatus) ?? ProjectStatus.Active,
+      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    };
+  });
+
+  const artifactsQuery = query(collection(db, 'artifacts'), where('ownerId', '==', uid));
+  const artifactsSnapshot = await getDocs(artifactsQuery);
+  const artifacts: Artifact[] = artifactsSnapshot.docs.map((artifactDoc) => {
+    const data = artifactDoc.data();
+    return {
+      id: artifactDoc.id,
+      ownerId: data.ownerId ?? uid,
+      projectId: typeof data.projectId === 'string' ? data.projectId : '',
+      type: data.type,
+      title: typeof data.title === 'string' ? data.title : 'Untitled Artifact',
+      summary: typeof data.summary === 'string' ? data.summary : '',
+      status: typeof data.status === 'string' ? data.status : 'idea',
+      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+      relations: Array.isArray(data.relations) ? (data.relations as Artifact['relations']) : [],
+      data: data.data ?? {},
+    };
+  });
+
   return {
-    projects: normalizeProjects(seed.projects, uid),
-    artifacts: normalizeArtifacts(seed.artifacts, uid),
-    profile: createDefaultProfile(uid, email, displayName, photoURL, seed.xp),
+    projects: normalizeProjects(projects, uid),
+    artifacts: normalizeArtifacts(artifacts, uid),
+    profile,
   };
 };
 
-const writeWorkspace = (uid: string, workspace: StoredWorkspace) => {
-  if (!storageAvailable) return;
-  try {
-    window.localStorage.setItem(getStorageKey(uid), JSON.stringify(workspace));
-  } catch (error) {
-    console.error('Failed to persist workspace to storage.', error);
+const persistProjectsDiff = async (previous: Project[], next: Project[]) => {
+  const batch = writeBatch(db);
+  const previousMap = new Map(previous.map((project) => [project.id, project]));
+  const nextMap = new Map(next.map((project) => [project.id, project]));
+  let hasChanges = false;
+
+  nextMap.forEach((project) => {
+    const existing = previousMap.get(project.id);
+    const ref = doc(db, 'projects', project.id);
+    if (!existing) {
+      batch.set(ref, {
+        ...sanitizeForFirestore(project),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      hasChanges = true;
+      return;
+    }
+
+    if (!areProjectsEqual(existing, project)) {
+      const { id: _id, ...rest } = project;
+      batch.set(ref, {
+        ...sanitizeForFirestore(rest),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      hasChanges = true;
+    }
+  });
+
+  previousMap.forEach((_project, id) => {
+    if (!nextMap.has(id)) {
+      batch.delete(doc(db, 'projects', id));
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    await batch.commit();
   }
+};
+
+const persistArtifactsDiff = async (previous: Artifact[], next: Artifact[]) => {
+  const batch = writeBatch(db);
+  const previousMap = new Map(previous.map((artifact) => [artifact.id, artifact]));
+  const nextMap = new Map(next.map((artifact) => [artifact.id, artifact]));
+  let hasChanges = false;
+
+  nextMap.forEach((artifact) => {
+    const existing = previousMap.get(artifact.id);
+    const ref = doc(db, 'artifacts', artifact.id);
+    if (!existing) {
+      batch.set(ref, {
+        ...sanitizeForFirestore(artifact),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      hasChanges = true;
+      return;
+    }
+
+    if (!areArtifactsEqual(existing, artifact)) {
+      const { id: _id, ...rest } = artifact;
+      batch.set(ref, {
+        ...sanitizeForFirestore(rest),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      hasChanges = true;
+    }
+  });
+
+  previousMap.forEach((_artifact, id) => {
+    if (!nextMap.has(id)) {
+      batch.delete(doc(db, 'artifacts', id));
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    await batch.commit();
+  }
+};
+
+const persistProfileUpdate = async (uid: string, update: ProfileUpdate & { achievementsUnlocked?: string[]; questlinesClaimed?: string[] }) => {
+  const ref = doc(db, 'users', uid);
+  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+
+  const { settings, ...rest } = update;
+  Object.assign(payload, sanitizeForFirestore(rest));
+
+  if (settings) {
+    Object.entries(settings).forEach(([key, value]) => {
+      payload[`settings.${key}`] = value;
+    });
+  }
+
+  await updateDoc(ref, payload);
 };
 
 export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -151,153 +281,285 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [projects, setProjectsState] = useState<Project[]>([]);
   const [artifacts, setArtifactsState] = useState<Artifact[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(isGuestMode);
-  const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const projectsRef = useRef<Project[]>([]);
+  const artifactsRef = useRef<Artifact[]>([]);
+
+  const applyProjectsState = useCallback((next: Project[]) => {
+    projectsRef.current = next;
+    setProjectsState(next);
+  }, []);
+
+  const applyArtifactsState = useCallback((next: Artifact[]) => {
+    artifactsRef.current = next;
+    setArtifactsState(next);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (isGuestMode) {
       setLoading(true);
       const guestId = 'guest';
       const seed = createSeedWorkspace(guestId);
-      setProjectsState(normalizeProjects(seed.projects, guestId));
-      setArtifactsState(normalizeArtifacts(seed.artifacts, guestId));
+      applyProjectsState(normalizeProjects(seed.projects, guestId));
+      applyArtifactsState(normalizeArtifacts(seed.artifacts, guestId));
       setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
-      setHydrated(true);
       setLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (!user) {
-      setProjectsState([]);
-      setArtifactsState([]);
+      applyProjectsState([]);
+      applyArtifactsState([]);
       setProfile(null);
-      setHydrated(false);
       setLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     setLoading(true);
-    const workspace = readWorkspace(user.uid, user.email, user.displayName, user.photoURL);
-    setProjectsState(workspace.projects);
-    setArtifactsState(workspace.artifacts);
-    setProfile(workspace.profile);
-    setHydrated(true);
-    setLoading(false);
-  }, [user, isGuestMode]);
 
-  useEffect(() => {
-    if (!user || !profile) {
-      return;
-    }
+    loadWorkspace(user.uid, user.email, user.displayName, user.photoURL)
+      .then(({ projects: loadedProjects, artifacts: loadedArtifacts, profile: loadedProfile }) => {
+        if (cancelled) {
+          return;
+        }
+        applyProjectsState(loadedProjects);
+        applyArtifactsState(loadedArtifacts);
+        setProfile(loadedProfile);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to load workspace from Firestore', error);
+        if (!cancelled) {
+          applyProjectsState([]);
+          applyArtifactsState([]);
+          setProfile(createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, 0));
+          setLoading(false);
+        }
+      });
 
-    const updates: ProfileUpdate = {};
-    if (user.displayName && user.displayName !== profile.displayName) {
-      updates.displayName = user.displayName;
-    }
-    if (user.photoURL && user.photoURL !== profile.photoURL) {
-      updates.photoURL = user.photoURL;
-    }
-    if (user.email && user.email !== profile.email) {
-      updates.email = user.email;
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isGuestMode, applyProjectsState, applyArtifactsState]);
 
-    if (Object.keys(updates).length > 0) {
-      setProfile((current) => (current ? { ...current, ...updates } : current));
-    }
-  }, [user, profile]);
+  const setProjects = useCallback(
+    (updater: React.SetStateAction<Project[]>) => {
+      setProjectsState(() => {
+        const next =
+          typeof updater === 'function'
+            ? (updater as (value: Project[]) => Project[])(projectsRef.current)
+            : updater;
 
-  useEffect(() => {
-    if (!user || !hydrated || !profile || isGuestMode) return;
-    writeWorkspace(user.uid, { projects, artifacts, profile });
-  }, [user, hydrated, projects, artifacts, profile, isGuestMode]);
+        if (!Array.isArray(next)) {
+          console.warn('setProjects updater must return an array of projects.');
+          return projectsRef.current;
+        }
 
-  const setProjects = useCallback((updater: React.SetStateAction<Project[]>) => {
-    if (!user && !isGuestMode) return;
-    setProjectsState((current) => {
-      const next = typeof updater === 'function' ? (updater as (value: Project[]) => Project[])(current) : updater;
-      const ownerId = user?.uid ?? 'guest';
-      return normalizeProjects(next, ownerId);
-    });
-  }, [user, isGuestMode]);
+        const previous = projectsRef.current;
+        const unchanged =
+          previous.length === next.length && previous.every((project, index) => areProjectsEqual(project, next[index]));
 
-  const setArtifacts = useCallback((updater: React.SetStateAction<Artifact[]>) => {
-    if (!user && !isGuestMode) return;
-    setArtifactsState((current) => {
-      const next = typeof updater === 'function' ? (updater as (value: Artifact[]) => Artifact[])(current) : updater;
-      const ownerId = user?.uid ?? 'guest';
-      return normalizeArtifacts(next, ownerId);
-    });
-  }, [user, isGuestMode]);
+        if (!unchanged) {
+          projectsRef.current = next;
 
-  const updateProfile = useCallback((update: ProfileUpdate) => {
-    setProfile((current) => {
-      if (!current) return current;
-      const {
-        settings: partialSettings,
-        achievementsUnlocked: unlockedIds,
-        questlinesClaimed: claimedQuestlines,
-        ...rest
-      } = update;
-      const nextSettings = partialSettings ? { ...current.settings, ...partialSettings } : current.settings;
-      const nextAchievements = unlockedIds
-        ? Array.from(new Set([...current.achievementsUnlocked, ...unlockedIds]))
-        : current.achievementsUnlocked;
-      const nextQuestlinesClaimed = claimedQuestlines
-        ? Array.from(new Set([...current.questlinesClaimed, ...claimedQuestlines]))
-        : current.questlinesClaimed;
-      return {
-        ...current,
-        ...rest,
-        achievementsUnlocked: nextAchievements,
-        questlinesClaimed: nextQuestlinesClaimed,
-        settings: nextSettings,
-      };
-    });
-  }, []);
+          if (user && !isGuestMode) {
+            void persistProjectsDiff(previous, next).catch((error) => {
+              console.error('Failed to persist project changes', error);
+            });
+          }
 
-  const addXp = useCallback((amount: number) => {
-    if (amount === 0) return;
-    setProfile((current) => {
-      if (!current) return current;
-      const nextXp = Math.max(0, current.xp + amount);
-      if (amount > 0) {
-        const todayKey = formatDateKey(new Date());
-        const nextStreak = advanceStreak(
-          {
-            streakCount: current.streakCount,
-            bestStreak: current.bestStreak,
-            lastActiveDate: current.lastActiveDate,
-          },
-          todayKey,
-        );
-        return {
-          ...current,
-          xp: nextXp,
-          streakCount: nextStreak.streakCount,
-          bestStreak: nextStreak.bestStreak,
-          lastActiveDate: nextStreak.lastActiveDate,
-        };
-      }
-      return { ...current, xp: nextXp };
-    });
-  }, []);
+          return next;
+        }
 
-  const value = useMemo<UserDataContextValue>(() => ({
-    projects,
-    setProjects,
-    artifacts,
-    setArtifacts,
-    profile,
-    updateProfile,
-    addXp,
-    loading,
-  }), [projects, setProjects, artifacts, setArtifacts, profile, updateProfile, addXp, loading]);
-
-  return (
-    <UserDataContext.Provider value={value}>
-      {children}
-    </UserDataContext.Provider>
+        return previous;
+      });
+    },
+    [isGuestMode, user],
   );
+
+  const setArtifacts = useCallback(
+    (updater: React.SetStateAction<Artifact[]>) => {
+      setArtifactsState(() => {
+        const next =
+          typeof updater === 'function'
+            ? (updater as (value: Artifact[]) => Artifact[])(artifactsRef.current)
+            : updater;
+
+        if (!Array.isArray(next)) {
+          console.warn('setArtifacts updater must return an array of artifacts.');
+          return artifactsRef.current;
+        }
+
+        const previous = artifactsRef.current;
+        const unchanged =
+          previous.length === next.length && previous.every((artifact, index) => areArtifactsEqual(artifact, next[index]));
+
+        if (!unchanged) {
+          artifactsRef.current = next;
+
+          if (user && !isGuestMode) {
+            void persistArtifactsDiff(previous, next).catch((error) => {
+              console.error('Failed to persist artifact changes', error);
+            });
+          }
+
+          return next;
+        }
+
+        return previous;
+      });
+    },
+    [isGuestMode, user],
+  );
+
+  const updateProfile = useCallback(
+    (update: ProfileUpdate) => {
+      setProfile((current) => {
+        if (!current) return current;
+
+        const {
+          settings: partialSettings,
+          achievementsUnlocked: unlockedIds,
+          questlinesClaimed: claimedQuestlines,
+          ...rest
+        } = update;
+
+        const nextSettings = partialSettings ? { ...current.settings, ...partialSettings } : current.settings;
+        const nextAchievements = unlockedIds
+          ? Array.from(new Set([...current.achievementsUnlocked, ...unlockedIds]))
+          : current.achievementsUnlocked;
+        const nextQuestlinesClaimed = claimedQuestlines
+          ? Array.from(new Set([...current.questlinesClaimed, ...claimedQuestlines]))
+          : current.questlinesClaimed;
+
+        const nextProfile: UserProfile = {
+          ...current,
+          ...rest,
+          achievementsUnlocked: nextAchievements,
+          questlinesClaimed: nextQuestlinesClaimed,
+          settings: nextSettings,
+        };
+
+        if (user && !isGuestMode) {
+          void persistProfileUpdate(user.uid, {
+            ...rest,
+            achievementsUnlocked: nextAchievements,
+            questlinesClaimed: nextQuestlinesClaimed,
+            settings: nextSettings,
+          }).catch((error) => {
+            console.error('Failed to persist profile changes', error);
+          });
+        }
+
+        return nextProfile;
+      });
+    },
+    [isGuestMode, user],
+  );
+
+  const addXp = useCallback(
+    (amount: number) => {
+      if (amount === 0) return;
+
+      setProfile((current) => {
+        if (!current) return current;
+        const nextXp = Math.max(0, current.xp + amount);
+        if (amount > 0) {
+          const todayKey = formatDateKey(new Date());
+          const nextStreak = advanceStreak(
+            {
+              streakCount: current.streakCount,
+              bestStreak: current.bestStreak,
+              lastActiveDate: current.lastActiveDate,
+            },
+            todayKey,
+          );
+          return {
+            ...current,
+            xp: nextXp,
+            streakCount: nextStreak.streakCount,
+            bestStreak: nextStreak.bestStreak,
+            lastActiveDate: nextStreak.lastActiveDate,
+          };
+        }
+        return { ...current, xp: nextXp };
+      });
+
+      if (user && !isGuestMode) {
+        void runTransaction(db, async (transaction) => {
+          const profileRef = doc(db, 'users', user.uid);
+          const snapshot = await transaction.get(profileRef);
+          const raw = snapshot.exists() ? (snapshot.data() as Partial<UserProfile>) : {};
+          const base = createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, typeof raw.xp === 'number' ? raw.xp : 0);
+          const currentProfile: UserProfile = {
+            ...base,
+            ...raw,
+            achievementsUnlocked: Array.isArray(raw.achievementsUnlocked)
+              ? raw.achievementsUnlocked
+              : base.achievementsUnlocked,
+            questlinesClaimed: Array.isArray(raw.questlinesClaimed)
+              ? raw.questlinesClaimed
+              : base.questlinesClaimed,
+            settings: {
+              ...base.settings,
+              ...(raw.settings ?? {}),
+            },
+          };
+
+          const nextXp = Math.max(0, currentProfile.xp + amount);
+          let payload: Record<string, unknown> = {
+            xp: nextXp,
+            updatedAt: serverTimestamp(),
+          };
+
+          if (amount > 0) {
+            const todayKey = formatDateKey(new Date());
+            const nextStreak = advanceStreak(
+              {
+                streakCount: currentProfile.streakCount,
+                bestStreak: currentProfile.bestStreak,
+                lastActiveDate: currentProfile.lastActiveDate,
+              },
+              todayKey,
+            );
+            payload = {
+              ...payload,
+              streakCount: nextStreak.streakCount,
+              bestStreak: nextStreak.bestStreak,
+              lastActiveDate: nextStreak.lastActiveDate,
+            };
+          }
+
+          transaction.set(profileRef, payload, { merge: true });
+        }).catch((error) => {
+          console.error('Failed to persist XP changes', error);
+        });
+      }
+    },
+    [isGuestMode, user],
+  );
+
+  const value = useMemo<UserDataContextValue>(
+    () => ({
+      projects,
+      setProjects,
+      artifacts,
+      setArtifacts,
+      profile,
+      updateProfile,
+      addXp,
+      loading,
+    }),
+    [projects, setProjects, artifacts, setArtifacts, profile, updateProfile, addXp, loading],
+  );
+
+  return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };
 
 export const useUserData = (): UserDataContextValue => {
@@ -307,4 +569,3 @@ export const useUserData = (): UserDataContextValue => {
   }
   return context;
 };
-

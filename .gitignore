@@ -2,6 +2,10 @@
 node_modules/
 code/node_modules/
 code/dist/
+server/node_modules/
+server/dist/
 
 # Environment files
 code/.env
+code/.env.local
+server/.env

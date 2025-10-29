@@ -2,6 +2,13 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Artifact, ConlangLexeme } from '../types';
 import { generateLexemes } from '../services/geminiService';
 import { SparklesIcon, Spinner } from './Icons';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  exportLexiconViaApi,
+  isDataApiConfigured,
+  parseLexiconCsvViaApi,
+  parseLexiconMarkdownViaApi,
+} from '../services/dataApi';
 
 interface ConlangLexiconEditorProps {
   artifact: Artifact;
@@ -36,6 +43,19 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
   const [showMarkdownImport, setShowMarkdownImport] = useState(false);
   const [markdownImport, setMarkdownImport] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { getIdToken, isGuestMode } = useAuth();
+  const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+  const downloadText = useCallback((content: string, mimeType: string, filename: string) => {
+    const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, []);
 
   const baseLexemes = useMemo(
     () => (Array.isArray(artifact.data) ? (artifact.data as ConlangLexeme[]) : []),
@@ -173,10 +193,24 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
     return cellValue;
   }, []);
 
-  const handleExportCsv = useCallback(() => {
+  const handleExportCsv = useCallback(async () => {
     if (draftLexemes.length === 0) {
       setError('No lexemes available to export yet.');
       return;
+    }
+
+    if (dataApiEnabled) {
+      const token = await getIdToken();
+      if (token) {
+        try {
+          const csvContent = await exportLexiconViaApi(token, draftLexemes, 'csv');
+          downloadText(csvContent, 'text/csv', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`);
+          setError(null);
+          return;
+        } catch (error) {
+          console.error('Data API lexicon CSV export failed, falling back to client export', error);
+        }
+      }
     }
 
     const header = ['lemma', 'pos', 'gloss', 'etymology', 'tags'];
@@ -190,22 +224,28 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
       ].join(','),
     );
     const csvContent = [header.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadText(csvContent, 'text/csv', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`);
     setError(null);
-  }, [conlangName, draftLexemes, escapeCsvCell]);
+  }, [conlangName, draftLexemes, escapeCsvCell, dataApiEnabled, getIdToken, downloadText]);
 
-  const handleExportMarkdown = useCallback(() => {
+  const handleExportMarkdown = useCallback(async () => {
     if (draftLexemes.length === 0) {
       setError('No lexemes available to export yet.');
       return;
+    }
+
+    if (dataApiEnabled) {
+      const token = await getIdToken();
+      if (token) {
+        try {
+          const markdown = await exportLexiconViaApi(token, draftLexemes, 'markdown');
+          downloadText(markdown, 'text/markdown', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`);
+          setError(null);
+          return;
+        } catch (error) {
+          console.error('Data API lexicon Markdown export failed, falling back to client export', error);
+        }
+      }
     }
 
     const lines = [
@@ -216,17 +256,9 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
         return `| ${lexeme.lemma || ''} | ${lexeme.pos || ''} | ${lexeme.gloss || ''} | ${lexeme.etymology || ''} | ${tags} |`;
       }),
     ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadText(lines.join('\n'), 'text/markdown', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`);
     setError(null);
-  }, [conlangName, draftLexemes]);
+  }, [conlangName, draftLexemes, dataApiEnabled, getIdToken, downloadText]);
 
   const parseCsvRow = useCallback((row: string): string[] => {
     const result: string[] = [];
@@ -322,6 +354,27 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
 
       try {
         const text = await file.text();
+
+        if (dataApiEnabled) {
+          const token = await getIdToken();
+          if (token) {
+            try {
+              const parsed = await parseLexiconCsvViaApi(token, text);
+              const normalized = parsed.map((lexeme) => ({
+                lemma: lexeme.lemma,
+                pos: lexeme.pos,
+                gloss: lexeme.gloss,
+                etymology: lexeme.etymology,
+                tags: lexeme.tags,
+              }));
+              addImportedLexemes(normalized);
+              return;
+            } catch (error) {
+              console.error('Data API lexicon CSV import failed, using local parser', error);
+            }
+          }
+        }
+
         const rows = text
           .split(/\r?\n/)
           .map((row) => row.trim())
@@ -360,10 +413,33 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
         event.target.value = '';
       }
     },
-    [addImportedLexemes, parseCsvRow],
+    [addImportedLexemes, parseCsvRow, dataApiEnabled, getIdToken],
   );
 
-  const handleMarkdownImport = useCallback(() => {
+  const handleMarkdownImport = useCallback(async () => {
+    if (dataApiEnabled) {
+      const token = await getIdToken();
+      if (token) {
+        try {
+          const parsed = await parseLexiconMarkdownViaApi(token, markdownImport);
+          const normalized = parsed.map((lexeme) => ({
+            lemma: lexeme.lemma,
+            pos: lexeme.pos,
+            gloss: lexeme.gloss,
+            etymology: lexeme.etymology,
+            tags: lexeme.tags,
+          }));
+          addImportedLexemes(normalized);
+          setMarkdownImport('');
+          setShowMarkdownImport(false);
+          setError(null);
+          return;
+        } catch (error) {
+          console.error('Data API lexicon Markdown import failed, using local parser', error);
+        }
+      }
+    }
+
     const lines = markdownImport
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -419,7 +495,7 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
     addImportedLexemes(imported);
     setMarkdownImport('');
     setShowMarkdownImport(false);
-  }, [addImportedLexemes, markdownImport]);
+  }, [addImportedLexemes, markdownImport, dataApiEnabled, getIdToken]);
 
   const handleGenerateLexemes = useCallback(async () => {
     if (!theme) {
@@ -626,14 +702,14 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={handleExportCsv}
+            onClick={() => { void handleExportCsv(); }}
             className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-900/80 border border-slate-700 rounded-md hover:border-cyan-500"
           >
             Export CSV
           </button>
           <button
             type="button"
-            onClick={handleExportMarkdown}
+            onClick={() => { void handleExportMarkdown(); }}
             className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-900/80 border border-slate-700 rounded-md hover:border-cyan-500"
           >
             Export Markdown
@@ -666,7 +742,7 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={handleMarkdownImport}
+                onClick={() => { void handleMarkdownImport(); }}
                 className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-md"
               >
                 Import Markdown table
