@@ -996,22 +996,6 @@ export default function App() {
     updateProfile({ questlinesClaimed: [questlineId] });
   }, [profile, addXp, updateProfile]);
 
-  if (!profile) {
-    return null;
-  }
-
-  const xpProgress = profile.xp % 100;
-  const level = Math.floor(profile.xp / 100) + 1;
-  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
-  const featuredAssistant = aiAssistants[0];
-  const upcomingMilestone = milestoneRoadmap[0];
-
-  const handleResetFilters = () => {
-    setArtifactTypeFilter('ALL');
-    setStatusFilter('ALL');
-    setSearchTerm('');
-  };
-
   const handleExportArtifacts = useCallback((format: 'csv' | 'tsv') => {
     if (!selectedProject) {
       return;
@@ -1033,6 +1017,22 @@ export default function App() {
       markSelectedProjectActivity({ viewedKanban: true });
     }
   }, [markSelectedProjectActivity]);
+
+  if (!profile) {
+    return null;
+  }
+
+  const xpProgress = profile.xp % 100;
+  const level = Math.floor(profile.xp / 100) + 1;
+  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
+  const featuredAssistant = aiAssistants[0];
+  const upcomingMilestone = milestoneRoadmap[0];
+
+  const handleResetFilters = () => {
+    setArtifactTypeFilter('ALL');
+    setStatusFilter('ALL');
+    setSearchTerm('');
+  };
 
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
