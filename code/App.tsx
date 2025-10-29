@@ -94,17 +94,19 @@ const templateLibrary: TemplateCategory[] = [
     {
         id: 'dustland',
         title: 'Dustland RPG',
-        description: 'Questline scaffolds for the Dustland tabletop campaign.',
+        description: 'Retro CRT RPG modules for Dustland\'s persona-driven world-simulation.',
         recommendedFor: ['Dustland'],
         relatedProjectTemplateIds: ['game-design-lab'],
         templates: [
             { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
             { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
-            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, mannerisms, and secret agendas.', tags: ['npc'] },
+            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
             { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
             { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
             { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
-            { id: 'dust-build', name: 'Build', description: 'Record character progressions and loadouts for playtests.', tags: ['characters'] },
+            { id: 'dust-memory', name: 'World Memory Log', description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
+            { id: 'dust-effect', name: 'Effect Pack', description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
+            { id: 'dust-build', name: 'Build', description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
         ],
     },
     {

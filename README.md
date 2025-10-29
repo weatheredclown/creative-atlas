@@ -2,6 +2,7 @@
 
 A playful, gamified personal knowledge system for organizing web comics, wikis, websites, games, GitHub repos, stories, conlangs, AI‑ and hand‑written novels, and more — with both creative canvases and tabular import/export.
 
+📘 **Universe Briefs:** Looking for a deep dive on a flagship world? Start with the [Dustland Project Overview](docs/dustland-overview.md) to see how the retro RPG framework, persona mask system, and CRT aesthetic map into Creative Atlas artifacts.
 📘 Lore reference: see [`docs/darv-language.md`](docs/darv-language.md) for the Darv language primer that anchors Tamenzut rituals, myths, and conlang work.
 
 ## Product Roadmap
