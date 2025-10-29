@@ -41,9 +41,9 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 ## Productionization Roadmap
 
 ### Persistent, Multi-User Data Layer
-- [ ] Launch a managed database-backed service (e.g., Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
-- [ ] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
-- [ ] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
+- [x] Launch a managed database-backed service (Firebase) and migrate project, artifact, and XP storage out of in-memory mocks.
+- [x] Expose CRUD endpoints with pagination, validation, and schema enforcement so multiple users can manage separate worlds safely.
+- [x] Move CSV/Markdown import and export flows to backend workers or endpoints to centralize validation and keep the UI responsive during large transfers.
 - 📘 See [`docs/firebase-backend-migration.md`](docs/firebase-backend-migration.md) for the recommended Firebase + Firestore architecture and step-by-step migration plan (starting with authentication setup).
 
 ### Authentication, Authorization, and Profiles
@@ -87,7 +87,38 @@ The interactive prototype lives in the `code/` directory and is a client-side Re
    npm install
    ```
 
-### 3. Start the development server
+### 2. Configure environment variables
+
+The frontend expects Firebase configuration in `code/.env.local`:
+
+```
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+```
+
+When the backend API is running (see below), expose its URL so CSV/Markdown import/export calls are routed through the server:
+
+```
+VITE_DATA_API_BASE_URL=http://localhost:4000
+```
+
+### 3. Start the backend API (optional but recommended)
+
+The `server/` package exposes authenticated CRUD endpoints that wrap Firestore and handle bulk import/export work. Run it locally with:
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+The server expects Firebase Admin credentials via environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`). When these are set, the API automatically provisions Firestore reads/writes on behalf of the signed-in user.
+
+### 4. Start the development server
 
 Use the Vite dev server to run the app with hot reloading:
 
@@ -97,7 +128,7 @@ npm run dev
 
 Vite will print a local URL (typically `http://localhost:5173`) you can open in a browser.
 
-### 4. Build & preview production assets
+### 5. Build & preview production assets
 
 To generate an optimized static build and preview it locally:
 
@@ -108,7 +139,7 @@ npm run preview
 
 The build artifacts land in `code/dist`, and `npm run preview` serves them with the same Vite configuration used in production.
 
-### 5. Quality and test tooling
+### 6. Quality and test tooling
 
 Run the automated quality gates before opening a pull request:
 

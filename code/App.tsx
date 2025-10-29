@@ -45,6 +45,7 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
+import { downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
@@ -639,7 +640,7 @@ const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) =>
 
 export default function App() {
   const { projects, setProjects, artifacts, setArtifacts, profile, addXp, updateProfile } = useUserData();
-  const { signOutUser } = useAuth();
+  const { signOutUser, getIdToken, isGuestMode } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -651,6 +652,17 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
+  const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+  const triggerDownload = useCallback((blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, []);
 
   useEffect(() => {
     if (!projects.length) {
@@ -882,18 +894,38 @@ export default function App() {
     fileInputRef.current?.click();
   };
 
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedProjectId || !profile) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const content = e.target?.result as string;
-            const imported = importArtifactsFromCSV(content, selectedProjectId, profile.uid);
+    try {
+      const content = await file.text();
 
+      if (dataApiEnabled) {
+        const token = await getIdToken();
+        if (token) {
+          try {
+            const { artifacts: imported } = await importArtifactsViaApi(token, selectedProjectId, content);
             const existingIds = new Set(artifacts.map(a => a.id));
-            const newArtifacts = imported.filter(i => !existingIds.has(i.id));
+            const newArtifacts = imported.filter(artifact => !existingIds.has(artifact.id));
+
+            if (newArtifacts.length > 0) {
+              setArtifacts(prev => [...prev, ...newArtifacts]);
+              alert(`${newArtifacts.length} new artifacts imported successfully!`);
+              markSelectedProjectActivity({ importedCsv: true });
+            } else {
+              alert('No new artifacts to import. All IDs in the file already exist.');
+            }
+            return;
+          } catch (error) {
+            console.error('Data API import failed, falling back to local parsing', error);
+          }
+        }
+      }
+
+      const imported = importArtifactsFromCSV(content, selectedProjectId, profile.uid);
+      const existingIds = new Set(artifacts.map(a => a.id));
+      const newArtifacts = imported.filter(i => !existingIds.has(i.id));
 
       if (newArtifacts.length > 0) {
         setArtifacts(prev => [...prev, ...newArtifacts]);
@@ -902,12 +934,11 @@ export default function App() {
       } else {
         alert('No new artifacts to import. All IDs in the file already exist.');
       }
-        } catch (error) {
-            alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
+    } catch (error) {
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleGitHubArtifactsImported = useCallback((newArtifacts: Artifact[]) => {
@@ -1012,17 +1043,32 @@ export default function App() {
     setSearchTerm('');
   };
 
-  const handleExportArtifacts = useCallback((format: 'csv' | 'tsv') => {
+  const handleExportArtifacts = useCallback(async (format: 'csv' | 'tsv') => {
     if (!selectedProject) {
       return;
     }
     markSelectedProjectActivity({ exportedData: true });
+
+    if (dataApiEnabled) {
+      const token = await getIdToken();
+      if (token) {
+        try {
+          const blob = await downloadProjectExport(token, selectedProject.id, format);
+          const filename = `${selectedProject.title.replace(/\s+/g, '_').toLowerCase()}_artifacts.${format}`;
+          triggerDownload(blob, filename);
+          return;
+        } catch (error) {
+          console.error('Data API export failed, falling back to client export', error);
+        }
+      }
+    }
+
     if (format === 'csv') {
       exportArtifactsToCSV(projectArtifacts, selectedProject.title);
     } else {
       exportArtifactsToTSV(projectArtifacts, selectedProject.title);
     }
-  }, [selectedProject, projectArtifacts, markSelectedProjectActivity]);
+  }, [selectedProject, projectArtifacts, markSelectedProjectActivity, dataApiEnabled, getIdToken, triggerDownload]);
 
   const handleViewModeChange = useCallback((mode: 'table' | 'graph' | 'kanban') => {
     setViewMode(mode);
@@ -1123,10 +1169,10 @@ export default function App() {
                         <button onClick={handleImportClick} title="Import from CSV or TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowUpTrayIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={() => handleExportArtifacts('csv')} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                        <button onClick={() => { void handleExportArtifacts('csv'); }} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowDownTrayIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={() => handleExportArtifacts('tsv')} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                        <button onClick={() => { void handleExportArtifacts('tsv'); }} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
                         </button>
                         <ViewSwitcher />

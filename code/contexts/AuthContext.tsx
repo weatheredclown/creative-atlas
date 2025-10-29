@@ -22,6 +22,7 @@ interface AuthContextValue {
   signOutUser: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
+  getIdToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -103,6 +104,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateProfile(user, { displayName });
   }, [user, isGuestMode]);
 
+  const getIdToken = useCallback(async () => {
+    if (!user) {
+      return null;
+    }
+    try {
+      return await user.getIdToken();
+    } catch (error) {
+      console.error('Failed to retrieve ID token', error);
+      return null;
+    }
+  }, [user]);
+
   const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
@@ -112,7 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOutUser,
     signInWithGoogle: signInWithGoogleProvider,
     updateDisplayName,
-  }), [user, loading, isGuestMode, signUp, signIn, signOutUser, signInWithGoogleProvider, updateDisplayName]);
+    getIdToken,
+  }), [user, loading, isGuestMode, signUp, signIn, signOutUser, signInWithGoogleProvider, updateDisplayName, getIdToken]);
 
   return (
     <AuthContext.Provider value={value}>
