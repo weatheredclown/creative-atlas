@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Artifact, Project, UserProfile, UserSettings } from '../types';
 import { createSeedWorkspace } from '../seedData';
+import { advanceStreak, formatDateKey } from '../utils/streak';
 import { useAuth } from './AuthContext';
 
 interface StoredWorkspace {
@@ -50,15 +51,29 @@ const storageAvailable = isStorageAvailable();
 
 const getStorageKey = (uid: string) => `${STORAGE_PREFIX}${uid}`;
 
-const createDefaultProfile = (uid: string, email: string | null, displayName: string | null, photoURL: string | null, xp: number): UserProfile => ({
-  uid,
-  email: email ?? '',
-  displayName: displayName ?? email?.split('@')[0] ?? 'Creator',
-  photoURL: photoURL ?? undefined,
-  xp,
-  achievementsUnlocked: [],
-  settings: { ...defaultSettings },
-});
+const createDefaultProfile = (
+  uid: string,
+  email: string | null,
+  displayName: string | null,
+  photoURL: string | null,
+  xp: number,
+): UserProfile => {
+  const todayKey = formatDateKey(new Date());
+  const hasXp = xp > 0;
+  return {
+    uid,
+    email: email ?? '',
+    displayName: displayName ?? email?.split('@')[0] ?? 'Creator',
+    photoURL: photoURL ?? undefined,
+    xp,
+    streakCount: hasXp ? 1 : 0,
+    bestStreak: hasXp ? 1 : 0,
+    lastActiveDate: hasXp ? todayKey : undefined,
+    achievementsUnlocked: [],
+    questlinesClaimed: [],
+    settings: { ...defaultSettings },
+  };
+};
 
 const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
   projects.map((project) => ({ ...project, ownerId }));
@@ -72,16 +87,39 @@ const readWorkspace = (uid: string, email: string | null, displayName: string | 
       const raw = window.localStorage.getItem(getStorageKey(uid));
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredWorkspace>;
-        const profile = parsed.profile ?? createDefaultProfile(uid, email, displayName, photoURL, 0);
+        const rawProfile = parsed.profile ?? null;
+        const baseProfile = createDefaultProfile(
+          uid,
+          email,
+          displayName,
+          photoURL,
+          rawProfile?.xp ?? 0,
+        );
+        const achievementsUnlocked = Array.isArray(rawProfile?.achievementsUnlocked)
+          ? rawProfile!.achievementsUnlocked
+          : baseProfile.achievementsUnlocked;
+        const questlinesClaimed = Array.isArray(rawProfile?.questlinesClaimed)
+          ? rawProfile!.questlinesClaimed
+          : baseProfile.questlinesClaimed;
         return {
           projects: normalizeProjects(parsed.projects ?? [], uid),
           artifacts: normalizeArtifacts(parsed.artifacts ?? [], uid),
           profile: {
-            ...createDefaultProfile(uid, email, displayName, photoURL, profile.xp ?? 0),
-            achievementsUnlocked: Array.isArray(profile.achievementsUnlocked) ? profile.achievementsUnlocked : [],
+            ...baseProfile,
+            ...(rawProfile ?? {}),
+            streakCount:
+              typeof rawProfile?.streakCount === 'number' ? rawProfile.streakCount : baseProfile.streakCount,
+            bestStreak:
+              typeof rawProfile?.bestStreak === 'number' ? rawProfile.bestStreak : baseProfile.bestStreak,
+            lastActiveDate:
+              typeof rawProfile?.lastActiveDate === 'string'
+                ? rawProfile.lastActiveDate
+                : baseProfile.lastActiveDate,
+            achievementsUnlocked,
+            questlinesClaimed,
             settings: {
-              ...defaultSettings,
-              ...(profile.settings ?? {}),
+              ...baseProfile.settings,
+              ...(rawProfile?.settings ?? {}),
             },
           },
         };
@@ -194,15 +232,24 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateProfile = useCallback((update: ProfileUpdate) => {
     setProfile((current) => {
       if (!current) return current;
-      const { settings: partialSettings, achievementsUnlocked: unlockedIds, ...rest } = update;
+      const {
+        settings: partialSettings,
+        achievementsUnlocked: unlockedIds,
+        questlinesClaimed: claimedQuestlines,
+        ...rest
+      } = update;
       const nextSettings = partialSettings ? { ...current.settings, ...partialSettings } : current.settings;
       const nextAchievements = unlockedIds
         ? Array.from(new Set([...current.achievementsUnlocked, ...unlockedIds]))
         : current.achievementsUnlocked;
+      const nextQuestlinesClaimed = claimedQuestlines
+        ? Array.from(new Set([...current.questlinesClaimed, ...claimedQuestlines]))
+        : current.questlinesClaimed;
       return {
         ...current,
         ...rest,
         achievementsUnlocked: nextAchievements,
+        questlinesClaimed: nextQuestlinesClaimed,
         settings: nextSettings,
       };
     });
@@ -213,6 +260,24 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProfile((current) => {
       if (!current) return current;
       const nextXp = Math.max(0, current.xp + amount);
+      if (amount > 0) {
+        const todayKey = formatDateKey(new Date());
+        const nextStreak = advanceStreak(
+          {
+            streakCount: current.streakCount,
+            bestStreak: current.bestStreak,
+            lastActiveDate: current.lastActiveDate,
+          },
+          todayKey,
+        );
+        return {
+          ...current,
+          xp: nextXp,
+          streakCount: nextStreak.streakCount,
+          bestStreak: nextStreak.bestStreak,
+          lastActiveDate: nextStreak.lastActiveDate,
+        };
+      }
       return { ...current, xp: nextXp };
     });
   }, []);
