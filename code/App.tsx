@@ -14,6 +14,7 @@ import {
     Relation,
     TaskData,
     TaskState,
+    TemplateApplicationSummary,
     TemplateCategory,
     UserProfile,
 } from './types';
@@ -45,6 +46,8 @@ import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import { getDefaultDataForType } from './utils/artifactDefaults';
+import { buildTemplateSummary, hydrateTemplate } from './utils/templateHydrator';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -160,28 +163,44 @@ const projectTemplates: ProjectTemplate[] = [
         recommendedFor: ['Spatch', 'Steamweave'],
         relatedCategoryIds: ['steamweave', 'spatch'],
         projectTags: ['comic', 'storyboard', 'production'],
+        xpReward: 20,
+        artifactXpReward: 6,
+        dashboardHints: [
+            'Pin the season roadmap to spotlight upcoming beats on the control panel.',
+            'Surface the sprint backlog widget to keep lettering and marketing in view.',
+        ],
         artifacts: [
             {
+                blueprintId: 'season-roadmap',
                 title: 'Season Roadmap',
                 type: ArtifactType.Story,
-                summary: 'Outline upcoming arcs, spotlight issues, and publishing cadence.',
+                summary: 'Outline upcoming arcs for {{project}}, spotlight issues, and publishing cadence.',
                 status: 'draft',
                 tags: ['roadmap', 'issues'],
+                xpReward: 8,
             },
             {
+                blueprintId: 'cast-gallery',
                 title: 'Cast Gallery',
                 type: ArtifactType.Character,
                 summary: 'Snapshot bios, motivations, and relationship notes for the main cast.',
                 status: 'idea',
                 tags: ['characters', 'reference'],
+                relations: [
+                    { toBlueprintId: 'season-roadmap', kind: 'INFORMS' },
+                ],
             },
             {
+                blueprintId: 'issue-sprint',
                 title: 'Issue Sprint Backlog',
                 type: ArtifactType.Task,
                 summary: 'Track page breakdowns, lettering, and marketing beats for the next drop.',
                 status: 'in-progress',
                 tags: ['sprint', 'release'],
                 data: { state: TaskState.InProgress } as TaskData,
+                relations: [
+                    { toBlueprintId: 'season-roadmap', kind: 'TRACKS' },
+                ],
             },
         ],
     },
@@ -192,8 +211,15 @@ const projectTemplates: ProjectTemplate[] = [
         recommendedFor: ['Tamenzut', 'Darv'],
         relatedCategoryIds: ['tamenzut', 'darv'],
         projectTags: ['conlang', 'language'],
+        xpReward: 18,
+        artifactXpReward: 5,
+        dashboardHints: [
+            'Embed the lexicon table on the dashboard to surface recent additions.',
+            'Track phonology todos alongside wiki callouts for quick reference.',
+        ],
         artifacts: [
             {
+                blueprintId: 'lexicon-seed',
                 title: 'Lexicon Seed',
                 type: ArtifactType.Conlang,
                 summary: 'Kick off vocabulary batches with phonotactics and thematic tags.',
@@ -203,21 +229,32 @@ const projectTemplates: ProjectTemplate[] = [
                     { id: 'tmpl-lex-1', lemma: 'salar', pos: 'n', gloss: 'ember-forged song' },
                     { id: 'tmpl-lex-2', lemma: 'vith', pos: 'adj', gloss: 'woven with starlight' },
                 ] as ConlangLexeme[],
+                xpReward: 6,
             },
             {
+                blueprintId: 'grammar-notes',
                 title: 'Grammar Notes',
                 type: ArtifactType.Wiki,
-                summary: 'Document morphology, syntax quirks, and inspiration languages.',
+                summary: 'Document morphology, syntax quirks, and inspiration languages for {{project}}.',
                 status: 'idea',
                 tags: ['reference'],
                 data: { content: '## Phonology\n- Consonant harmony sketch\n\n## Morphology\n- Case markers TBD' },
+                relations: [
+                    { toBlueprintId: 'lexicon-seed', kind: 'CITES' },
+                ],
             },
             {
+                blueprintId: 'phonology-sprint',
                 title: 'Phonology Recording Sprint',
                 type: ArtifactType.Task,
                 summary: 'Capture sound samples and finalize the consonant inventory.',
                 status: 'todo',
                 tags: ['audio', 'phonology'],
+                data: { state: TaskState.Todo } as TaskData,
+                relations: [
+                    { toBlueprintId: 'lexicon-seed', kind: 'TRACKS' },
+                    { toBlueprintId: 'grammar-notes', kind: 'BLOCKED_BY' },
+                ],
             },
         ],
     },
@@ -228,8 +265,15 @@ const projectTemplates: ProjectTemplate[] = [
         recommendedFor: ['Dustland'],
         relatedCategoryIds: ['dustland'],
         projectTags: ['game', 'systems'],
+        xpReward: 24,
+        artifactXpReward: 6,
+        dashboardHints: [
+            'Feature the core loop dashboard tile to align the team on moment-to-moment play.',
+            'Pin the playtest backlog next to the milestone tracker for quick triage.',
+        ],
         artifacts: [
             {
+                blueprintId: 'core-loop',
                 title: 'Core Loop Prototype',
                 type: ArtifactType.Game,
                 summary: 'Define what players do minute-to-minute and the rewards that fuel repeat sessions.',
@@ -237,27 +281,39 @@ const projectTemplates: ProjectTemplate[] = [
                 tags: ['core-loop', 'prototype'],
             },
             {
+                blueprintId: 'mechanics-glossary',
                 title: 'Mechanics Glossary',
                 type: ArtifactType.MagicSystem,
                 summary: 'Catalog resources, ability cooldowns, and failure states.',
                 status: 'idea',
                 tags: ['mechanics'],
+                relations: [
+                    { toBlueprintId: 'core-loop', kind: 'SUPPORTS' },
+                ],
             },
             {
+                blueprintId: 'playtest-backlog',
                 title: 'Playtest Feedback Backlog',
                 type: ArtifactType.Task,
                 summary: 'Triage insights from the latest playtest into actionable follow-ups.',
                 status: 'in-progress',
                 tags: ['playtest'],
                 data: { state: TaskState.InProgress } as TaskData,
+                relations: [
+                    { toBlueprintId: 'core-loop', kind: 'VALIDATES' },
+                ],
             },
             {
+                blueprintId: 'design-log',
                 title: 'Design Log',
                 type: ArtifactType.Wiki,
                 summary: 'Chronicle key decisions, questions, and experiments.',
                 status: 'draft',
                 tags: ['journal'],
                 data: { content: '## Decisions\n- Note major pivots here\n\n## Open Questions\n- Capture follow-ups from playtests' },
+                relations: [
+                    { toBlueprintId: 'playtest-backlog', kind: 'SUMMARIZES' },
+                ],
             },
         ],
     },
@@ -268,16 +324,24 @@ const projectTemplates: ProjectTemplate[] = [
         recommendedFor: ['Tamenzut', 'Sacred Truth'],
         relatedCategoryIds: ['tamenzut', 'sacred-truth'],
         projectTags: ['wiki', 'lore'],
+        xpReward: 22,
+        artifactXpReward: 5,
+        dashboardHints: [
+            'Keep the encyclopedia pinned to quickly jump into canon edits.',
+            'Show the faction backlog on the dashboard to burn down lore debt.',
+        ],
         artifacts: [
             {
+                blueprintId: 'world-encyclopedia',
                 title: 'World Encyclopedia',
                 type: ArtifactType.Wiki,
-                summary: 'Master index for timelines, factions, and canon checkpoints.',
+                summary: 'Master index for timelines, factions, and canon checkpoints across {{project}}.',
                 status: 'draft',
                 tags: ['index'],
                 data: { content: '# World Encyclopedia\n\n## Overview\n- Establish tone and era\n\n## Canon Queue\n- Pending lore to verify' },
             },
             {
+                blueprintId: 'starting-region',
                 title: 'Starting Region Profile',
                 type: ArtifactType.Location,
                 summary: 'Describe the primary hub with landmarks, cultures, and conflicts.',
@@ -289,37 +353,26 @@ const projectTemplates: ProjectTemplate[] = [
                         { id: 'tmpl-feature-1', name: 'Beacon Market', description: 'Central plaza where rumors and quests surface.' },
                     ],
                 },
+                relations: [
+                    { toBlueprintId: 'world-encyclopedia', kind: 'FEATURED_IN' },
+                ],
             },
             {
+                blueprintId: 'faction-briefs',
                 title: 'Faction Briefs Backlog',
                 type: ArtifactType.Task,
                 summary: 'List the organizations you still need to document and their urgency.',
                 status: 'todo',
                 tags: ['factions', 'backlog'],
+                data: { state: TaskState.Todo } as TaskData,
+                relations: [
+                    { toBlueprintId: 'world-encyclopedia', kind: 'INFORMS' },
+                    { toBlueprintId: 'starting-region', kind: 'REFERENCES' },
+                ],
             },
         ],
     },
 ];
-
-const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['data'] => {
-    switch (type) {
-        case ArtifactType.Conlang:
-            return [];
-        case ArtifactType.Story:
-        case ArtifactType.Scene:
-            return [];
-        case ArtifactType.Task:
-            return { state: TaskState.Todo } as TaskData;
-        case ArtifactType.Character:
-            return { bio: '', traits: [] };
-        case ArtifactType.Wiki:
-            return { content: `# ${title ?? 'Untitled'}\n\n` };
-        case ArtifactType.Location:
-            return { description: '', features: [] };
-        default:
-            return {};
-    }
-};
 
 const milestoneRoadmap: Milestone[] = [
     {
@@ -640,35 +693,32 @@ export default function App() {
     setSelectedArtifactId(newArtifact.id);
   }, [profile, selectedProjectId, addXp, setArtifacts]);
 
-  const handleApplyProjectTemplate = useCallback((template: ProjectTemplate) => {
-    if (!profile || !selectedProjectId) return;
+  const handleApplyProjectTemplate = useCallback(async (template: ProjectTemplate): Promise<TemplateApplicationSummary> => {
+    if (!profile || !selectedProjectId || !selectedProject) {
+      return {
+        templateId: template.id,
+        createdTitles: [],
+        skippedTitles: [],
+        xpAwarded: 0,
+      };
+    }
 
     const projectArtifactsForSelection = artifacts.filter(artifact => artifact.projectId === selectedProjectId);
-    const existingTitles = new Set(projectArtifactsForSelection.map(artifact => artifact.title.toLowerCase()));
-    const timestamp = Date.now();
+    const outcome = hydrateTemplate({
+      template,
+      ownerId: profile.uid,
+      projectId: selectedProjectId,
+      projectTitle: selectedProject.title,
+      existingArtifacts: projectArtifactsForSelection,
+    });
 
-    const newArtifacts = template.artifacts
-      .filter(blueprint => !existingTitles.has(blueprint.title.toLowerCase()))
-      .map((blueprint, index) => ({
-        id: `art-${timestamp + index}`,
-        ownerId: profile.uid,
-        projectId: selectedProjectId,
-        title: blueprint.title,
-        type: blueprint.type,
-        summary: blueprint.summary,
-        status: blueprint.status ?? 'draft',
-        tags: blueprint.tags ? [...blueprint.tags] : [],
-        relations: [],
-        data: blueprint.data ?? getDefaultDataForType(blueprint.type, blueprint.title),
-      }));
+    if (outcome.createdArtifacts.length > 0) {
+      setArtifacts(prev => [...prev, ...outcome.createdArtifacts]);
+      setSelectedArtifactId(outcome.createdArtifacts[0].id);
+    }
 
-    if (newArtifacts.length > 0) {
-      setArtifacts(prev => [...prev, ...newArtifacts]);
-      addXp(newArtifacts.length * 5);
-      setSelectedArtifactId(newArtifacts[0].id);
-      alert(`Added ${newArtifacts.length} starter artifact${newArtifacts.length > 1 ? 's' : ''} from the ${template.name} template.`);
-    } else {
-      alert('All of the template\'s starter artifacts already exist in this project.');
+    if (outcome.xpAwarded > 0) {
+      addXp(outcome.xpAwarded);
     }
 
     if (template.projectTags.length > 0) {
@@ -688,7 +738,10 @@ export default function App() {
         return changed ? next : prev;
       });
     }
-  }, [profile, selectedProjectId, artifacts, setArtifacts, addXp, setProjects]);
+
+    const summary = buildTemplateSummary(template, outcome);
+    return summary;
+  }, [profile, selectedProjectId, selectedProject, artifacts, setArtifacts, addXp, setProjects]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
