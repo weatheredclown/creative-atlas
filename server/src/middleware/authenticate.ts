@@ -5,6 +5,8 @@ export interface AuthenticatedRequest extends Request {
   user?: {
     uid: string;
     email?: string;
+    displayName?: string;
+    photoURL?: string;
   };
 }
 
@@ -21,7 +23,12 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
     }
 
     const decoded = await auth.verifyIdToken(token);
-    req.user = { uid: decoded.uid, email: decoded.email ?? undefined };
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email ?? undefined,
+      displayName: decoded.name ?? undefined,
+      photoURL: decoded.picture ?? undefined,
+    };
     next();
   } catch (error) {
     console.error('Authentication failed', error);

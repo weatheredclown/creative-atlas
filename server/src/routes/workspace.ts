@@ -15,11 +15,18 @@ import {
   parseConlangLexemesFromMarkdown,
   timestampToIso,
 } from '../utils/importExport.js';
-import type { Artifact, ConlangLexeme, Project } from '../types.js';
+import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types.js';
 
 const router = Router();
 
 router.use(authenticate);
+
+const defaultSettings = {
+  theme: 'system' as const,
+  aiTipsEnabled: true,
+};
+
+const themePreferenceSchema = z.enum(['system', 'light', 'dark']);
 
 const projectSchema = z.object({
   id: z.string().min(1).optional(),
@@ -32,6 +39,161 @@ const projectSchema = z.object({
 const projectUpdateSchema = projectSchema.partial().refine((value) => Object.keys(value).length > 0, {
   message: 'At least one field must be provided for update.',
 });
+
+const profileSettingsUpdateSchema = z
+  .object({
+    theme: themePreferenceSchema.optional(),
+    aiTipsEnabled: z.boolean().optional(),
+  })
+  .partial();
+
+const profileUpdateSchema = z
+  .object({
+    displayName: z.string().trim().min(1).optional(),
+    photoURL: z
+      .string()
+      .url()
+      .or(z.literal(''))
+      .optional(),
+    achievementsUnlocked: z.array(z.string()).optional(),
+    questlinesClaimed: z.array(z.string()).optional(),
+    settings: profileSettingsUpdateSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided for update.',
+  });
+
+const xpUpdateSchema = z.object({
+  amount: z.number().int(),
+});
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const parseDateKey = (key?: string): number | null => {
+  if (!key) return null;
+  const parts = key.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((value) => Number.isNaN(value))) {
+    return null;
+  }
+  const [year, month, day] = parts;
+  return Date.UTC(year, month - 1, day);
+};
+
+const formatDateKey = (date: Date): string => date.toISOString().slice(0, 10);
+
+const advanceStreakSnapshot = (
+  snapshot: { streakCount: number; bestStreak: number; lastActiveDate?: string },
+  todayKey: string,
+) => {
+  const todayValue = parseDateKey(todayKey);
+  if (todayValue === null) {
+    return snapshot;
+  }
+
+  const normalizedCurrent = Math.max(snapshot.streakCount ?? 0, 0);
+  const normalizedBest = Math.max(snapshot.bestStreak ?? 0, 0);
+
+  const lastValue = parseDateKey(snapshot.lastActiveDate);
+  if (lastValue === null) {
+    const initialStreak = Math.max(normalizedCurrent, 1);
+    const best = Math.max(normalizedBest, initialStreak);
+    return {
+      streakCount: initialStreak,
+      bestStreak: best,
+      lastActiveDate: todayKey,
+    };
+  }
+
+  const diff = Math.round((todayValue - lastValue) / MS_PER_DAY);
+  if (diff <= 0) {
+    return {
+      streakCount: normalizedCurrent,
+      bestStreak: normalizedBest,
+      lastActiveDate: snapshot.lastActiveDate ?? todayKey,
+    };
+  }
+
+  const nextStreak = diff === 1 ? normalizedCurrent + 1 : 1;
+  const nextBest = Math.max(normalizedBest, nextStreak);
+  return {
+    streakCount: nextStreak,
+    bestStreak: nextBest,
+    lastActiveDate: todayKey,
+  };
+};
+
+const createDefaultProfile = (
+  uid: string,
+  email: string | undefined,
+  displayName: string | undefined,
+  photoURL: string | undefined,
+  xp = 0,
+): UserProfile => {
+  const normalizedEmail = email ?? '';
+  const fallbackDisplayName = normalizedEmail ? normalizedEmail.split('@')[0] ?? 'Creator' : 'Creator';
+  return {
+    uid,
+    email: normalizedEmail,
+    displayName: displayName && displayName.trim().length > 0 ? displayName : fallbackDisplayName,
+    photoURL: photoURL ?? undefined,
+    xp,
+    streakCount: xp > 0 ? 1 : 0,
+    bestStreak: xp > 0 ? 1 : 0,
+    lastActiveDate: xp > 0 ? formatDateKey(new Date()) : undefined,
+    achievementsUnlocked: [],
+    questlinesClaimed: [],
+    settings: { ...defaultSettings },
+  };
+};
+
+const mapProfileFromSnapshot = (doc: DocumentSnapshot | null, defaults: UserProfile): UserProfile => {
+  const data = doc?.data() ?? {};
+
+  const achievements = Array.isArray((data as { achievementsUnlocked?: unknown }).achievementsUnlocked)
+    ? ((data as { achievementsUnlocked: string[] }).achievementsUnlocked ?? [])
+    : defaults.achievementsUnlocked;
+
+  const questlines = Array.isArray((data as { questlinesClaimed?: unknown }).questlinesClaimed)
+    ? ((data as { questlinesClaimed: string[] }).questlinesClaimed ?? [])
+    : defaults.questlinesClaimed;
+
+  const settingsValue = (data as { settings?: unknown }).settings;
+  const mappedSettings =
+    settingsValue && typeof settingsValue === 'object'
+      ? { ...defaultSettings, ...(settingsValue as Record<string, unknown>) }
+      : { ...defaultSettings };
+
+  return {
+    ...defaults,
+    email: typeof (data as { email?: unknown }).email === 'string' ? String((data as { email: string }).email) : defaults.email,
+    displayName:
+      typeof (data as { displayName?: unknown }).displayName === 'string'
+        ? String((data as { displayName: string }).displayName)
+        : defaults.displayName,
+    photoURL:
+      typeof (data as { photoURL?: unknown }).photoURL === 'string' && (data as { photoURL: string }).photoURL
+        ? String((data as { photoURL: string }).photoURL)
+        : defaults.photoURL,
+    xp: typeof (data as { xp?: unknown }).xp === 'number' ? Number((data as { xp: number }).xp) : defaults.xp,
+    streakCount:
+      typeof (data as { streakCount?: unknown }).streakCount === 'number'
+        ? Number((data as { streakCount: number }).streakCount)
+        : defaults.streakCount,
+    bestStreak:
+      typeof (data as { bestStreak?: unknown }).bestStreak === 'number'
+        ? Number((data as { bestStreak: number }).bestStreak)
+        : defaults.bestStreak,
+    lastActiveDate:
+      typeof (data as { lastActiveDate?: unknown }).lastActiveDate === 'string'
+        ? String((data as { lastActiveDate: string }).lastActiveDate)
+        : defaults.lastActiveDate,
+    achievementsUnlocked: achievements,
+    questlinesClaimed: questlines,
+    settings: mappedSettings,
+    createdAt: timestampToIso((data as { createdAt?: unknown }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: unknown }).updatedAt),
+  };
+};
 
 const relationSchema = z.object({
   toId: z.string().min(1),
@@ -100,6 +262,172 @@ const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: str
     updatedAt: timestampToIso(data.updatedAt),
   };
 };
+
+router.get('/profile', async (req: AuthenticatedRequest, res) => {
+  const { uid, email, displayName, photoURL } = req.user!;
+  const docRef = firestore.collection('users').doc(uid);
+  const snapshot = await docRef.get();
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+
+  if (!snapshot.exists) {
+    await docRef.set(
+      {
+        uid,
+        email: defaults.email,
+        displayName: defaults.displayName,
+        photoURL: defaults.photoURL ?? null,
+        xp: defaults.xp,
+        streakCount: defaults.streakCount,
+        bestStreak: defaults.bestStreak,
+        lastActiveDate: defaults.lastActiveDate ?? null,
+        achievementsUnlocked: defaults.achievementsUnlocked,
+        questlinesClaimed: defaults.questlinesClaimed,
+        settings: defaults.settings,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: false },
+    );
+    return res.json(defaults);
+  }
+
+  const profile = mapProfileFromSnapshot(snapshot, defaults);
+  res.json(profile);
+});
+
+router.patch('/profile', async (req: AuthenticatedRequest, res) => {
+  const { uid, email, displayName, photoURL } = req.user!;
+  const docRef = firestore.collection('users').doc(uid);
+  const parsed = profileUpdateSchema.parse(req.body);
+
+  const snapshot = await docRef.get();
+  if (!snapshot.exists) {
+    const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+    await docRef.set(
+      {
+        uid,
+        email: defaults.email,
+        displayName: defaults.displayName,
+        photoURL: defaults.photoURL ?? null,
+        xp: defaults.xp,
+        streakCount: defaults.streakCount,
+        bestStreak: defaults.bestStreak,
+        lastActiveDate: defaults.lastActiveDate ?? null,
+        achievementsUnlocked: defaults.achievementsUnlocked,
+        questlinesClaimed: defaults.questlinesClaimed,
+        settings: defaults.settings,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: false },
+    );
+  }
+
+  const payload: Record<string, unknown> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (parsed.displayName !== undefined) {
+    payload.displayName = parsed.displayName;
+  }
+
+  if (parsed.photoURL !== undefined) {
+    const trimmed = parsed.photoURL.trim();
+    payload.photoURL = trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (parsed.achievementsUnlocked !== undefined) {
+    payload.achievementsUnlocked = parsed.achievementsUnlocked;
+  }
+
+  if (parsed.questlinesClaimed !== undefined) {
+    payload.questlinesClaimed = parsed.questlinesClaimed;
+  }
+
+  if (parsed.settings) {
+    if (parsed.settings.theme !== undefined) {
+      payload['settings.theme'] = parsed.settings.theme;
+    }
+    if (parsed.settings.aiTipsEnabled !== undefined) {
+      payload['settings.aiTipsEnabled'] = parsed.settings.aiTipsEnabled;
+    }
+  }
+
+  await docRef.set(payload, { merge: true });
+
+  const updatedSnapshot = await docRef.get();
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+  const profile = mapProfileFromSnapshot(updatedSnapshot, defaults);
+  res.json(profile);
+});
+
+router.post('/profile/xp', async (req: AuthenticatedRequest, res) => {
+  const { uid, email, displayName, photoURL } = req.user!;
+  const { amount } = xpUpdateSchema.parse(req.body);
+  const docRef = firestore.collection('users').doc(uid);
+
+  await firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(docRef);
+    const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+    let currentProfile: UserProfile;
+
+    if (!snapshot.exists) {
+      currentProfile = defaults;
+      transaction.set(
+        docRef,
+        {
+          uid,
+          email: defaults.email,
+          displayName: defaults.displayName,
+          photoURL: defaults.photoURL ?? null,
+          xp: defaults.xp,
+          streakCount: defaults.streakCount,
+          bestStreak: defaults.bestStreak,
+          lastActiveDate: defaults.lastActiveDate ?? null,
+          achievementsUnlocked: defaults.achievementsUnlocked,
+          questlinesClaimed: defaults.questlinesClaimed,
+          settings: defaults.settings,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: false },
+      );
+    } else {
+      currentProfile = mapProfileFromSnapshot(snapshot, defaults);
+    }
+
+    const nextXp = Math.max(0, currentProfile.xp + amount);
+    const streakBase = {
+      streakCount: currentProfile.streakCount,
+      bestStreak: currentProfile.bestStreak,
+      lastActiveDate: currentProfile.lastActiveDate,
+    };
+
+    let streakResult = streakBase;
+    if (amount > 0) {
+      const todayKey = formatDateKey(new Date());
+      streakResult = advanceStreakSnapshot(streakBase, todayKey);
+    }
+
+    const update: Record<string, unknown> = {
+      xp: nextXp,
+      streakCount: streakResult.streakCount,
+      bestStreak: streakResult.bestStreak,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (amount > 0) {
+      update.lastActiveDate = streakResult.lastActiveDate ?? null;
+    }
+
+    transaction.set(docRef, update, { merge: true });
+  });
+
+  const snapshot = await docRef.get();
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+  const profile = mapProfileFromSnapshot(snapshot, defaults);
+  res.json(profile);
+});
 
 router.get('/projects', async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
