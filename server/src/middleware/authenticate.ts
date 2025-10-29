@@ -12,6 +12,10 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     const authorization = req.header('Authorization');
     if (!authorization) {
       return res.status(401).json({ error: 'Missing Authorization header' });
