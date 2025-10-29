@@ -492,10 +492,18 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateProfile = useCallback(
     async (update: ProfileUpdate) => {
+      let mergedAchievements: string[] | undefined;
+      let mergedQuestlines: string[] | undefined;
+      let mergedSettings: Partial<UserSettings> | undefined;
+      let hasProfile = false;
+
       setProfile((current) => {
         if (!current) {
           return current;
         }
+
+        hasProfile = true;
+
         const nextAchievements = update.achievementsUnlocked
           ? Array.from(new Set([...current.achievementsUnlocked, ...update.achievementsUnlocked]))
           : current.achievementsUnlocked;
@@ -505,6 +513,17 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const nextSettings = update.settings
           ? { ...current.settings, ...update.settings }
           : current.settings;
+
+        if (update.achievementsUnlocked) {
+          mergedAchievements = nextAchievements;
+        }
+        if (update.questlinesClaimed) {
+          mergedQuestlines = nextQuestlines;
+        }
+        if (update.settings) {
+          mergedSettings = nextSettings;
+        }
+
         return {
           ...current,
           ...update,
@@ -514,7 +533,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       });
 
-      if (isGuestMode || !isDataApiConfigured) {
+      if (!hasProfile || isGuestMode || !isDataApiConfigured) {
         return;
       }
 
@@ -523,12 +542,21 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!token) {
           throw new Error('Missing authentication token.');
         }
+
         const payload: ProfileUpdate = {
           ...update,
-          achievementsUnlocked: nextAchievements,
-          questlinesClaimed: nextQuestlines,
-          settings: nextSettings,
         };
+
+        if (mergedAchievements) {
+          payload.achievementsUnlocked = mergedAchievements;
+        }
+        if (mergedQuestlines) {
+          payload.questlinesClaimed = mergedQuestlines;
+        }
+        if (mergedSettings) {
+          payload.settings = mergedSettings;
+        }
+
         const response = await updateProfileViaApi(token, payload);
         setProfile(response);
       } catch (error) {
