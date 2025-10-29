@@ -14,6 +14,8 @@ import {
   ArtifactDraft,
   createArtifactsViaApi,
   createProjectViaApi,
+  deleteArtifactViaApi,
+  deleteProjectViaApi,
   fetchProfile,
   fetchProjectArtifacts,
   fetchProjects,
@@ -43,9 +45,11 @@ interface UserDataContextValue {
   loadMoreArtifacts: (projectId: string) => Promise<void>;
   createProject: (input: { title: string; summary?: string }) => Promise<Project | null>;
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<Project | null>;
+  deleteProject: (projectId: string) => Promise<boolean>;
   createArtifact: (projectId: string, draft: ArtifactDraft) => Promise<Artifact | null>;
   createArtifactsBulk: (projectId: string, drafts: ArtifactDraft[]) => Promise<Artifact[]>;
   updateArtifact: (artifactId: string, updates: Partial<Artifact>) => Promise<Artifact | null>;
+  deleteArtifact: (artifactId: string) => Promise<boolean>;
   mergeArtifacts: (projectId: string, artifacts: Artifact[]) => void;
   updateProfile: (update: ProfileUpdate) => Promise<void>;
   addXp: (amount: number) => Promise<void>;
@@ -388,6 +392,49 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [getIdToken, isDataApiConfigured, isGuestMode, projects],
   );
 
+  const deleteProject = useCallback(
+    async (projectId: string) => {
+      const removeFromState = () => {
+        setProjects((current) => current.filter((project) => project.id !== projectId));
+        setArtifactsByProject((current) => {
+          if (!(projectId in current)) {
+            return current;
+          }
+          const next = { ...current };
+          delete next[projectId];
+          return next;
+        });
+        setArtifactPageTokens((current) => {
+          if (!(projectId in current)) {
+            return current;
+          }
+          const next = { ...current };
+          delete next[projectId];
+          return next;
+        });
+      };
+
+      if (isGuestMode || !isDataApiConfigured) {
+        removeFromState();
+        return true;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        await deleteProjectViaApi(token, projectId);
+        removeFromState();
+        return true;
+      } catch (error) {
+        console.error('Failed to delete project', error);
+        return false;
+      }
+    },
+    [getIdToken, isDataApiConfigured, isGuestMode],
+  );
+
   const createArtifactsBulk = useCallback(
     async (projectId: string, drafts: ArtifactDraft[]) => {
       if (drafts.length === 0) {
@@ -488,6 +535,54 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     },
     [artifacts, getIdToken, isDataApiConfigured, isGuestMode],
+  );
+
+  const deleteArtifact = useCallback(
+    async (artifactId: string) => {
+      const findProjectId = Object.entries(artifactsByProject).find(([, list]) =>
+        list.some((artifact) => artifact.id === artifactId),
+      )?.[0];
+
+      if (!findProjectId) {
+        return false;
+      }
+
+      const removeFromState = () => {
+        setArtifactsByProject((current) => {
+          const list = current[findProjectId];
+          if (!list) {
+            return current;
+          }
+          const nextList = list.filter((artifact) => artifact.id !== artifactId);
+          if (nextList.length === list.length) {
+            return current;
+          }
+          return {
+            ...current,
+            [findProjectId]: nextList,
+          };
+        });
+      };
+
+      if (isGuestMode || !isDataApiConfigured) {
+        removeFromState();
+        return true;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Missing authentication token.');
+        }
+        await deleteArtifactViaApi(token, artifactId);
+        removeFromState();
+        return true;
+      } catch (error) {
+        console.error('Failed to delete artifact', error);
+        return false;
+      }
+    },
+    [artifactsByProject, getIdToken, isDataApiConfigured, isGuestMode],
   );
 
   const updateProfile = useCallback(
@@ -600,9 +695,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       loadMoreArtifacts,
       createProject,
       updateProject,
+      deleteProject,
       createArtifact,
       createArtifactsBulk,
       updateArtifact,
+      deleteArtifact,
       mergeArtifacts,
       updateProfile,
       addXp,
@@ -619,9 +716,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       loadMoreArtifacts,
       createProject,
       updateProject,
+      deleteProject,
       createArtifact,
       createArtifactsBulk,
       updateArtifact,
+      deleteArtifact,
       mergeArtifacts,
       updateProfile,
       addXp,

@@ -647,9 +647,11 @@ export default function App() {
     ensureProjectArtifacts,
     createProject,
     updateProject,
+    deleteProject,
     createArtifact,
     createArtifactsBulk,
     updateArtifact,
+    deleteArtifact,
     mergeArtifacts,
     canLoadMoreProjects,
     loadMoreProjects,
@@ -813,6 +815,18 @@ export default function App() {
     [artifacts, updateArtifact],
   );
 
+  const handleDeleteArtifact = useCallback(
+    async (artifactId: string) => {
+      const success = await deleteArtifact(artifactId);
+      if (!success) {
+        alert('Failed to delete artifact. Please try again later.');
+        return;
+      }
+      setSelectedArtifactId((current) => (current === artifactId ? null : current));
+    },
+    [deleteArtifact],
+  );
+
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     setSelectedArtifactId(null);
@@ -841,6 +855,28 @@ export default function App() {
       setSelectedArtifactId(null);
     },
     [profile, createProject, addXp],
+  );
+
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      const projectArtifactIds = artifacts
+        .filter((artifact) => artifact.projectId === projectId)
+        .map((artifact) => artifact.id);
+      const success = await deleteProject(projectId);
+      if (!success) {
+        alert('Failed to delete project. Please try again later.');
+        return;
+      }
+      setProjectActivityLog((prev) => {
+        const { [projectId]: _removed, ...rest } = prev;
+        return rest;
+      });
+      setSelectedProjectId((current) => (current === projectId ? null : current));
+      setSelectedArtifactId((current) =>
+        current && projectArtifactIds.includes(current) ? null : current,
+      );
+    },
+    [artifacts, deleteProject],
   );
 
   const handleCreateArtifact = useCallback(
@@ -1198,6 +1234,7 @@ export default function App() {
               <ProjectOverview
                   project={selectedProject}
                   onUpdateProject={handleUpdateProject}
+                  onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
               <MilestoneTracker items={milestoneProgress} />
@@ -1331,12 +1368,13 @@ export default function App() {
                         </div>
                     )}
                     <ArtifactDetail
-                        artifact={selectedArtifact}
-                        projectArtifacts={projectArtifacts}
-                        onUpdateArtifact={handleUpdateArtifact}
-                        onAddRelation={handleAddRelation}
-                        onRemoveRelation={handleRemoveRelation}
-                        addXp={addXp}
+                      artifact={selectedArtifact}
+                      projectArtifacts={projectArtifacts}
+                      onUpdateArtifact={handleUpdateArtifact}
+                      onAddRelation={handleAddRelation}
+                      onRemoveRelation={handleRemoveRelation}
+                      onDeleteArtifact={handleDeleteArtifact}
+                      addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
                         <ConlangLexiconEditor
