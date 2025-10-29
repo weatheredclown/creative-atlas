@@ -1,0 +1,8 @@
+runtime: nodejs20
+env: standard
+
+entrypoint: npm start
+
+env_variables:
+  NODE_ENV: production
+  ALLOWED_ORIGINS: https://creative-atlas.web.app
