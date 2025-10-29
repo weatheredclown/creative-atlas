@@ -5,7 +5,7 @@ import { TagIcon, XMarkIcon } from './Icons';
 
 interface ProjectOverviewProps {
   project: Project;
-  onUpdateProject: (projectId: string, updater: (project: Project) => Project) => void;
+  onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
 }
 
 const statusOrder: ProjectStatus[] = [
@@ -35,7 +35,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextStatus = event.target.value as ProjectStatus;
     if (nextStatus === project.status) return;
-    onUpdateProject(project.id, (current) => ({ ...current, status: nextStatus }));
+    onUpdateProject(project.id, { status: nextStatus });
   };
 
   const handleSummarySubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -45,7 +45,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       setSummaryError('Summary cannot be empty.');
       return;
     }
-    onUpdateProject(project.id, (current) => ({ ...current, summary: trimmed }));
+    onUpdateProject(project.id, { summary: trimmed });
     setSummaryError(null);
     setIsEditingSummary(false);
   };
@@ -63,24 +63,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       return;
     }
 
-    onUpdateProject(project.id, (current) => {
-      const exists = current.tags.some((tag) => tag.toLowerCase() === trimmed.toLowerCase());
-      if (exists) {
-        setTagError('That tag is already attached to this project.');
-        return current;
-      }
-      return { ...current, tags: [...current.tags, trimmed] };
-    });
+    const exists = project.tags.some((tag) => tag.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      setTagError('That tag is already attached to this project.');
+      return;
+    }
 
+    onUpdateProject(project.id, { tags: [...project.tags, trimmed] });
     setTagInput('');
     setTagError(null);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    onUpdateProject(project.id, (current) => ({
-      ...current,
-      tags: current.tags.filter((tag) => tag !== tagToRemove),
-    }));
+    onUpdateProject(project.id, {
+      tags: project.tags.filter((tag) => tag !== tagToRemove),
+    });
   };
 
   const handleTagKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
