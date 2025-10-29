@@ -18,13 +18,13 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 ### Phase 2 — Grow Projects (Weeks 5‑8)
 - [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
 - [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
-- [ ] Document the current hard-coded template authoring workflow (`templateLibrary` + `projectTemplates` in `App.tsx`) and scope future admin/import tooling that can replace it post-MVP.
+- [x] Document the current hard-coded template authoring workflow (`templateLibrary` + `projectTemplates` in `App.tsx`) and scope future admin/import tooling that can replace it post-MVP.
 - [x] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
 - [x] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
 
 ### Phase 3 — Forge Systems (Weeks 9‑12)
 - [ ] Launch rich editors for core artifact types (storyboard, wiki pages, rulebooks) with status workflows (`idea → released`) surfaced inline.
-- [ ] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
+- [x] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
 - [ ] Wire up release pipelines that pull from milestone tracker data to draft changelogs and publish-ready bundles.
 - [x] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
 

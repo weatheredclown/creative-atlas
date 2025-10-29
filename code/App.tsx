@@ -11,6 +11,7 @@ import {
     ProjectStatus,
     ProjectTemplate,
     Quest,
+    Questline,
     Relation,
     TaskData,
     TaskState,
@@ -40,6 +41,8 @@ import { getStatusClasses, formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
+import StreakTracker from './components/StreakTracker';
+import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
@@ -59,6 +62,76 @@ const achievements: Achievement[] = [
     { id: 'ach-2', title: 'Polyglot', description: 'Create a Conlang artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Conlang) },
     { id: 'ach-3', title: 'Cartographer', description: 'Create a Location artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Location) },
     { id: 'ach-4', title: 'Connector', description: 'Link 3 artifacts together.', isUnlocked: (artifacts) => artifacts.reduce((acc, a) => acc + a.relations.length, 0) >= 3 },
+];
+
+const questlines: Questline[] = [
+    {
+        id: 'momentum-ritual',
+        title: 'Momentum Ritual',
+        summary: 'Lock in daily habits once you cross into Level 2.',
+        unlockLevel: 2,
+        objectives: [
+            {
+                id: 'momentum-streak-3',
+                title: 'Keep the flame burning',
+                description: 'Earn XP on three consecutive days to prove the habit is real.',
+                xpReward: 20,
+                isCompleted: (_, __, profile) => profile.bestStreak >= 3,
+            },
+            {
+                id: 'momentum-links-5',
+                title: 'Weave five links',
+                description: 'Create at least five artifact relationships across your worlds.',
+                xpReward: 15,
+                isCompleted: (artifacts) => artifacts.reduce((total, artifact) => total + artifact.relations.length, 0) >= 5,
+            },
+            {
+                id: 'momentum-ship-artifact',
+                title: 'Ship a finished artifact',
+                description: 'Mark any artifact as released or done to celebrate a drop.',
+                xpReward: 15,
+                isCompleted: (artifacts) =>
+                    artifacts.some((artifact) => {
+                        const status = artifact.status?.toLowerCase() ?? '';
+                        return status === 'released' || status === 'done';
+                    }),
+            },
+        ],
+    },
+    {
+        id: 'launch-cadence',
+        title: 'Launch Cadence',
+        summary: 'At Level 4, turn streaks into dependable release rituals.',
+        unlockLevel: 4,
+        objectives: [
+            {
+                id: 'cadence-streak-7',
+                title: 'Seven-day streak',
+                description: 'Sustain a seven-day creation streak.',
+                xpReward: 30,
+                isCompleted: (_, __, profile) => profile.bestStreak >= 7,
+            },
+            {
+                id: 'cadence-tasks-complete',
+                title: 'Finish three tasks',
+                description: 'Complete three Task artifacts to clear a sprint.',
+                xpReward: 25,
+                isCompleted: (artifacts) =>
+                    artifacts.filter(
+                        (artifact) =>
+                            artifact.type === ArtifactType.Task &&
+                            (artifact.data as TaskData | undefined)?.state === TaskState.Done,
+                    ).length >= 3,
+            },
+            {
+                id: 'cadence-link-density',
+                title: 'Link ten artifacts',
+                description: 'Ensure at least ten artifacts are linked into your graph.',
+                xpReward: 25,
+                isCompleted: (artifacts) => artifacts.filter((artifact) => artifact.relations.length > 0).length >= 10,
+            },
+        ],
+    },
 ];
 
 const templateLibrary: TemplateCategory[] = [
@@ -916,6 +989,23 @@ export default function App() {
     setProjects(currentProjects => currentProjects.map(project => project.id === projectId ? updater(project) : project));
   }, [setProjects]);
 
+  const handleQuestlineClaim = useCallback((questlineId: string, xpReward: number) => {
+    if (!profile) return;
+    if (profile.questlinesClaimed.includes(questlineId)) return;
+    addXp(xpReward);
+    updateProfile({ questlinesClaimed: [questlineId] });
+  }, [profile, addXp, updateProfile]);
+
+  if (!profile) {
+    return null;
+  }
+
+  const xpProgress = profile.xp % 100;
+  const level = Math.floor(profile.xp / 100) + 1;
+  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
+  const featuredAssistant = aiAssistants[0];
+  const upcomingMilestone = milestoneRoadmap[0];
+
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
     setStatusFilter('ALL');
@@ -976,6 +1066,7 @@ export default function App() {
           {isViewingOwnWorkspace && (
             <UserProfileCard profile={profile} onUpdateProfile={handleProfileUpdate} />
           )}
+          <StreakTracker currentStreak={profile.streakCount} bestStreak={profile.bestStreak} level={level} />
           <div>
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
@@ -995,6 +1086,15 @@ export default function App() {
             </div>
           </div>
           <Quests quests={dailyQuests} artifacts={artifacts} projects={projects} />
+          <QuestlineBoard
+            questlines={questlines}
+            artifacts={artifacts}
+            projects={projects}
+            profile={profile}
+            level={level}
+            claimedQuestlines={profile.questlinesClaimed}
+            onClaim={handleQuestlineClaim}
+          />
           <Achievements achievements={achievements} artifacts={artifacts} projects={projects} />
         </aside>
 

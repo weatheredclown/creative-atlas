@@ -207,6 +207,18 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
               XP to next level:{' '}
               <span className="text-slate-200 font-semibold">{xpToNextLevel}</span>
             </span>
+            <span>
+              Current streak:{' '}
+              <span className="text-slate-200 font-semibold">{profile.streakCount} day{profile.streakCount === 1 ? '' : 's'}</span>
+            </span>
+            <span>
+              Best streak:{' '}
+              <span className="text-slate-200 font-semibold">{profile.bestStreak} day{profile.bestStreak === 1 ? '' : 's'}</span>
+            </span>
+            <span>
+              Questlines claimed:{' '}
+              <span className="text-slate-200 font-semibold">{profile.questlinesClaimed.length}</span>
+            </span>
           </div>
         </div>
       </div>
