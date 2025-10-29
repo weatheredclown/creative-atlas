@@ -36,11 +36,11 @@ const Roadmap: React.FC<RoadmapProps> = ({ milestones }) => {
             <ul className="space-y-2 text-sm text-slate-300">
               {milestone.objectives.map((objective) => (
                 <li
-                  key={objective}
+                  key={objective.id}
                   className="flex items-start gap-2 bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2"
                 >
                   <span className="mt-0.5 text-cyan-300">•</span>
-                  <span>{objective}</span>
+                  <span>{objective.description}</span>
                 </li>
               ))}
             </ul>

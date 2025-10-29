@@ -192,12 +192,32 @@ export interface TemplateCategory {
     templates: TemplateEntry[];
 }
 
+export type MilestoneMetric =
+    | 'graph-core'
+    | 'view-engagement'
+    | 'csv-flows'
+    | 'github-import'
+    | 'rich-editors'
+    | 'progression-loops'
+    | 'markdown-export'
+    | 'static-site'
+    | 'release-notes'
+    | 'search-filters'
+    | 'plugin-api'
+    | 'theming-offline';
+
+export interface MilestoneObjective {
+    id: string;
+    description: string;
+    metric?: MilestoneMetric;
+}
+
 export interface Milestone {
     id: string;
     title: string;
     timeline: string;
     focus: string;
-    objectives: string[];
+    objectives: MilestoneObjective[];
 }
 
 export interface AIAssistant {

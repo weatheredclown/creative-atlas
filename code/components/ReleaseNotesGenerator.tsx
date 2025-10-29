@@ -8,6 +8,7 @@ interface ReleaseNotesGeneratorProps {
   projectTitle: string;
   artifacts: Artifact[];
   addXp: (amount: number) => void;
+  onDraftGenerated?: () => void;
 }
 
 const formatListPreview = (items: string[], max = 3): string => {
@@ -22,6 +23,7 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
   projectTitle,
   artifacts,
   addXp,
+  onDraftGenerated,
 }) => {
   const [tone, setTone] = useState('playful');
   const [audience, setAudience] = useState('collaborators');
@@ -111,12 +113,15 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
       });
       setGeneratedNotes(result.trim());
       addXp(7); // XP Source: Release Bard assist (+7)
+      if (onDraftGenerated) {
+        onDraftGenerated();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate release notes.');
     } finally {
       setIsGenerating(false);
     }
-  }, [projectTitle, tone, audience, highlights, notes, addXp]);
+  }, [projectTitle, tone, audience, highlights, notes, addXp, onDraftGenerated]);
 
   const handleCopy = async () => {
     if (!generatedNotes) return;
