@@ -916,16 +916,6 @@ export default function App() {
     setProjects(currentProjects => currentProjects.map(project => project.id === projectId ? updater(project) : project));
   }, [setProjects]);
 
-  if (!profile) {
-    return null;
-  }
-
-  const xpProgress = profile.xp % 100;
-  const level = Math.floor(profile.xp / 100) + 1;
-  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
-  const featuredAssistant = aiAssistants[0];
-  const upcomingMilestone = milestoneRoadmap[0];
-
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
     setStatusFilter('ALL');
@@ -953,6 +943,16 @@ export default function App() {
       markSelectedProjectActivity({ viewedKanban: true });
     }
   }, [markSelectedProjectActivity]);
+
+  if (!profile) {
+    return null;
+  }
+
+  const xpProgress = profile.xp % 100;
+  const level = Math.floor(profile.xp / 100) + 1;
+  const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
+  const featuredAssistant = aiAssistants[0];
+  const upcomingMilestone = milestoneRoadmap[0];
 
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
