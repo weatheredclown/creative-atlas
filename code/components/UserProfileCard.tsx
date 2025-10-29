@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ThemePreference, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { TriangleToggleIcon } from './Icons';
 
 interface UserProfileCardProps {
   profile: UserProfile;
@@ -99,12 +100,14 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
             <button
               type="button"
               onClick={() => setIsExpanded((previous) => !previous)}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-cyan-500/60 bg-slate-800/70 text-sm font-semibold text-cyan-200 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-cyan-500/60 bg-slate-800/70 text-cyan-200 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               aria-label={isExpanded ? 'Hide preferences' : 'Show preferences'}
               aria-expanded={isExpanded}
               aria-controls={preferencesPanelId}
             >
-              {isExpanded ? 'v' : '>'}
+              <TriangleToggleIcon
+                className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-90' : 'rotate-0'}`}
+              />
             </button>
           </div>
           <div>
