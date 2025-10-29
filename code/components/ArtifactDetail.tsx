@@ -8,7 +8,7 @@ import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon
 interface ArtifactDetailProps {
   artifact: Artifact;
   projectArtifacts: Artifact[];
-  onUpdateArtifact: (updatedArtifact: Artifact) => void;
+  onUpdateArtifact: (artifactId: string, updates: Partial<Artifact>) => void;
   onAddRelation: (fromId: string, toId: string, kind: string) => void;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   addXp: (amount: number) => void;
@@ -51,7 +51,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     setExpandError(null);
     try {
       const newSummary = await expandSummary(artifact);
-      onUpdateArtifact({ ...artifact, summary: newSummary });
+      onUpdateArtifact(artifact.id, { summary: newSummary });
       setEditableSummary(newSummary);
       addXp(6); // XP Source: Lore Weaver assist (+6)
     } catch (e) {
@@ -64,7 +64,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = event.target.value;
     if (newStatus && newStatus !== artifact.status) {
-      onUpdateArtifact({ ...artifact, status: newStatus });
+      onUpdateArtifact(artifact.id, { status: newStatus });
     }
   };
 
@@ -83,7 +83,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   };
 
   const handleSaveSummary = () => {
-    onUpdateArtifact({ ...artifact, summary: editableSummary });
+    onUpdateArtifact(artifact.id, { summary: editableSummary });
     setIsEditingSummary(false);
   };
 
@@ -100,7 +100,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
       setTagInput('');
       return;
     }
-    onUpdateArtifact({ ...artifact, tags: [...artifact.tags, newTag] });
+    onUpdateArtifact(artifact.id, { tags: [...artifact.tags, newTag] });
     setTagInput('');
   };
 
@@ -112,7 +112,9 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    onUpdateArtifact({ ...artifact, tags: artifact.tags.filter((tag) => tag !== tagToRemove) });
+    onUpdateArtifact(artifact.id, {
+      tags: artifact.tags.filter((tag) => tag !== tagToRemove),
+    });
   };
 
   const availableTargets = projectArtifacts.filter((a) => a.id !== artifact.id && !artifact.relations.some((r) => r.toId === a.id));
