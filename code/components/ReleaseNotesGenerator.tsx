@@ -86,6 +86,8 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
   }, [autoHighlights, hasEditedHighlights]);
 
   useEffect(() => {
+    setTone('playful');
+    setAudience('collaborators');
     setGeneratedNotes('');
     setNotes('');
     setError(null);
