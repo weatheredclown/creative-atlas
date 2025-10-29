@@ -4,6 +4,7 @@ import { generateReleaseNotes } from '../services/geminiService';
 import { MegaphoneIcon, SparklesIcon, Spinner } from './Icons';
 
 interface ReleaseNotesGeneratorProps {
+  projectId: string;
   projectTitle: string;
   artifacts: Artifact[];
   addXp: (amount: number) => void;
@@ -16,7 +17,12 @@ const formatListPreview = (items: string[], max = 3): string => {
   return remainder > 0 ? `${preview} +${remainder} more` : preview;
 };
 
-const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({ projectTitle, artifacts, addXp }) => {
+const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
+  projectId,
+  projectTitle,
+  artifacts,
+  addXp,
+}) => {
   const [tone, setTone] = useState('playful');
   const [audience, setAudience] = useState('collaborators');
   const [highlights, setHighlights] = useState('');
@@ -88,7 +94,7 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({ projectTi
     setHighlights(autoHighlights);
     // Reset when viewing a different project so earlier drafts don't leak across worlds.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit autoHighlights to keep manual edits when artifacts change.
-  }, [projectTitle]);
+  }, [projectId, projectTitle]);
 
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);

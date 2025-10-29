@@ -1045,6 +1045,7 @@ export default function App() {
                   />
                 </div>
                 <ReleaseNotesGenerator
+                    projectId={selectedProject.id}
                     projectTitle={selectedProject.title}
                     artifacts={projectArtifacts}
                     addXp={addXp}
