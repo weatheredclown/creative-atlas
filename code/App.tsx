@@ -45,6 +45,8 @@ import { useAuth } from './contexts/AuthContext';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import MilestoneTracker from './components/MilestoneTracker';
+import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -328,10 +330,26 @@ const milestoneRoadmap: Milestone[] = [
         timeline: 'Weeks 1–4',
         focus: 'Ship the graph-native core so ideas can be captured, linked, and exported.',
         objectives: [
-            'Core graph model, Projects/Artifacts/Relations',
-            'Seed capture, Table view, basic Graph view',
-            'CSV import/export (artifacts, relations)',
-            'GitHub read-only import (repos/issues/releases)',
+            {
+                id: 'm1-core-graph',
+                description: 'Core graph model, Projects/Artifacts/Relations',
+                metric: 'graph-core',
+            },
+            {
+                id: 'm1-seed-capture',
+                description: 'Seed capture, Table view, basic Graph view',
+                metric: 'view-engagement',
+            },
+            {
+                id: 'm1-csv-flows',
+                description: 'CSV import/export (artifacts, relations)',
+                metric: 'csv-flows',
+            },
+            {
+                id: 'm1-github-import',
+                description: 'GitHub read-only import (repos/issues/releases)',
+                metric: 'github-import',
+            },
         ],
     },
     {
@@ -340,9 +358,21 @@ const milestoneRoadmap: Milestone[] = [
         timeline: 'Weeks 5–8',
         focus: 'Deepen creation flows with rich editors and playful progression loops.',
         objectives: [
-            'Conlang table editor; Storyboard; Kanban',
-            'XP/Streaks/Quests + Achievements',
-            'Markdown bundle export',
+            {
+                id: 'm2-rich-editors',
+                description: 'Conlang table editor; Storyboard; Kanban',
+                metric: 'rich-editors',
+            },
+            {
+                id: 'm2-progression',
+                description: 'XP/Streaks/Quests + Achievements',
+                metric: 'progression-loops',
+            },
+            {
+                id: 'm2-markdown',
+                description: 'Markdown bundle export',
+                metric: 'markdown-export',
+            },
         ],
     },
     {
@@ -351,9 +381,21 @@ const milestoneRoadmap: Milestone[] = [
         timeline: 'Weeks 9–12',
         focus: 'Publish worlds outward with search, release tooling, and static sites.',
         objectives: [
-            'Static site exporter (Wikis/Docs)',
-            'Release notes generator',
-            'Search (Meilisearch), advanced filters',
+            {
+                id: 'm3-static-site',
+                description: 'Static site exporter (Wikis/Docs)',
+                metric: 'static-site',
+            },
+            {
+                id: 'm3-release-bard',
+                description: 'Release notes generator',
+                metric: 'release-notes',
+            },
+            {
+                id: 'm3-search',
+                description: 'Search (Meilisearch), advanced filters',
+                metric: 'search-filters',
+            },
         ],
     },
     {
@@ -362,8 +404,16 @@ const milestoneRoadmap: Milestone[] = [
         timeline: 'Weeks 13–16',
         focus: 'Open the universe with plugins, theming, and offline-friendly polish.',
         objectives: [
-            'Plugin API + 3 sample plugins (conlang, webcomic, ai prompts)',
-            'Theming, keyboard palette, offline cache (light)',
+            {
+                id: 'm4-plugin-api',
+                description: 'Plugin API + 3 sample plugins (conlang, webcomic, ai prompts)',
+                metric: 'plugin-api',
+            },
+            {
+                id: 'm4-theming-offline',
+                description: 'Theming, keyboard palette, offline cache (light)',
+                metric: 'theming-offline',
+            },
         ],
     },
 ];
@@ -527,6 +577,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
 
   useEffect(() => {
     if (!projects.length) {
@@ -539,6 +590,70 @@ export default function App() {
       setSelectedArtifactId(null);
     }
   }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    setProjectActivityLog((prev) => {
+      if (prev[selectedProjectId]) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [selectedProjectId]: createProjectActivity(),
+      };
+    });
+  }, [selectedProjectId]);
+
+  const updateProjectActivity = useCallback((projectId: string, updates: Partial<ProjectActivity>) => {
+    setProjectActivityLog((prev) => {
+      const current = prev[projectId] ?? createProjectActivity();
+      let changed = false;
+      const next: ProjectActivity = { ...current };
+
+      (Object.entries(updates) as [keyof ProjectActivity, boolean][]).forEach(([key, value]) => {
+        if (typeof value === 'undefined') {
+          return;
+        }
+        if (next[key] !== value) {
+          next[key] = value;
+          changed = true;
+        }
+      });
+
+      if (!changed && prev[projectId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [projectId]: changed ? next : current,
+      };
+    });
+  }, []);
+
+  const markSelectedProjectActivity = useCallback((updates: Partial<ProjectActivity>) => {
+    if (!selectedProjectId) {
+      return;
+    }
+    updateProjectActivity(selectedProjectId, updates);
+  }, [selectedProjectId, updateProjectActivity]);
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      return;
+    }
+    markSelectedProjectActivity({ usedSearch: true });
+  }, [searchTerm, markSelectedProjectActivity]);
+
+  useEffect(() => {
+    if (artifactTypeFilter === 'ALL' && statusFilter === 'ALL') {
+      return;
+    }
+    markSelectedProjectActivity({ usedFilters: true });
+  }, [artifactTypeFilter, statusFilter, markSelectedProjectActivity]);
 
   useEffect(() => {
     if (!profile) return;
@@ -707,12 +822,13 @@ export default function App() {
             const existingIds = new Set(artifacts.map(a => a.id));
             const newArtifacts = imported.filter(i => !existingIds.has(i.id));
 
-            if (newArtifacts.length > 0) {
-                setArtifacts(prev => [...prev, ...newArtifacts]);
-                alert(`${newArtifacts.length} new artifacts imported successfully!`);
-            } else {
-                alert('No new artifacts to import. All IDs in the file already exist.');
-            }
+      if (newArtifacts.length > 0) {
+        setArtifacts(prev => [...prev, ...newArtifacts]);
+        alert(`${newArtifacts.length} new artifacts imported successfully!`);
+        markSelectedProjectActivity({ importedCsv: true });
+      } else {
+        alert('No new artifacts to import. All IDs in the file already exist.');
+      }
         } catch (error) {
             alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -727,11 +843,16 @@ export default function App() {
     }
 
     setArtifacts(prev => [...prev, ...newArtifacts]);
-  }, [setArtifacts]);
+    const projectId = newArtifacts[0]?.projectId ?? selectedProjectId;
+    if (projectId) {
+      updateProjectActivity(projectId, { githubImported: true });
+    }
+  }, [setArtifacts, selectedProjectId, updateProjectActivity]);
 
   const handlePublish = () => {
     if (selectedProject && projectArtifacts.length > 0) {
         exportProjectAsStaticSite(selectedProject, projectArtifacts);
+        markSelectedProjectActivity({ publishedSite: true });
         addXp(25); // XP Source: publish (+25)
     } else {
         alert('Please select a project with artifacts to publish.');
@@ -742,6 +863,24 @@ export default function App() {
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
+  const emptyActivity = useMemo(() => createProjectActivity(), []);
+  const selectedProjectActivity = useMemo(() => {
+    if (!selectedProjectId) {
+      return emptyActivity;
+    }
+    return projectActivityLog[selectedProjectId] ?? emptyActivity;
+  }, [projectActivityLog, selectedProjectId, emptyActivity]);
+  const milestoneProgress = useMemo<MilestoneProgressOverview[]>(() => {
+    if (!selectedProject) {
+      return [];
+    }
+    return evaluateMilestoneProgress(milestoneRoadmap, {
+      project: selectedProject,
+      artifacts: projectArtifacts,
+      profile,
+      activity: selectedProjectActivity,
+    });
+  }, [selectedProject, projectArtifacts, profile, selectedProjectActivity]);
 
   const handleProfileUpdate = useCallback((updates: { displayName?: string; settings?: Partial<UserProfile['settings']> }) => {
     updateProfile(updates);
@@ -793,15 +932,37 @@ export default function App() {
     setSearchTerm('');
   };
 
+  const handleExportArtifacts = useCallback((format: 'csv' | 'tsv') => {
+    if (!selectedProject) {
+      return;
+    }
+    markSelectedProjectActivity({ exportedData: true });
+    if (format === 'csv') {
+      exportArtifactsToCSV(projectArtifacts, selectedProject.title);
+    } else {
+      exportArtifactsToTSV(projectArtifacts, selectedProject.title);
+    }
+  }, [selectedProject, projectArtifacts, markSelectedProjectActivity]);
+
+  const handleViewModeChange = useCallback((mode: 'table' | 'graph' | 'kanban') => {
+    setViewMode(mode);
+    if (mode === 'graph') {
+      markSelectedProjectActivity({ viewedGraph: true });
+    }
+    if (mode === 'kanban') {
+      markSelectedProjectActivity({ viewedKanban: true });
+    }
+  }, [markSelectedProjectActivity]);
+
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
-        <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'table' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
+        <button onClick={() => handleViewModeChange('table')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'table' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
             <TableCellsIcon className="w-4 h-4" /> Table
         </button>
-        <button onClick={() => setViewMode('graph')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'graph' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
+        <button onClick={() => handleViewModeChange('graph')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'graph' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
             <ShareIcon className="w-4 h-4" /> Graph
         </button>
-        <button onClick={() => setViewMode('kanban')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'kanban' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
+        <button onClick={() => handleViewModeChange('kanban')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'kanban' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
             <ViewColumnsIcon className="w-4 h-4" /> Kanban
         </button>
     </div>
@@ -845,6 +1006,7 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
+              <MilestoneTracker items={milestoneProgress} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
@@ -861,10 +1023,10 @@ export default function App() {
                         <button onClick={handleImportClick} title="Import from CSV or TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowUpTrayIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={() => exportArtifactsToCSV(projectArtifacts, selectedProject.title)} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                        <button onClick={() => handleExportArtifacts('csv')} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <ArrowDownTrayIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={() => exportArtifactsToTSV(projectArtifacts, selectedProject.title)} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                        <button onClick={() => handleExportArtifacts('tsv')} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
                         </button>
                         <ViewSwitcher />
@@ -1051,6 +1213,7 @@ export default function App() {
                     projectTitle={selectedProject.title}
                     artifacts={projectArtifacts}
                     addXp={addXp}
+                    onDraftGenerated={() => markSelectedProjectActivity({ generatedReleaseNotes: true })}
                 />
                 <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 flex flex-col gap-5">
                     <header className="flex items-start justify-between gap-4">

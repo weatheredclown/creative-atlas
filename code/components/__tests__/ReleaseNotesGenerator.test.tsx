@@ -81,6 +81,7 @@ describe('ReleaseNotesGenerator', () => {
   it('generates release notes and rewards XP', async () => {
     const user = userEvent.setup();
     const addXp = vi.fn();
+    const onDraftGenerated = vi.fn();
     mockedGenerateReleaseNotes.mockResolvedValue('Here are the new release notes!');
 
     render(
@@ -89,6 +90,7 @@ describe('ReleaseNotesGenerator', () => {
         projectTitle="Tamenzut"
         artifacts={baseArtifacts}
         addXp={addXp}
+        onDraftGenerated={onDraftGenerated}
       />,
     );
 
@@ -114,6 +116,7 @@ describe('ReleaseNotesGenerator', () => {
       }),
     );
     expect(addXp).toHaveBeenCalledWith(7);
+    expect(onDraftGenerated).toHaveBeenCalledTimes(1);
   });
 
   it('clears generated notes when switching projects', async () => {
