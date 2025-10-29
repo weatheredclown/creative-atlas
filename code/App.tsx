@@ -49,8 +49,8 @@ import { downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } fro
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import MilestoneTracker from './components/MilestoneTracker';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
-import { useToast } from './components/ToastProvider';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -639,10 +639,21 @@ const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) =>
 
 
 export default function App() {
-  const { projects, setProjects, artifacts, addArtifact, addArtifacts, updateArtifact, profile, addXp, updateProfile } =
-    useUserData();
+  const {
+    projects,
+    artifacts,
+    profile,
+    addXp,
+    updateProfile,
+    ensureProjectArtifacts,
+    createProject,
+    updateProject,
+    createArtifact,
+    createArtifactsBulk,
+    updateArtifact,
+    mergeArtifacts,
+  } = useUserData();
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
-  const { showToast } = useToast();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -751,42 +762,54 @@ export default function App() {
     }
   }, [profile, artifacts, projects, updateProfile]);
 
-  const handleUpdateArtifactData = useCallback((artifactId: string, data: Artifact['data']) => {
-    let awardTaskXp = false;
-    updateArtifact(artifactId, (artifact) => {
-      if (artifact.type === ArtifactType.Task) {
-        const previousState = (artifact.data as TaskData).state;
-        const nextState = (data as TaskData).state;
-        if (nextState === TaskState.Done && previousState !== TaskState.Done) {
-          awardTaskXp = true;
-        }
+  const handleUpdateArtifactData = useCallback(
+    (artifactId: string, data: Artifact['data']) => {
+      const target = artifacts.find((artifact) => artifact.id === artifactId);
+      if (!target) {
+        return;
       }
+      if (
+        target.type === ArtifactType.Task &&
+        (data as TaskData).state === TaskState.Done &&
+        (target.data as TaskData | undefined)?.state !== TaskState.Done
+      ) {
+        void addXp(8); // XP Source: close task (+8)
+      }
+      void updateArtifact(artifactId, { data });
+    },
+    [artifacts, addXp, updateArtifact],
+  );
 
-      return { ...artifact, data };
-    });
+  const handleUpdateArtifact = useCallback(
+    (artifactId: string, updates: Partial<Artifact>) => {
+      void updateArtifact(artifactId, updates);
+    },
+    [updateArtifact],
+  );
 
-    if (awardTaskXp) {
-      addXp(8); // XP Source: close task (+8)
-    }
-  }, [addXp, updateArtifact]);
-
-  const handleUpdateArtifact = useCallback((updatedArtifact: Artifact) => {
-    updateArtifact(updatedArtifact.id, () => updatedArtifact);
-  }, [updateArtifact]);
-
-  const handleAddRelation = useCallback((fromId: string, toId: string, kind: string) => {
-    updateArtifact(fromId, (artifact) => {
+  const handleAddRelation = useCallback(
+    (fromId: string, toId: string, kind: string) => {
+      const source = artifacts.find((artifact) => artifact.id === fromId);
+      if (!source) {
+        return;
+      }
       const newRelation: Relation = { toId, kind };
-      return { ...artifact, relations: [...artifact.relations, newRelation] };
-    });
-  }, [updateArtifact]);
+      void updateArtifact(fromId, { relations: [...source.relations, newRelation] });
+    },
+    [artifacts, updateArtifact],
+  );
 
-  const handleRemoveRelation = useCallback((fromId: string, relationIndex: number) => {
-    updateArtifact(fromId, (artifact) => ({
-      ...artifact,
-      relations: artifact.relations.filter((_, index) => index !== relationIndex),
-    }));
-  }, [updateArtifact]);
+  const handleRemoveRelation = useCallback(
+    (fromId: string, relationIndex: number) => {
+      const source = artifacts.find((artifact) => artifact.id === fromId);
+      if (!source) {
+        return;
+      }
+      const nextRelations = source.relations.filter((_, index) => index !== relationIndex);
+      void updateArtifact(fromId, { relations: nextRelations });
+    },
+    [artifacts, updateArtifact],
+  );
 
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
@@ -796,63 +819,66 @@ export default function App() {
     setSearchTerm('');
   };
 
-  const handleCreateProject = useCallback(({ title, summary }: { title: string; summary: string }) => {
-    if (!profile) return;
-    const newProject: Project = {
-      id: `proj-${Date.now()}`,
-      ownerId: profile.uid,
-      title,
-      summary,
-      status: ProjectStatus.Active,
-      tags: [],
-    };
+  useEffect(() => {
+    if (!selectedProjectId) {
+      return;
+    }
+    void ensureProjectArtifacts(selectedProjectId);
+  }, [selectedProjectId, ensureProjectArtifacts]);
 
-    setProjects(prev => [...prev, newProject]);
-    addXp(5);
-    setIsCreateProjectModalOpen(false);
-    setSelectedProjectId(newProject.id);
-    setSelectedArtifactId(null);
-  }, [profile, setProjects, addXp]);
+  const handleCreateProject = useCallback(
+    async ({ title, summary }: { title: string; summary: string }) => {
+      if (!profile) return;
+      const created = await createProject({ title, summary });
+      if (!created) {
+        return;
+      }
+      void addXp(5);
+      setIsCreateProjectModalOpen(false);
+      setSelectedProjectId(created.id);
+      setSelectedArtifactId(null);
+    },
+    [profile, createProject, addXp],
+  );
 
-  const handleCreateArtifact = useCallback(({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
-    if (!selectedProjectId || !profile) return;
+  const handleCreateArtifact = useCallback(
+    async ({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
+      if (!selectedProjectId || !profile) return;
 
-    const data: Artifact['data'] = getDefaultDataForType(type, title);
+      const data: Artifact['data'] = getDefaultDataForType(type, title);
 
-    const newArtifact: Artifact = {
-      id: `art-${Date.now()}`,
-      ownerId: profile.uid,
-      projectId: selectedProjectId,
-      title,
-      type,
-      summary,
-      status: 'idea',
-      tags: [],
-      relations: [],
-      data,
-    };
+      const created = await createArtifact(selectedProjectId, {
+        type,
+        title,
+        summary,
+        status: 'idea',
+        tags: [],
+        relations: [],
+        data,
+      });
 
-    addArtifact(newArtifact);
-    addXp(5);
-    setIsCreateModalOpen(false);
-    setSelectedArtifactId(newArtifact.id);
-  }, [profile, selectedProjectId, addArtifact, addXp]);
+      if (created) {
+        void addXp(5);
+        setIsCreateModalOpen(false);
+        setSelectedArtifactId(created.id);
+      }
+    },
+    [selectedProjectId, profile, createArtifact, addXp],
+  );
 
-  const handleApplyProjectTemplate = useCallback((template: ProjectTemplate) => {
+  const handleApplyProjectTemplate = useCallback(async (template: ProjectTemplate) => {
     if (!profile || !selectedProjectId) return;
 
     const projectArtifactsForSelection = artifacts.filter(artifact => artifact.projectId === selectedProjectId);
     const existingTitles = new Set(projectArtifactsForSelection.map(artifact => artifact.title.toLowerCase()));
     const timestamp = Date.now();
 
-    const newArtifacts = template.artifacts
+    const drafts = template.artifacts
       .filter(blueprint => !existingTitles.has(blueprint.title.toLowerCase()))
       .map((blueprint, index) => ({
         id: `art-${timestamp + index}`,
-        ownerId: profile.uid,
-        projectId: selectedProjectId,
-        title: blueprint.title,
         type: blueprint.type,
+        title: blueprint.title,
         summary: blueprint.summary,
         status: blueprint.status ?? 'draft',
         tags: blueprint.tags ? [...blueprint.tags] : [],
@@ -860,40 +886,27 @@ export default function App() {
         data: blueprint.data ?? getDefaultDataForType(blueprint.type, blueprint.title),
       }));
 
-    if (newArtifacts.length > 0) {
-      addArtifacts(newArtifacts);
-      addXp(newArtifacts.length * 5);
-      setSelectedArtifactId(newArtifacts[0].id);
-      showToast({
-        title: 'Template applied',
-        description: `Added ${newArtifacts.length} starter artifact${newArtifacts.length > 1 ? 's' : ''} from the ${template.name} template.`,
-        variant: 'success',
-      });
+    if (drafts.length > 0) {
+      const created = await createArtifactsBulk(selectedProjectId, drafts);
+      if (created.length > 0) {
+        void addXp(created.length * 5);
+        setSelectedArtifactId(created[0].id);
+        alert(`Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`);
+      }
     } else {
-      showToast({
-        title: 'Nothing new to add',
-        description: "All of the template's starter artifacts already exist in this project.",
-      });
+      alert('All of the template\'s starter artifacts already exist in this project.');
     }
 
     if (template.projectTags.length > 0) {
-      setProjects(prev => {
-        let changed = false;
-        const next = prev.map(project => {
-          if (project.id !== selectedProjectId) {
-            return project;
-          }
-          const mergedTags = Array.from(new Set([...project.tags, ...template.projectTags]));
-          if (mergedTags.length !== project.tags.length) {
-            changed = true;
-            return { ...project, tags: mergedTags };
-          }
-          return project;
-        });
-        return changed ? next : prev;
-      });
+      const selected = projects.find((project) => project.id === selectedProjectId);
+      if (selected) {
+        const mergedTags = Array.from(new Set([...selected.tags, ...template.projectTags]));
+        if (mergedTags.length !== selected.tags.length) {
+          void updateProject(selectedProjectId, { tags: mergedTags });
+        }
+      }
     }
-  }, [profile, selectedProjectId, artifacts, setArtifacts, addArtifacts, addXp, setProjects, showToast]);
+  }, [profile, selectedProjectId, artifacts, createArtifactsBulk, addXp, projects, updateProject]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -915,7 +928,7 @@ export default function App() {
             const newArtifacts = imported.filter(artifact => !existingIds.has(artifact.id));
 
             if (newArtifacts.length > 0) {
-              addArtifacts(newArtifacts);
+              mergeArtifacts(selectedProjectId, newArtifacts);
               alert(`${newArtifacts.length} new artifacts imported successfully!`);
               markSelectedProjectActivity({ importedCsv: true });
             } else {
@@ -933,7 +946,23 @@ export default function App() {
       const newArtifacts = imported.filter(i => !existingIds.has(i.id));
 
       if (newArtifacts.length > 0) {
-        addArtifacts(newArtifacts);
+        if (dataApiEnabled) {
+          await createArtifactsBulk(
+            selectedProjectId,
+            newArtifacts.map((artifact) => ({
+              id: artifact.id,
+              type: artifact.type,
+              title: artifact.title,
+              summary: artifact.summary,
+              status: artifact.status,
+              tags: artifact.tags,
+              relations: artifact.relations,
+              data: artifact.data,
+            })),
+          );
+        } else {
+          mergeArtifacts(selectedProjectId, newArtifacts);
+        }
         alert(`${newArtifacts.length} new artifacts imported successfully!`);
         markSelectedProjectActivity({ importedCsv: true });
       } else {
@@ -946,17 +975,35 @@ export default function App() {
     }
   };
 
-  const handleGitHubArtifactsImported = useCallback((newArtifacts: Artifact[]) => {
-    if (newArtifacts.length === 0) {
-      return;
-    }
+  const handleGitHubArtifactsImported = useCallback(
+    async (newArtifacts: Artifact[]) => {
+      if (newArtifacts.length === 0) {
+        return;
+      }
 
-    addArtifacts(newArtifacts);
-    const projectId = newArtifacts[0]?.projectId ?? selectedProjectId;
-    if (projectId) {
+      const projectId = newArtifacts[0]?.projectId ?? selectedProjectId;
+      if (!projectId) {
+        return;
+      }
+
+      await createArtifactsBulk(
+        projectId,
+        newArtifacts.map((artifact) => ({
+          id: artifact.id,
+          type: artifact.type,
+          title: artifact.title,
+          summary: artifact.summary,
+          status: artifact.status,
+          tags: artifact.tags,
+          relations: artifact.relations,
+          data: artifact.data,
+        })),
+      );
+
       updateProjectActivity(projectId, { githubImported: true });
-    }
-  }, [addArtifacts, selectedProjectId, updateProjectActivity]);
+    },
+    [createArtifactsBulk, selectedProjectId, updateProjectActivity],
+  );
 
   const handlePublish = () => {
     if (selectedProject && projectArtifacts.length > 0) {
@@ -1021,9 +1068,12 @@ export default function App() {
   const hasActiveFilters = artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '';
   const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
 
-  const handleUpdateProject = useCallback((projectId: string, updater: (project: Project) => Project) => {
-    setProjects(currentProjects => currentProjects.map(project => project.id === projectId ? updater(project) : project));
-  }, [setProjects]);
+  const handleUpdateProject = useCallback(
+    (projectId: string, updates: Partial<Project>) => {
+      void updateProject(projectId, updates);
+    },
+    [updateProject],
+  );
 
   const handleQuestlineClaim = useCallback((questlineId: string, xpReward: number) => {
     if (!profile) return;
@@ -1147,6 +1197,7 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
+              <MilestoneTracker items={milestoneProgress} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
@@ -1427,7 +1478,6 @@ export default function App() {
       <SecondaryInsightsPanel
         assistants={aiAssistants}
         milestones={milestoneRoadmap}
-        milestoneProgress={milestoneProgress}
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
       />
