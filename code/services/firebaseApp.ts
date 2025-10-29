@@ -10,10 +10,16 @@ const REQUIRED_KEYS = [
 ] as const;
 
 const getFirebaseConfig = () => {
+  // Helper from 'main' branch to trim whitespace
+  const cleanEnvValue = (value: string | undefined) => value?.trim();
+
+  // Logic from 'codex' branch to read all keys dynamically
   const env = import.meta.env as Record<typeof REQUIRED_KEYS[number], string | undefined>;
 
-  const providedKeys = REQUIRED_KEYS.filter((key) => Boolean(env[key]));
+  // Check for *cleaned* keys
+  const providedKeys = REQUIRED_KEYS.filter((key) => Boolean(cleanEnvValue(env[key])));
 
+  // Fallback logic (from both branches)
   if (providedKeys.length === 0) {
     console.warn(
       'Missing Firebase environment variables. Falling back to default configuration for local development.',
@@ -28,8 +34,10 @@ const getFirebaseConfig = () => {
     } as const;
   }
 
+  // Robust error logic from 'codex' branch
   if (providedKeys.length !== REQUIRED_KEYS.length) {
-    const missing = REQUIRED_KEYS.filter((key) => !env[key]);
+    // Check cleaned keys to find missing ones
+    const missing = REQUIRED_KEYS.filter((key) => !cleanEnvValue(env[key]));
     throw new Error(
       `Missing Firebase environment variables: ${missing.join(
         ', ',
@@ -37,13 +45,14 @@ const getFirebaseConfig = () => {
     );
   }
 
+  // Return object using cleaned values
   return {
-    apiKey: env.VITE_FIREBASE_API_KEY!,
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN!,
-    projectId: env.VITE_FIREBASE_PROJECT_ID!,
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET!,
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID!,
-    appId: env.VITE_FIREBASE_APP_ID!,
+    apiKey: cleanEnvValue(env.VITE_FIREBASE_API_KEY)!,
+    authDomain: cleanEnvValue(env.VITE_FIREBASE_AUTH_DOMAIN)!,
+    projectId: cleanEnvValue(env.VITE_FIREBASE_PROJECT_ID)!,
+    storageBucket: cleanEnvValue(env.VITE_FIREBASE_STORAGE_BUCKET)!,
+    messagingSenderId: cleanEnvValue(env.VITE_FIREBASE_MESSAGING_SENDER_ID)!,
+    appId: cleanEnvValue(env.VITE_FIREBASE_APP_ID)!,
   };
 };
 
