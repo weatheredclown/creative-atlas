@@ -49,7 +49,6 @@ import { downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } fro
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
-import MilestoneTracker from './components/MilestoneTracker';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 
 const dailyQuests: Quest[] = [
@@ -1142,7 +1141,6 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
-              <MilestoneTracker items={milestoneProgress} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
@@ -1423,6 +1421,7 @@ export default function App() {
       <SecondaryInsightsPanel
         assistants={aiAssistants}
         milestones={milestoneRoadmap}
+        milestoneProgress={milestoneProgress}
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
       />
