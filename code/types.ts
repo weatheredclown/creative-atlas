@@ -156,6 +156,22 @@ export interface Achievement {
     isUnlocked: (artifacts: Artifact[], projects: Project[]) => boolean;
 }
 
+export interface QuestlineObjective {
+    id: string;
+    title: string;
+    description: string;
+    xpReward: number;
+    isCompleted: (artifacts: Artifact[], projects: Project[], profile: UserProfile) => boolean;
+}
+
+export interface Questline {
+    id: string;
+    title: string;
+    summary: string;
+    unlockLevel: number;
+    objectives: QuestlineObjective[];
+}
+
 export interface TemplateArtifactBlueprint {
     title: string;
     type: ArtifactType;
@@ -221,6 +237,10 @@ export interface UserProfile {
     displayName: string;
     photoURL?: string;
     xp: number;
+    streakCount: number;
+    bestStreak: number;
+    lastActiveDate?: string;
     achievementsUnlocked: string[];
+    questlinesClaimed: string[];
     settings: UserSettings;
 }

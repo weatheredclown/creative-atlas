@@ -21,7 +21,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### Phase 3 — Forge Systems (Weeks 9‑12)
 - [ ] Launch rich editors for core artifact types (storyboard, wiki pages, rulebooks) with status workflows (`idea → released`) surfaced inline.
-- [ ] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
+- [x] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
 - [ ] Wire up release pipelines that pull from milestone tracker data to draft changelogs and publish-ready bundles.
 - [x] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
 
