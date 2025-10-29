@@ -32,7 +32,9 @@ interface UserDataContextValue {
   projects: Project[];
   setProjects: (updater: React.SetStateAction<Project[]>) => void;
   artifacts: Artifact[];
-  setArtifacts: (updater: React.SetStateAction<Artifact[]>) => void;
+  addArtifact: (artifact: Artifact) => void;
+  addArtifacts: (artifacts: Artifact[]) => void;
+  updateArtifact: (artifactId: string, updater: (artifact: Artifact) => Artifact) => void;
   profile: UserProfile | null;
   updateProfile: (update: ProfileUpdate) => void;
   addXp: (amount: number) => void;
@@ -420,6 +422,87 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [isGuestMode, user],
   );
 
+  const addArtifact = useCallback(
+    (artifact: Artifact) => {
+      setArtifacts((current) => {
+        const index = current.findIndex((item) => item.id === artifact.id);
+        if (index === -1) {
+          return [...current, artifact];
+        }
+
+        if (areArtifactsEqual(current[index], artifact)) {
+          return current;
+        }
+
+        const next = [...current];
+        next[index] = artifact;
+        return next;
+      });
+    },
+    [setArtifacts],
+  );
+
+  const addArtifacts = useCallback(
+    (artifactsToAdd: Artifact[]) => {
+      if (artifactsToAdd.length === 0) {
+        return;
+      }
+
+      setArtifacts((current) => {
+        let changed = false;
+        const next = [...current];
+        const indexById = new Map(current.map((artifact, index) => [artifact.id, index]));
+
+        artifactsToAdd.forEach((artifact) => {
+          const existingIndex = indexById.get(artifact.id);
+          if (typeof existingIndex === 'number') {
+            if (!areArtifactsEqual(next[existingIndex], artifact)) {
+              next[existingIndex] = artifact;
+              changed = true;
+            }
+            return;
+          }
+
+          next.push(artifact);
+          indexById.set(artifact.id, next.length - 1);
+          changed = true;
+        });
+
+        return changed ? next : current;
+      });
+    },
+    [setArtifacts],
+  );
+
+  const updateArtifact = useCallback(
+    (artifactId: string, updater: (artifact: Artifact) => Artifact) => {
+      setArtifacts((current) => {
+        let changed = false;
+
+        const next = current.map((artifact) => {
+          if (artifact.id !== artifactId) {
+            return artifact;
+          }
+
+          const updated = updater(artifact);
+          if (!updated) {
+            return artifact;
+          }
+
+          if (areArtifactsEqual(artifact, updated)) {
+            return artifact;
+          }
+
+          changed = true;
+          return updated;
+        });
+
+        return changed ? next : current;
+      });
+    },
+    [setArtifacts],
+  );
+
   const updateProfile = useCallback(
     (update: ProfileUpdate) => {
       setProfile((current) => {
@@ -552,13 +635,15 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       projects,
       setProjects,
       artifacts,
-      setArtifacts,
+      addArtifact,
+      addArtifacts,
+      updateArtifact,
       profile,
       updateProfile,
       addXp,
       loading,
     }),
-    [projects, setProjects, artifacts, setArtifacts, profile, updateProfile, addXp, loading],
+    [projects, setProjects, artifacts, addArtifact, addArtifacts, updateArtifact, profile, updateProfile, addXp, loading],
   );
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
