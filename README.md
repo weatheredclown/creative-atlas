@@ -118,6 +118,16 @@ npm run dev
 
 The server expects Firebase Admin credentials via environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`). When these are set, the API automatically provisions Firestore reads/writes on behalf of the signed-in user.
 
+Set `ALLOWED_ORIGINS` (comma-separated) so deployed environments return the proper CORS headers during browser preflight checks. For example:
+
+```
+ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.web.app
+```
+
+For App Engine deployments, mirror the same value in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variable automatically.
+
+When GitHub Actions deploys `main`, it now reuses that App Engine configuration. Store a service-account JSON (granted App Engine Deployer permissions) in the `GCP_APP_ENGINE_SERVICE_ACCOUNT` repository secret so [the merge deployment workflow](.github/workflows/firebase-hosting-merge.yml) can authenticate and run `gcloud app deploy` with the `server/app.yaml` manifest.
+
 ### 4. Start the development server
 
 Use the Vite dev server to run the app with hot reloading:
