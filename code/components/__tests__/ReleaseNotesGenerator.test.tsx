@@ -62,7 +62,12 @@ describe('ReleaseNotesGenerator', () => {
   it('prefills highlights from artifact activity', async () => {
     const addXp = vi.fn();
     render(
-      <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
+      <ReleaseNotesGenerator
+        projectId="project-tamenzut"
+        projectTitle="Tamenzut"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />,
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
@@ -79,7 +84,12 @@ describe('ReleaseNotesGenerator', () => {
     mockedGenerateReleaseNotes.mockResolvedValue('Here are the new release notes!');
 
     render(
-      <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
+      <ReleaseNotesGenerator
+        projectId="project-tamenzut"
+        projectTitle="Tamenzut"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />,
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
@@ -112,7 +122,12 @@ describe('ReleaseNotesGenerator', () => {
     mockedGenerateReleaseNotes.mockResolvedValue('Here are the new release notes!');
 
     const { rerender } = render(
-      <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
+      <ReleaseNotesGenerator
+        projectId="project-tamenzut"
+        projectTitle="Tamenzut"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />,
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
@@ -127,7 +142,12 @@ describe('ReleaseNotesGenerator', () => {
     });
 
     rerender(
-      <ReleaseNotesGenerator projectTitle="Steamweave" artifacts={baseArtifacts} addXp={addXp} />,
+      <ReleaseNotesGenerator
+        projectId="project-steamweave"
+        projectTitle="Steamweave"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />,
     );
 
     await waitFor(() => {
@@ -144,7 +164,12 @@ describe('ReleaseNotesGenerator', () => {
     const user = userEvent.setup();
     const addXp = vi.fn();
     const { rerender } = render(
-      <ReleaseNotesGenerator projectTitle="Tamenzut" artifacts={baseArtifacts} addXp={addXp} />,
+      <ReleaseNotesGenerator
+        projectId="project-tamenzut"
+        projectTitle="Tamenzut"
+        artifacts={baseArtifacts}
+        addXp={addXp}
+      />,
     );
 
     const highlightsField = screen.getByLabelText(/Highlights to share/i) as HTMLTextAreaElement;
@@ -153,6 +178,7 @@ describe('ReleaseNotesGenerator', () => {
 
     rerender(
       <ReleaseNotesGenerator
+        projectId="project-tamenzut"
         projectTitle="Tamenzut"
         artifacts={[...baseArtifacts, { ...baseArtifacts[1], id: 'story-2', title: 'Chapter Two' }]}
         addXp={addXp}
