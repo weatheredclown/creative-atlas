@@ -185,48 +185,30 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
     addXp(5); // XP Source: manually forge a lexeme (+5)
   }, [addXp, commitLexemeUpdate, draftLexemes, newLexeme]);
 
-  const escapeCsvCell = useCallback((cell: string | string[] | undefined): string => {
-    const cellValue = Array.isArray(cell) ? cell.join('; ') : cell ?? '';
-    if (/[",\n]/.test(cellValue)) {
-      return `"${cellValue.replace(/"/g, '""')}"`;
-    }
-    return cellValue;
-  }, []);
-
   const handleExportCsv = useCallback(async () => {
     if (draftLexemes.length === 0) {
       setError('No lexemes available to export yet.');
       return;
     }
 
-    if (dataApiEnabled) {
-      const token = await getIdToken();
-      if (token) {
-        try {
-          const csvContent = await exportLexiconViaApi(token, draftLexemes, 'csv');
-          downloadText(csvContent, 'text/csv', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`);
-          setError(null);
-          return;
-        } catch (error) {
-          console.error('Data API lexicon CSV export failed, falling back to client export', error);
-        }
-      }
+    if (!dataApiEnabled) {
+      setError('Lexicon export requires a connection to the data server.');
+      return;
     }
 
-    const header = ['lemma', 'pos', 'gloss', 'etymology', 'tags'];
-    const rows = draftLexemes.map((lexeme) =>
-      [
-        escapeCsvCell(lexeme.lemma),
-        escapeCsvCell(lexeme.pos),
-        escapeCsvCell(lexeme.gloss),
-        escapeCsvCell(lexeme.etymology),
-        escapeCsvCell(lexeme.tags),
-      ].join(','),
-    );
-    const csvContent = [header.join(','), ...rows].join('\n');
-    downloadText(csvContent, 'text/csv', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`);
-    setError(null);
-  }, [conlangName, draftLexemes, escapeCsvCell, dataApiEnabled, getIdToken, downloadText]);
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to authenticate the export request.');
+      }
+      const csvContent = await exportLexiconViaApi(token, draftLexemes, 'csv');
+      downloadText(csvContent, 'text/csv', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.csv`);
+      setError(null);
+    } catch (error) {
+      console.error('Lexicon CSV export failed', error);
+      setError(error instanceof Error ? error.message : 'Failed to export lexicon.');
+    }
+  }, [conlangName, draftLexemes, dataApiEnabled, getIdToken, downloadText]);
 
   const handleExportMarkdown = useCallback(async () => {
     if (draftLexemes.length === 0) {
@@ -234,61 +216,30 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
       return;
     }
 
-    if (dataApiEnabled) {
-      const token = await getIdToken();
-      if (token) {
-        try {
-          const markdown = await exportLexiconViaApi(token, draftLexemes, 'markdown');
-          downloadText(markdown, 'text/markdown', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`);
-          setError(null);
-          return;
-        } catch (error) {
-          console.error('Data API lexicon Markdown export failed, falling back to client export', error);
-        }
-      }
+    if (!dataApiEnabled) {
+      setError('Lexicon export requires a connection to the data server.');
+      return;
     }
 
-    const lines = [
-      '| Lemma | Part of Speech | Gloss | Etymology | Tags |',
-      '| --- | --- | --- | --- | --- |',
-      ...draftLexemes.map((lexeme) => {
-        const tags = Array.isArray(lexeme.tags) ? lexeme.tags.join('; ') : '';
-        return `| ${lexeme.lemma || ''} | ${lexeme.pos || ''} | ${lexeme.gloss || ''} | ${lexeme.etymology || ''} | ${tags} |`;
-      }),
-    ];
-    downloadText(lines.join('\n'), 'text/markdown', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`);
-    setError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to authenticate the export request.');
+      }
+      const markdown = await exportLexiconViaApi(token, draftLexemes, 'markdown');
+      downloadText(markdown, 'text/markdown', `${conlangName.toLowerCase().replace(/\s+/g, '_')}_lexicon.md`);
+      setError(null);
+    } catch (error) {
+      console.error('Lexicon Markdown export failed', error);
+      setError(error instanceof Error ? error.message : 'Failed to export lexicon.');
+    }
   }, [conlangName, draftLexemes, dataApiEnabled, getIdToken, downloadText]);
 
-  const parseCsvRow = useCallback((row: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < row.length; i += 1) {
-      const char = row[i];
-      if (char === '"') {
-        if (inQuotes && row[i + 1] === '"') {
-          current += '"';
-          i += 1;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current);
-    return result;
-  }, []);
-
-  const normalizeLexeme = useCallback((lexeme: Omit<ConlangLexeme, 'id'>): Omit<ConlangLexeme, 'id'> | null => {
-    const lemma = lexeme.lemma.trim();
-    const pos = (lexeme.pos ?? '').trim();
-    const gloss = lexeme.gloss.trim();
-    const etymology = (lexeme.etymology ?? '').trim();
+  const normalizeLexeme = useCallback((lexeme: Pick<ConlangLexeme, 'lemma' | 'pos' | 'gloss' | 'etymology' | 'tags'>) => {
+    const lemma = lexeme.lemma?.trim() ?? '';
+    const pos = lexeme.pos?.trim() ?? '';
+    const gloss = lexeme.gloss?.trim() ?? '';
+    const etymology = lexeme.etymology?.trim();
     const tagsSource = Array.isArray(lexeme.tags)
       ? lexeme.tags
       : typeof lexeme.tags === 'string'
@@ -304,15 +255,23 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
       lemma,
       pos,
       gloss,
-      etymology: etymology.length > 0 ? etymology : undefined,
+      etymology: etymology && etymology.length > 0 ? etymology : undefined,
       tags: tags.length > 0 ? tags : undefined,
     };
   }, []);
 
   const addImportedLexemes = useCallback(
-    (lexemesToAdd: Omit<ConlangLexeme, 'id'>[]) => {
+    (lexemesToAdd: ConlangLexeme[]) => {
       const sanitized = lexemesToAdd
-        .map((lexeme) => normalizeLexeme(lexeme))
+        .map((lexeme) =>
+          normalizeLexeme({
+            lemma: lexeme.lemma,
+            pos: lexeme.pos,
+            gloss: lexeme.gloss,
+            etymology: lexeme.etymology,
+            tags: lexeme.tags,
+          }),
+        )
         .filter((lexeme): lexeme is Omit<ConlangLexeme, 'id'> => lexeme !== null);
 
       if (sanitized.length === 0) {
@@ -352,149 +311,50 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
       const file = event.target.files?.[0];
       if (!file) return;
 
+      if (!dataApiEnabled) {
+        setError('Lexicon import requires a connection to the data server.');
+        event.target.value = '';
+        return;
+      }
+
       try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Unable to authenticate the import request.');
+        }
+
         const text = await file.text();
-
-        if (dataApiEnabled) {
-          const token = await getIdToken();
-          if (token) {
-            try {
-              const parsed = await parseLexiconCsvViaApi(token, text);
-              const normalized = parsed.map((lexeme) => ({
-                lemma: lexeme.lemma,
-                pos: lexeme.pos,
-                gloss: lexeme.gloss,
-                etymology: lexeme.etymology,
-                tags: lexeme.tags,
-              }));
-              addImportedLexemes(normalized);
-              return;
-            } catch (error) {
-              console.error('Data API lexicon CSV import failed, using local parser', error);
-            }
-          }
-        }
-
-        const rows = text
-          .split(/\r?\n/)
-          .map((row) => row.trim())
-          .filter((row) => row.length > 0);
-        if (rows.length < 2) {
-          throw new Error('CSV must include a header row and at least one lexeme.');
-        }
-        const header = parseCsvRow(rows[0]).map((cell) => cell.trim().toLowerCase());
-        const lemmaIndex = header.indexOf('lemma');
-        const posIndex = header.indexOf('pos');
-        const glossIndex = header.indexOf('gloss');
-        const etymologyIndex = header.indexOf('etymology');
-        const tagsIndex = header.indexOf('tags');
-
-        if (lemmaIndex === -1 || glossIndex === -1) {
-          throw new Error('CSV header must include at least lemma and gloss columns.');
-        }
-
-        const imported: Omit<ConlangLexeme, 'id'>[] = rows.slice(1).map((row) => {
-          const cells = parseCsvRow(row).map((cell) => cell.trim());
-          const tags =
-            tagsIndex >= 0 ? cells[tagsIndex]?.split(/[,;]/).map((tag) => tag.trim()).filter((tag) => tag.length > 0) : undefined;
-          return {
-            lemma: cells[lemmaIndex] ?? '',
-            pos: posIndex >= 0 ? cells[posIndex] ?? '' : '',
-            gloss: cells[glossIndex] ?? '',
-            etymology: etymologyIndex >= 0 ? cells[etymologyIndex] ?? undefined : undefined,
-            tags,
-          };
-        });
-
-        addImportedLexemes(imported);
+        const parsed = await parseLexiconCsvViaApi(token, text);
+        addImportedLexemes(parsed);
+        setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to import CSV file.');
       } finally {
         event.target.value = '';
       }
     },
-    [addImportedLexemes, parseCsvRow, dataApiEnabled, getIdToken],
+    [addImportedLexemes, dataApiEnabled, getIdToken],
   );
 
   const handleMarkdownImport = useCallback(async () => {
-    if (dataApiEnabled) {
+    if (!dataApiEnabled) {
+      setError('Lexicon import requires a connection to the data server.');
+      return;
+    }
+
+    try {
       const token = await getIdToken();
-      if (token) {
-        try {
-          const parsed = await parseLexiconMarkdownViaApi(token, markdownImport);
-          const normalized = parsed.map((lexeme) => ({
-            lemma: lexeme.lemma,
-            pos: lexeme.pos,
-            gloss: lexeme.gloss,
-            etymology: lexeme.etymology,
-            tags: lexeme.tags,
-          }));
-          addImportedLexemes(normalized);
-          setMarkdownImport('');
-          setShowMarkdownImport(false);
-          setError(null);
-          return;
-        } catch (error) {
-          console.error('Data API lexicon Markdown import failed, using local parser', error);
-        }
+      if (!token) {
+        throw new Error('Unable to authenticate the import request.');
       }
+      const parsed = await parseLexiconMarkdownViaApi(token, markdownImport);
+      addImportedLexemes(parsed);
+      setMarkdownImport('');
+      setShowMarkdownImport(false);
+      setError(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to import Markdown data.');
     }
-
-    const lines = markdownImport
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.startsWith('|'));
-
-    if (lines.length < 3) {
-      setError('Markdown table must include a header, separator, and at least one row.');
-      return;
-    }
-
-    const headerCells = lines[0]
-      .slice(1, lines[0].endsWith('|') ? -1 : undefined)
-      .split('|')
-      .map((cell) => cell.trim().toLowerCase());
-
-    const lemmaIndex = headerCells.indexOf('lemma');
-    const posIndex = (() => {
-      const partOfSpeechIndex = headerCells.indexOf('part of speech');
-      if (partOfSpeechIndex !== -1) return partOfSpeechIndex;
-      return headerCells.indexOf('pos');
-    })();
-    const glossIndex = headerCells.indexOf('gloss');
-    const etymologyIndex = headerCells.indexOf('etymology');
-    const tagsIndex = headerCells.indexOf('tags');
-
-    if (lemmaIndex === -1 || glossIndex === -1) {
-      setError('Markdown header must include Lemma and Gloss columns.');
-      return;
-    }
-
-    const rows = lines.slice(2);
-    const imported: Omit<ConlangLexeme, 'id'>[] = rows.map((row) => {
-      const cells = row
-        .slice(1, row.endsWith('|') ? -1 : undefined)
-        .split('|')
-        .map((cell) => cell.trim());
-
-      const tagsRaw = tagsIndex >= 0 ? cells[tagsIndex] ?? '' : '';
-      const tags = tagsRaw
-        .split(/[,;]/)
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
-      return {
-        lemma: cells[lemmaIndex] ?? '',
-        pos: posIndex >= 0 ? cells[posIndex] ?? '' : '',
-        gloss: cells[glossIndex] ?? '',
-        etymology: etymologyIndex >= 0 ? cells[etymologyIndex] ?? undefined : undefined,
-        tags: tags.length > 0 ? tags : undefined,
-      };
-    });
-
-    addImportedLexemes(imported);
-    setMarkdownImport('');
-    setShowMarkdownImport(false);
   }, [addImportedLexemes, markdownImport, dataApiEnabled, getIdToken]);
 
   const handleGenerateLexemes = useCallback(async () => {
