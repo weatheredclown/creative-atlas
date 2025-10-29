@@ -6,6 +6,7 @@ import { TagIcon, XMarkIcon } from './Icons';
 interface ProjectOverviewProps {
   project: Project;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
+  onDeleteProject: (projectId: string) => Promise<void> | void;
 }
 
 const statusOrder: ProjectStatus[] = [
@@ -15,7 +16,7 @@ const statusOrder: ProjectStatus[] = [
   ProjectStatus.Archived,
 ];
 
-const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProject }) => {
+const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProject, onDeleteProject }) => {
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState(project.summary);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -110,6 +111,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              const confirmed = window.confirm(
+                `Delete project "${project.title}"? This will also remove its artifacts.`,
+              );
+              if (!confirmed) {
+                return;
+              }
+              void onDeleteProject(project.id);
+            }}
+            className="px-3 py-2 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
+          >
+            Delete project
+          </button>
         </div>
       </header>
 

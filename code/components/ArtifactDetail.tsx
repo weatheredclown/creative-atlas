@@ -11,6 +11,7 @@ interface ArtifactDetailProps {
   onUpdateArtifact: (artifactId: string, updates: Partial<Artifact>) => void;
   onAddRelation: (fromId: string, toId: string, kind: string) => void;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
+  onDeleteArtifact: (artifactId: string) => Promise<void> | void;
   addXp: (amount: number) => void;
 }
 
@@ -22,6 +23,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   onUpdateArtifact,
   onAddRelation,
   onRemoveRelation,
+  onDeleteArtifact,
   addXp,
 }) => {
   const [isExpanding, setIsExpanding] = useState(false);
@@ -141,12 +143,29 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
             </div>
             <p className="text-sm text-slate-400 mt-2">Type: <span className="font-semibold text-cyan-400">{artifact.type}</span></p>
           </div>
-          <button
-            onClick={() => exportArtifactToMarkdown(artifact)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-          >
-            <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportArtifactToMarkdown(artifact)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+            >
+              <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const confirmed = window.confirm(
+                  `Delete artifact "${artifact.title}"? This cannot be undone.`,
+                );
+                if (!confirmed) {
+                  return;
+                }
+                void onDeleteArtifact(artifact.id);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
+            >
+              <XMarkIcon className="w-4 h-4" /> Delete
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
