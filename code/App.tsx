@@ -33,8 +33,7 @@ import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
-import { exportArtifactsToCSV, exportArtifactsToTSV, exportProjectAsStaticSite } from './utils/export';
-import { importArtifactsFromCSV } from './utils/import';
+import { exportProjectAsStaticSite } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import { getStatusClasses, formatStatusLabel } from './utils/status';
@@ -652,6 +651,8 @@ export default function App() {
     createArtifactsBulk,
     updateArtifact,
     mergeArtifacts,
+    canLoadMoreProjects,
+    loadMoreProjects,
   } = useUserData();
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -665,6 +666,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
+  const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -914,61 +916,34 @@ export default function App() {
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !selectedProjectId || !profile) return;
+    if (!file || !selectedProjectId) return;
+
+    if (!dataApiEnabled) {
+      alert('Artifact import requires a connection to the data server.');
+      event.target.value = '';
+      return;
+    }
 
     try {
-      const content = await file.text();
-
-      if (dataApiEnabled) {
-        const token = await getIdToken();
-        if (token) {
-          try {
-            const { artifacts: imported } = await importArtifactsViaApi(token, selectedProjectId, content);
-            const existingIds = new Set(artifacts.map(a => a.id));
-            const newArtifacts = imported.filter(artifact => !existingIds.has(artifact.id));
-
-            if (newArtifacts.length > 0) {
-              mergeArtifacts(selectedProjectId, newArtifacts);
-              alert(`${newArtifacts.length} new artifacts imported successfully!`);
-              markSelectedProjectActivity({ importedCsv: true });
-            } else {
-              alert('No new artifacts to import. All IDs in the file already exist.');
-            }
-            return;
-          } catch (error) {
-            console.error('Data API import failed, falling back to local parsing', error);
-          }
-        }
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to authenticate the import request.');
       }
 
-      const imported = importArtifactsFromCSV(content, selectedProjectId, profile.uid);
-      const existingIds = new Set(artifacts.map(a => a.id));
-      const newArtifacts = imported.filter(i => !existingIds.has(i.id));
+      const content = await file.text();
+      const { artifacts: imported } = await importArtifactsViaApi(token, selectedProjectId, content);
+      const existingIds = new Set(artifacts.map((artifact) => artifact.id));
+      const newArtifacts = imported.filter((artifact) => !existingIds.has(artifact.id));
 
       if (newArtifacts.length > 0) {
-        if (dataApiEnabled) {
-          await createArtifactsBulk(
-            selectedProjectId,
-            newArtifacts.map((artifact) => ({
-              id: artifact.id,
-              type: artifact.type,
-              title: artifact.title,
-              summary: artifact.summary,
-              status: artifact.status,
-              tags: artifact.tags,
-              relations: artifact.relations,
-              data: artifact.data,
-            })),
-          );
-        } else {
-          mergeArtifacts(selectedProjectId, newArtifacts);
-        }
+        mergeArtifacts(selectedProjectId, newArtifacts);
         alert(`${newArtifacts.length} new artifacts imported successfully!`);
         markSelectedProjectActivity({ importedCsv: true });
       } else {
         alert('No new artifacts to import. All IDs in the file already exist.');
       }
     } catch (error) {
+      console.error('Artifact import failed', error);
       alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       event.target.value = '';
@@ -1088,32 +1063,50 @@ export default function App() {
     setSearchTerm('');
   };
 
-  const handleExportArtifacts = useCallback(async (format: 'csv' | 'tsv') => {
-    if (!selectedProject) {
+  const handleExportArtifacts = useCallback(
+    async (format: 'csv' | 'tsv') => {
+      if (!selectedProject) {
+        return;
+      }
+
+      if (!dataApiEnabled) {
+        alert('Artifact export requires a connection to the data server.');
+        return;
+      }
+
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Unable to authenticate the export request.');
+        }
+
+        const blob = await downloadProjectExport(token, selectedProject.id, format);
+        const filename = `${selectedProject.title.replace(/\s+/g, '_').toLowerCase()}_artifacts.${format}`;
+        triggerDownload(blob, filename);
+        markSelectedProjectActivity({ exportedData: true });
+      } catch (error) {
+        console.error('Artifact export failed', error);
+        alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+    [selectedProject, dataApiEnabled, getIdToken, triggerDownload, markSelectedProjectActivity],
+  );
+
+  const handleLoadMoreProjects = useCallback(async () => {
+    if (!canLoadMoreProjects) {
       return;
     }
-    markSelectedProjectActivity({ exportedData: true });
 
-    if (dataApiEnabled) {
-      const token = await getIdToken();
-      if (token) {
-        try {
-          const blob = await downloadProjectExport(token, selectedProject.id, format);
-          const filename = `${selectedProject.title.replace(/\s+/g, '_').toLowerCase()}_artifacts.${format}`;
-          triggerDownload(blob, filename);
-          return;
-        } catch (error) {
-          console.error('Data API export failed, falling back to client export', error);
-        }
-      }
+    setIsLoadingMoreProjects(true);
+    try {
+      await loadMoreProjects();
+    } catch (error) {
+      console.error('Failed to load more projects', error);
+      alert('Unable to load additional projects right now. Please try again later.');
+    } finally {
+      setIsLoadingMoreProjects(false);
     }
-
-    if (format === 'csv') {
-      exportArtifactsToCSV(projectArtifacts, selectedProject.title);
-    } else {
-      exportArtifactsToTSV(projectArtifacts, selectedProject.title);
-    }
-  }, [selectedProject, projectArtifacts, markSelectedProjectActivity, dataApiEnabled, getIdToken, triggerDownload]);
+  }, [canLoadMoreProjects, loadMoreProjects]);
 
   const handleViewModeChange = useCallback((mode: 'table' | 'graph' | 'kanban') => {
     setViewMode(mode);
@@ -1174,6 +1167,16 @@ export default function App() {
                 {projects.map(p => (
                     <ProjectCard key={p.id} project={p} onSelect={handleSelectProject} isSelected={p.id === selectedProjectId} />
                 ))}
+                {canLoadMoreProjects && (
+                  <button
+                    type="button"
+                    onClick={() => { void handleLoadMoreProjects(); }}
+                    className="w-full px-3 py-2 text-sm font-semibold text-cyan-200 bg-cyan-950/50 hover:bg-cyan-900/60 border border-cyan-800/50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    disabled={isLoadingMoreProjects}
+                  >
+                    {isLoadingMoreProjects ? 'Loading more projects…' : 'Load more projects'}
+                  </button>
+                )}
             </div>
           </div>
           <Quests quests={dailyQuests} artifacts={artifacts} projects={projects} />
