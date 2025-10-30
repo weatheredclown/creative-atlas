@@ -1,4 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
+import { ZodError } from 'zod';
+import { CsvRowSchema } from '../validation/schemas.js';
 import type { Artifact, ConlangLexeme, Project, Relation } from '../types.js';
 
 const TAB_DELIMITER = '\t';
@@ -52,6 +54,7 @@ export const importArtifactsFromCsv = (
   }
 
   const artifacts: Artifact[] = [];
+  const errors: { row: number; errors: string[] }[] = [];
 
   for (let i = 1; i < rows.length; i++) {
     const raw = rows[i];
@@ -63,53 +66,31 @@ export const importArtifactsFromCsv = (
       rowData[column] = values[index] ?? '';
     });
 
-    const id = rowData.id?.trim() || `art-${Date.now()}-${i}`;
-    const type = rowData.type?.trim();
-    const title = rowData.title?.trim() ?? '';
-
-    if (!type) {
-      console.warn(`Skipping row ${i + 1}: missing artifact type.`);
-      continue;
-    }
-
-    const tags = rowData.tags
-      ? rowData.tags
-          .split(';')
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0)
-      : [];
-
-    const relations: Relation[] = (rowData.relations ?? '')
-      .split(';')
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.includes(':'))
-      .map((entry) => {
-        const [kind, toId] = entry.split(':');
-        return { kind: kind.trim(), toId: toId.trim() };
+    try {
+      const parsed = CsvRowSchema.parse(rowData);
+      artifacts.push({
+        ...parsed,
+        ownerId,
+        projectId: parsed.projectid?.trim() || currentProjectId,
+        tags: parsed.tags,
+        relations: parsed.relations,
+        data: parsed.data,
       });
-
-    let parsedData: unknown = {};
-    const rawData = rowData.data?.trim();
-    if (rawData) {
-      try {
-        parsedData = JSON.parse(rawData);
-      } catch {
-        console.warn(`Failed to parse data payload for artifact ${id}.`);
+    } catch (e) {
+      if (e instanceof ZodError) {
+        errors.push({
+          row: i + 1,
+          errors: e.errors.map((err) => `${err.path.join('.')}: ${err.message}`),
+        });
+      } else {
+        throw e;
       }
     }
+  }
 
-    artifacts.push({
-      id,
-      ownerId,
-      projectId: rowData.projectid?.trim() || currentProjectId,
-      type,
-      title,
-      summary: rowData.summary ?? '',
-      status: rowData.status ?? 'idea',
-      tags,
-      relations,
-      data: parsedData,
-    });
+  if (errors.length > 0) {
+    const errorMessages = errors.map((e) => `Row ${e.row}: ${e.errors.join(', ')}`);
+    throw new Error(`Validation failed for some rows:\n${errorMessages.join('\n')}`);
   }
 
   return artifacts;
