@@ -1,12 +1,13 @@
 import React from 'react';
-import { AIAssistant, Milestone } from '../types';
+import { AIAssistant } from '../types';
+import { MilestoneProgressOverview } from '../utils/milestoneProgress';
 import { SparklesIcon, XMarkIcon } from './Icons';
 import AICopilotPanel from './AICopilotPanel';
 import Roadmap from './Roadmap';
 
 interface SecondaryInsightsPanelProps {
   assistants: AIAssistant[];
-  milestones: Milestone[];
+  milestones: MilestoneProgressOverview[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -52,7 +53,7 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
 
         <div className="space-y-6 p-6">
           <AICopilotPanel assistants={assistants} />
-          <Roadmap milestones={milestones} />
+          <Roadmap items={milestones} />
         </div>
       </aside>
     </div>
