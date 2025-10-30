@@ -3,7 +3,7 @@ import { Artifact } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
 import { getStatusClasses, formatStatusLabel } from '../utils/status';
-import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon } from './Icons';
+import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon, ChevronDownIcon } from './Icons';
 
 interface ArtifactDetailProps {
   artifact: Artifact;
@@ -34,6 +34,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const [editableSummary, setEditableSummary] = useState(artifact.summary);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [showActions, setShowActions] = useState(false);
 
   useEffect(() => {
     setEditableSummary(artifact.summary);
@@ -143,28 +144,42 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
             </div>
             <p className="text-sm text-slate-400 mt-2">Type: <span className="font-semibold text-cyan-400">{artifact.type}</span></p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="relative">
             <button
-              onClick={() => exportArtifactToMarkdown(artifact)}
+              onClick={() => setShowActions(!showActions)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
             >
-              <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+              Actions <ChevronDownIcon className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const confirmed = window.confirm(
-                  `Delete artifact "${artifact.title}"? This cannot be undone.`,
-                );
-                if (!confirmed) {
-                  return;
-                }
-                void onDeleteArtifact(artifact.id);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
-            >
-              <XMarkIcon className="w-4 h-4" /> Delete
-            </button>
+            {showActions && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-10">
+                <button
+                  onClick={() => {
+                    exportArtifactToMarkdown(artifact);
+                    setShowActions(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      `Delete artifact "${artifact.title}"? This cannot be undone.`,
+                    );
+                    if (!confirmed) {
+                      return;
+                    }
+                    void onDeleteArtifact(artifact.id);
+                    setShowActions(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/20"
+                >
+                  <XMarkIcon className="w-4 h-4" /> Delete
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
