@@ -57,10 +57,31 @@ jobs:
       - name: Build API
         run: npm run build
         working-directory: server
+      - name: Resolve App Engine credentials
+        id: resolve-credentials
+        run: |
+          if [[ -n "${GCP_APP_ENGINE_SERVICE_ACCOUNT}" ]]; then
+            CREDENTIALS="${GCP_APP_ENGINE_SERVICE_ACCOUNT}"
+          elif [[ -n "${FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS}" ]]; then
+            echo "No dedicated App Engine service account secret configured; falling back to the Firebase service account." >&2
+            CREDENTIALS="${FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS}"
+          else
+            echo "Neither GCP_APP_ENGINE_SERVICE_ACCOUNT nor FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS secrets are available for authentication." >&2
+            exit 1
+          fi
+
+          {
+            printf 'credentials_json<<EOF\n'
+            printf '%s\n' "${CREDENTIALS}"
+            printf 'EOF\n'
+          } >> "${GITHUB_OUTPUT}"
+        env:
+          GCP_APP_ENGINE_SERVICE_ACCOUNT: ${{ secrets.GCP_APP_ENGINE_SERVICE_ACCOUNT }}
+          FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_APP_ENGINE_SERVICE_ACCOUNT }}
+          credentials_json: ${{ steps.resolve-credentials.outputs.credentials_json }}
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
