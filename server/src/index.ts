@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import cors, { type CorsOptions } from 'cors';
 import morgan from 'morgan';
 import workspaceRouter from './routes/workspace.js';
@@ -43,6 +43,15 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api', workspaceRouter);
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error in API request', error);
+  if (res.headersSent) {
+    return;
+  }
+  const message = error instanceof Error ? error.message : 'Internal server error';
+  res.status(500).json({ error: 'Internal server error', details: message });
+});
 
 const port = Number.parseInt(process.env.PORT ?? '4000', 10);
 app.listen(port, () => {

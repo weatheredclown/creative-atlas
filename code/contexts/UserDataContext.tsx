@@ -38,6 +38,8 @@ interface UserDataContextValue {
   artifacts: Artifact[];
   profile: UserProfile | null;
   loading: boolean;
+  error: string | null;
+  clearError: () => void;
   canLoadMoreProjects: boolean;
   loadMoreProjects: () => Promise<void>;
   ensureProjectArtifacts: (projectId: string) => Promise<void>;
@@ -115,6 +117,16 @@ const mergeArtifactLists = (existing: Artifact[], incoming: Artifact[]): Artifac
   return Array.from(map.values());
 };
 
+const toDisplayMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message.length > 0 && message !== fallback) {
+      return `${fallback} (${message})`;
+    }
+  }
+  return fallback;
+};
+
 export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isGuestMode, getIdToken } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -123,6 +135,22 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [artifactPageTokens, setArtifactPageTokens] = useState<Record<string, string | null | undefined>>({});
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const reportError = useCallback(
+    (scope: string, err: unknown, fallback: string, options: { suppressState?: boolean } = {}) => {
+      console.error(scope, err);
+      if (options.suppressState) {
+        return;
+      }
+      setError(toDisplayMessage(err, fallback));
+    },
+    [],
+  );
 
   const artifacts = useMemo(() => Object.values(artifactsByProject).flat(), [artifactsByProject]);
 
@@ -181,8 +209,14 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setProjectPageToken(projectData.nextPageToken ?? null);
         setArtifactsByProject({});
         setArtifactPageTokens({});
+        setError(null);
       } catch (error) {
-        console.error('Failed to load workspace from API', error);
+        reportError(
+          'Failed to load workspace from API',
+          error,
+          'We could not load your workspace data from the Creative Atlas service. Please refresh once the service is available.',
+          { suppressState: cancelled },
+        );
         if (!cancelled) {
           setProfile(createDefaultProfile(user.uid, user.email, user.displayName, user.photoURL, 0));
           setProjects([]);
@@ -234,7 +268,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           [projectId]: response.nextPageToken ?? null,
         }));
       } catch (error) {
-        console.error('Failed to load project artifacts', error);
+        reportError(
+          'Failed to load project artifacts',
+          error,
+          'We could not load this project\'s artifacts. Please try again after the data service is available.',
+        );
       }
     },
     [artifactPageTokens, getIdToken, isGuestMode],
@@ -294,7 +332,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setProjects((current) => [...current, ...response.projects]);
       setProjectPageToken(response.nextPageToken ?? null);
     } catch (error) {
-      console.error('Failed to load additional projects', error);
+      reportError(
+        'Failed to load additional projects',
+        error,
+        'We could not load more projects from the data service. Please try again later.',
+      );
     }
   }, [getIdToken, isGuestMode, projectPageToken]);
 
@@ -352,7 +394,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setArtifactPageTokens((current) => ({ ...current, [created.id]: null }));
         return created;
       } catch (error) {
-        console.error('Failed to create project', error);
+        reportError(
+          'Failed to create project',
+          error,
+          'We could not create the project. Please try again once the data service is back online.',
+        );
         return null;
       }
     },
@@ -385,7 +431,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
         return updated;
       } catch (error) {
-        console.error('Failed to update project', error);
+        reportError(
+          'Failed to update project',
+          error,
+          'We could not update the project. Your latest changes may not be saved.',
+        );
         return null;
       }
     },
@@ -428,7 +478,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         removeFromState();
         return true;
       } catch (error) {
-        console.error('Failed to delete project', error);
+        reportError(
+          'Failed to delete project',
+          error,
+          'We could not delete the project. Please try again later.',
+        );
         return false;
       }
     },
@@ -469,7 +523,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         mergeArtifacts(projectId, created);
         return created;
       } catch (error) {
-        console.error('Failed to create artifacts', error);
+        reportError(
+          'Failed to create artifacts',
+          error,
+          'We could not create the new artifacts. Please try again later.',
+        );
         return [];
       }
     },
@@ -530,7 +588,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
         return updated;
       } catch (error) {
-        console.error('Failed to update artifact', error);
+        reportError(
+          'Failed to update artifact',
+          error,
+          'We could not update the artifact. Your latest changes may not be saved.',
+        );
         return null;
       }
     },
@@ -578,7 +640,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         removeFromState();
         return true;
       } catch (error) {
-        console.error('Failed to delete artifact', error);
+        reportError(
+          'Failed to delete artifact',
+          error,
+          'We could not delete the artifact. Please try again later.',
+        );
         return false;
       }
     },
@@ -637,7 +703,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await updateProfileViaApi(token, payload);
         setProfile(response);
       } catch (error) {
-        console.error('Failed to persist profile update', error);
+        reportError(
+          'Failed to persist profile update',
+          error,
+          'We could not save your profile changes. Please try again later.',
+        );
       }
     },
     [getIdToken, isGuestMode],
@@ -686,7 +756,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const updated = await incrementProfileXp(token, amount);
         setProfile(updated);
       } catch (error) {
-        console.error('Failed to persist XP changes', error);
+        reportError(
+          'Failed to persist XP changes',
+          error,
+          'We could not update your XP. Please refresh and try again.',
+        );
       }
     },
     [getIdToken, isGuestMode],
@@ -698,6 +772,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       artifacts,
       profile,
       loading,
+      error,
+      clearError,
       canLoadMoreProjects: Boolean(projectPageToken),
       loadMoreProjects,
       ensureProjectArtifacts,
@@ -719,6 +795,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       artifacts,
       profile,
       loading,
+      error,
+      clearError,
       projectPageToken,
       loadMoreProjects,
       ensureProjectArtifacts,

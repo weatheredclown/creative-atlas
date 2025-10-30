@@ -5,6 +5,7 @@ import { firestore } from '../firebaseAdmin.js';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { z } from 'zod';
+import asyncHandler from '../utils/asyncHandler.js';
 import {
   exportArtifactsToDelimited,
   exportArtifactsToMarkdown,
@@ -263,7 +264,7 @@ const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: str
   };
 };
 
-router.get('/profile', async (req: AuthenticatedRequest, res) => {
+router.get('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid, email, displayName, photoURL } = req.user!;
   const docRef = firestore.collection('users').doc(uid);
   const snapshot = await docRef.get();
@@ -293,9 +294,9 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
 
   const profile = mapProfileFromSnapshot(snapshot, defaults);
   res.json(profile);
-});
+}));
 
-router.patch('/profile', async (req: AuthenticatedRequest, res) => {
+router.patch('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid, email, displayName, photoURL } = req.user!;
   const docRef = firestore.collection('users').doc(uid);
   const parsed = profileUpdateSchema.parse(req.body);
@@ -379,9 +380,9 @@ router.patch('/profile', async (req: AuthenticatedRequest, res) => {
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
   const profile = mapProfileFromSnapshot(updatedSnapshot, defaults);
   res.json(profile);
-});
+}));
 
-router.post('/profile/xp', async (req: AuthenticatedRequest, res) => {
+router.post('/profile/xp', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid, email, displayName, photoURL } = req.user!;
   const { amount } = xpUpdateSchema.parse(req.body);
   const docRef = firestore.collection('users').doc(uid);
@@ -447,9 +448,9 @@ router.post('/profile/xp', async (req: AuthenticatedRequest, res) => {
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
   const profile = mapProfileFromSnapshot(snapshot, defaults);
   res.json(profile);
-});
+}));
 
-router.get('/projects', async (req: AuthenticatedRequest, res) => {
+router.get('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const pageSize = Math.min(Math.max(Number.parseInt(String(req.query.pageSize ?? '25'), 10) || 25, 1), 100);
   const pageToken = typeof req.query.pageToken === 'string' ? req.query.pageToken : undefined;
@@ -474,9 +475,9 @@ router.get('/projects', async (req: AuthenticatedRequest, res) => {
   const nextPageToken = nextDoc ? encodePageToken(String(nextDoc.get('title') ?? ''), nextDoc.id) : undefined;
 
   res.json({ projects, nextPageToken });
-});
+}));
 
-router.post('/projects', async (req: AuthenticatedRequest, res) => {
+router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const parsed = projectSchema.parse(req.body);
   const docRef = parsed.id
@@ -506,9 +507,9 @@ router.post('/projects', async (req: AuthenticatedRequest, res) => {
   await docRef.set(payload, { merge: false });
   const snapshot = await docRef.get();
   res.status(201).json(mapProject(snapshot, uid));
-});
+}));
 
-router.patch('/projects/:id', async (req: AuthenticatedRequest, res) => {
+router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const parsed = projectUpdateSchema.parse(req.body);
   const docRef = firestore.collection('projects').doc(req.params.id);
@@ -530,9 +531,9 @@ router.patch('/projects/:id', async (req: AuthenticatedRequest, res) => {
   await docRef.set(update, { merge: true });
   const updated = await docRef.get();
   res.json(mapProject(updated, uid));
-});
+}));
 
-router.delete('/projects/:id', async (req: AuthenticatedRequest, res) => {
+router.delete('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const docRef = firestore.collection('projects').doc(req.params.id);
   const snapshot = await docRef.get();
@@ -545,9 +546,9 @@ router.delete('/projects/:id', async (req: AuthenticatedRequest, res) => {
 
   await docRef.delete();
   res.status(204).send();
-});
+}));
 
-router.get('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, res) => {
+router.get('/projects/:projectId/artifacts', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const { projectId } = req.params;
   const pageSize = Math.min(Math.max(Number.parseInt(String(req.query.pageSize ?? '50'), 10) || 50, 1), 200);
@@ -574,9 +575,9 @@ router.get('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, r
   const nextPageToken = nextDoc ? encodePageToken(String(nextDoc.get('title') ?? ''), nextDoc.id) : undefined;
 
   res.json({ artifacts, nextPageToken });
-});
+}));
 
-router.post('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, res) => {
+router.post('/projects/:projectId/artifacts', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const { projectId } = req.params;
   const bodySchema = z.object({ artifacts: z.array(artifactSchema) });
@@ -652,9 +653,9 @@ router.post('/projects/:projectId/artifacts', async (req: AuthenticatedRequest, 
   });
 
   res.status(201).json({ artifacts: created });
-});
+}));
 
-router.patch('/artifacts/:artifactId', async (req: AuthenticatedRequest, res) => {
+router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const parsed = artifactUpdateSchema.parse(req.body);
   const docRef = firestore.collection('artifacts').doc(req.params.artifactId);
@@ -677,9 +678,9 @@ router.patch('/artifacts/:artifactId', async (req: AuthenticatedRequest, res) =>
   await docRef.set(update, { merge: true });
   const updated = await docRef.get();
   res.json(mapArtifact(updated, uid));
-});
+}));
 
-router.delete('/artifacts/:artifactId', async (req: AuthenticatedRequest, res) => {
+router.delete('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const docRef = firestore.collection('artifacts').doc(req.params.artifactId);
   const snapshot = await docRef.get();
@@ -692,9 +693,9 @@ router.delete('/artifacts/:artifactId', async (req: AuthenticatedRequest, res) =
 
   await docRef.delete();
   res.status(204).send();
-});
+}));
 
-router.post('/projects/:projectId/import-artifacts', async (req: AuthenticatedRequest, res) => {
+router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const { projectId } = req.params;
   const bodySchema = z.object({ content: z.string().min(1) });
@@ -749,9 +750,9 @@ router.post('/projects/:projectId/import-artifacts', async (req: AuthenticatedRe
   });
 
   res.json({ artifacts: persisted });
-});
+}));
 
-router.get('/projects/:projectId/export', async (req: AuthenticatedRequest, res) => {
+router.get('/projects/:projectId/export', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
   const { projectId } = req.params;
   const format = typeof req.query.format === 'string' ? req.query.format.toLowerCase() : 'csv';
@@ -782,23 +783,23 @@ router.get('/projects/:projectId/export', async (req: AuthenticatedRequest, res)
   res.setHeader('Content-Type', format === 'tsv' ? 'text/tab-separated-values; charset=utf-8' : 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${project.title.replace(/\s+/g, '_')}.${format === 'tsv' ? 'tsv' : 'csv'}"`);
   res.send(file);
-});
+}));
 
-router.post('/lexicon/import/csv', async (req: AuthenticatedRequest, res) => {
+router.post('/lexicon/import/csv', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const bodySchema = z.object({ content: z.string().min(1) });
   const { content } = bodySchema.parse(req.body);
   const lexemes = parseConlangLexemesFromCsv(content);
   res.json({ lexemes });
-});
+}));
 
-router.post('/lexicon/import/markdown', async (req: AuthenticatedRequest, res) => {
+router.post('/lexicon/import/markdown', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const bodySchema = z.object({ content: z.string().min(1) });
   const { content } = bodySchema.parse(req.body);
   const lexemes = parseConlangLexemesFromMarkdown(content);
   res.json({ lexemes });
-});
+}));
 
-router.post('/lexicon/export', async (req: AuthenticatedRequest, res) => {
+router.post('/lexicon/export', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const bodySchema = z.object({ lexemes: z.array(z.object({
     id: z.string().optional(),
     lemma: z.string(),
@@ -828,6 +829,6 @@ router.post('/lexicon/export', async (req: AuthenticatedRequest, res) => {
   const csv = exportLexemesToCsv(mapped);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.send(csv);
-});
+}));
 
 export default router;
