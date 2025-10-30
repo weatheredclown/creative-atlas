@@ -3,34 +3,23 @@ import cors, { type CorsOptions } from 'cors';
 import morgan from 'morgan';
 import workspaceRouter from './routes/workspace.js';
 
-const defaultAllowedOrigins = ['https://creative-atlas.web.app'];
-
-const rawAllowedOrigins = process.env.ALLOWED_ORIGINS ?? '';
-const parsedAllowedOrigins = rawAllowedOrigins
-  .split(/[\s,]+/)
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-const allowAllOrigins = parsedAllowedOrigins.includes('*');
-
-// UPDATED LOGIC:
-// 1. If 'allowAllOrigins' is true, use '*'.
-// 2. Else, if 'parsedAllowedOrigins' is empty (env var was not set), use 'defaultAllowedOrigins'.
-// 3. Otherwise, use the 'parsedAllowedOrigins' list from the env var.
-const originSetting: CorsOptions['origin'] = allowAllOrigins
-  ? '*'
-  : parsedAllowedOrigins.length === 0
-  ? defaultAllowedOrigins
-  : parsedAllowedOrigins;
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'https://creative-atlas.web.app')
+  .split(',')
+  .map((origin) => origin.trim());
 
 const corsOptions: CorsOptions = {
-  origin: originSetting,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
 // To test:
-console.log('Using CORS Origin:', originSetting);
 const app = express();
 
 app.use(cors(corsOptions));
