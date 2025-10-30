@@ -701,16 +701,17 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
   const bodySchema = z.object({ content: z.string().min(1) });
   const { content } = bodySchema.parse(req.body);
 
-  const artifacts = importArtifactsFromCsv(content, projectId, uid);
-  const persisted: Artifact[] = [];
+  try {
+    const artifacts = importArtifactsFromCsv(content, projectId, uid);
+    const persisted: Artifact[] = [];
 
-  const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
-  if (!projectSnapshot.exists) {
-    return res.status(404).json({ error: 'Project not found' });
-  }
-  if (projectSnapshot.get('ownerId') !== uid) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+    const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+    if (!projectSnapshot.exists) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    if (projectSnapshot.get('ownerId') !== uid) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
   const seenIds = new Set<string>();
   for (const artifact of artifacts) {
@@ -729,27 +730,33 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
     }
   }
 
-  await firestore.runTransaction(async (transaction) => {
-    artifacts.forEach((artifact) => {
-      const docRef = firestore.collection('artifacts').doc(artifact.id);
-      transaction.set(docRef, {
-        ownerId: uid,
-        projectId: artifact.projectId,
-        type: artifact.type,
-        title: artifact.title,
-        summary: artifact.summary,
-        status: artifact.status,
-        tags: artifact.tags,
-        relations: artifact.relations,
-        data: artifact.data,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+    await firestore.runTransaction(async (transaction) => {
+      artifacts.forEach((artifact) => {
+        const docRef = firestore.collection('artifacts').doc(artifact.id);
+        transaction.set(docRef, {
+          ownerId: uid,
+          projectId: artifact.projectId,
+          type: artifact.type,
+          title: artifact.title,
+          summary: artifact.summary,
+          status: artifact.status,
+          tags: artifact.tags,
+          relations: artifact.relations,
+          data: artifact.data,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        persisted.push({ ...artifact });
       });
-      persisted.push({ ...artifact });
     });
-  });
 
-  res.json({ artifacts: persisted });
+    res.json({ artifacts: persisted });
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Validation failed')) {
+      return res.status(400).json({ error: e.message });
+    }
+    throw e;
+  }
 }));
 
 router.get('/projects/:projectId/export', asyncHandler(async (req: AuthenticatedRequest, res) => {
