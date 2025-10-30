@@ -93,6 +93,9 @@ Personalized Gemini-driven co-writers trained on Tim’s universes.
 ### Final Vision
 This isn’t a note app — it’s the Creative Engine, Lore Forge, and AI Codex Compiler. Sacred Truth vampires update Dustland myths, Tamenzut relics shape PIT fauna, Spatch emotional rules cross-pollinate Steamweave factions, STACI Starlight earns her meta show bible, and the Aputi timeline ripples into Edruel artifacts. Tim’s creative continuity becomes visible, lovable, and playable — a personal Alexandria and an evolving creative skill tree.
 
+- [ ] Provide onboarding quests and tooltips that introduce graph navigation, publishing, and import/export power features.
+- [ ] Migrate storage to the managed backend plan in `docs/firebase-backend-migration.md`, including auth, persistence, and role-aware access.
+
 ## Productionization Roadmap
 
 ### Persistent, Multi-User Data Layer
@@ -180,6 +183,8 @@ ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.we
 ```
 
 For App Engine deployments, mirror the same value in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variable automatically.
+
+Grant the App Engine runtime service account (by default `<project-id>@appspot.gserviceaccount.com`) the **Cloud Datastore User** and **Firebase Admin** roles so `firebase-admin` can verify ID tokens and reach Firestore. Missing permissions manifest as 5xx responses from the API; with the new error banner in the UI you will now see a warning immediately if the backend credentials need attention.
 
 When GitHub Actions deploys `main`, it now reuses that App Engine configuration. Store a service-account JSON (granted App Engine Deployer permissions) in the `GCP_APP_ENGINE_SERVICE_ACCOUNT` repository secret so [the merge deployment workflow](.github/workflows/firebase-hosting-merge.yml) can authenticate and run `gcloud app deploy` with the `server/app.yaml` manifest.
 

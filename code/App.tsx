@@ -49,6 +49,7 @@ import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 import MilestoneTracker from './components/MilestoneTracker';
+import ErrorBanner from './components/ErrorBanner';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 
 const dailyQuests: Quest[] = [
@@ -642,6 +643,8 @@ export default function App() {
     projects,
     artifacts,
     profile,
+    error,
+    clearError,
     addXp,
     updateProfile,
     ensureProjectArtifacts,
@@ -868,8 +871,9 @@ export default function App() {
         return;
       }
       setProjectActivityLog((prev) => {
-        const { [projectId]: _removed, ...rest } = prev;
-        return rest;
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
       });
       setSelectedProjectId((current) => (current === projectId ? null : current));
       setSelectedArtifactId((current) =>
@@ -1200,6 +1204,11 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
+      {error && (
+        <div className="px-4 sm:px-8 mt-4">
+          <ErrorBanner message={error} onDismiss={clearError} />
+        </div>
+      )}
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <aside className="lg:col-span-3 space-y-6">
           {isViewingOwnWorkspace && (
