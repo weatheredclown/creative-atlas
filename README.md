@@ -7,36 +7,91 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ## Product Roadmap
 
-### Phase 1 — Seed the Universe (Weeks 0‑4)
-- [ ] Deliver the Layer 1 capture flow: quick-create cards for ideas, characters, scenes, mechanics, and lexemes with inline tagging and lightweight linking.
-- [x] Move the XP/progression surface into a compact widget beside the creator portrait and collapse the full preferences + XP pane by default.
-- [x] Add reusable project templates (comic, conlang, game design, wiki) that hydrate dashboards, tables, and starter artifacts.
-- [x] Clarify the copy and badges that differentiate "Project Templates" (multi-artifact kits) from the exploratory "Template Library" surface.
-- [x] Link each project template to the underlying template-library categories (and vice versa) so the hierarchy is obvious while keeping both entry points.
-- [x] Ensure changing projects resets AI-generated draft release notes so context stays accurate.
+### Guiding Principles — Creative Atlas Built for Tim
+- One brain, many worlds: everything (stories, games, art, conlangs, repos, rulesets) lives inside one creative OS.
+- Progress through play: quests, XP, and incremental additions turn lorebuilding into a game.
+- Reveal complexity gradually: start with notebook simplicity and expand toward wiki → database → living archive → game UI.
+- AI as a co-author (Gemini-first): it organizes, recommends links, and surfaces forgotten lore while Tim approves canon.
+- Exports always matter: every world can produce wikis, game seeds, bibles, sheets, lexicons, and more.
+- Atlas ≠ Notion — Atlas = Lore engine + authoring pipeline.
 
-### Phase 2 — Grow Projects (Weeks 5‑8)
-- [ ] Expand the dashboard with Layer 2 views: Kanban lanes, milestone tracker, table editor, and graph glance showing artifact relationships.
-- [ ] Ship editable template instances so creators can add/remove dashboard widgets, customize quests, and persist layout preferences per project.
-- [x] Document the current hard-coded template authoring workflow (`templateLibrary` + `projectTemplates` in `App.tsx`) and scope future admin/import tooling that can replace it post-MVP.
-- [x] Introduce conlang lexicon editing with both manual row editing and CSV/Markdown import + export.
-- [x] Relocate AI copilots and milestone lore to an "About" or secondary insights panel to preserve primary workspace focus.
+### Phase 1 — Core Lore OS (MVP)
+The “Organize My Worlds Without Pain” release.
+- [ ] Project selection across Sacred Truth, Dustland, Aputi, and more.
+- [ ] Core artifact types at launch (characters, timelines, locations, rules/systems, terminology, scenes/chapters, game modules/quests).
+- [ ] Rich text editor with Markdown and AI assist.
+- [ ] Relationship graph linking characters ↔ events ↔ worlds.
+- [ ] Import pipelines for Markdown and text dumps (chat, drafts).
+- [ ] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
+- [ ] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
+- [ ] "Add one fact" button to reduce overwhelm.
+- [ ] "Reveal depth" toggle for simple → detailed fields.
+- [ ] "Narrative need heatmap" that flags characters not seen recently.
+- [ ] Memory sync with Gemini-powered conversations gated by user approval.
 
-### Phase 3 — Forge Systems (Weeks 9‑12)
-- [ ] Launch rich editors for core artifact types (storyboard, wiki pages, rulebooks) with status workflows (`idea → released`) surfaced inline.
-- [x] Add questlines and streak mechanics that trigger as users level up, gated by XP thresholds from Phase 1 progression changes.
-- [ ] Wire up release pipelines that pull from milestone tracker data to draft changelogs and publish-ready bundles.
-- [x] Support artifact relationships like `USES`, `DERIVES_FROM`, and `APPEARS_IN` directly from editor sidebars.
+### Phase 2 — Gamification & XP Loop
+"Writing and making worlds gives XP. Lorebuilding is a game."
+- [ ] XP system tied to adding artifacts, refining drafts, importing pages, and completing quests.
+- [ ] Daily challenge board to surface fresh prompts.
+- [ ] Level-up tree with creativity perks (Lore Weaver, Archivist, World Alchemist, Dungeon Master).
+- [ ] Collectible inspiration cards covering archetypes, vibes, visual prompts, and genre modifiers.
+- [ ] Player profile with creative streak tracking.
+- [ ] Inspiration deck draw interface for mid-writing boosts.
 
-### Phase 4 — Showcase & Share (Weeks 13‑16)
-- [ ] Turn "Publish Site" into a one-click static export that bundles linked artifacts, media assets, and navigation scaffolding.
-- [ ] Offer reader-friendly gallery layouts and shareable preview links with visibility controls (`private | shared | public`).
-- [ ] Provide onboarding quests and tooltips that introduce graph navigation, publishing, and import/export power features.
+### Phase 3 — World Simulation Layer
+"World memory and logic enforcement."
+- [ ] Time and continuity tracking across worlds.
+- [ ] Lore validator to prevent contradictions against canon.
+- [ ] Magic system structure builder (Tamenzut rules encoded).
+- [ ] Physics/metaphysics constraint annotations.
+- [ ] "World age" progression that evolves lore events.
+- [ ] Factions and conflicts system for PIT, Dustland, and the 4X project.
+- [ ] Simulated history heatmap and "What changed this century?" views.
+- [ ] NPC memory map linking Dustland, Sacred Truth, Spatch, and beyond.
 
-### Ongoing Quality & Ops
-- [ ] Migrate storage to the managed backend plan in `docs/firebase-backend-migration.md`, including auth, persistence, and role-aware access.
-- [ ] Harden AI integrations by proxying Gemini calls through a secure backend and logging usage for observability.
-- [ ] Maintain regression safety nets (lint, unit, e2e, build) and expand documentation as new artifact types or workflows land.
+### Phase 4 — Narrative & Game Pipelines
+Stories become game worlds, and game worlds fuel story arcs.
+- [ ] Scene board for novels and narrative arcs.
+- [ ] Quest board for game modules.
+- [ ] Character arcs tooling with progression states.
+- [ ] Procedural encounter generator blending Dustland and PIT lore.
+- [ ] Story → module export supporting Dustland ACK, D&D cards, visual novel scenes, and script formats.
+- [ ] Automated exports for character sheets, campaign packets, AI asset prompts, and lore codexes.
+
+### Phase 5 — AI Companions & Muse Engine
+Personalized Gemini-driven co-writers trained on Tim’s universes.
+- [ ] Archivist agent that finds contradictions and suggests consistency fixes.
+- [ ] Muse agent providing inspiration, aesthetics, and poetic voice.
+- [ ] Game Designer agent that turns lore into encounters.
+- [ ] Conlang Steward agent that grows Darv.
+- [ ] Publisher Mode that turns the atlas into a website/wiki.
+- [ ] NPC memory mode for canon-locked roleplay.
+- [ ] Truth/Canon lock workflow where every addition requires approval.
+- [ ] Lore distillation pipeline to produce mythic summaries from notes.
+
+### Technical Stack (Tailored to Tim)
+- Frontend: React + Vite + Tailwind.
+- Database: Firestore or SQLite with local sync.
+- Data layer: Zod schemas.
+- Storage: Flat files plus JSON exports.
+- Graph: d3-force or Cytoscape.
+- Editor: TipTap or BlockNote.
+- Infra: Cloud + local-first offline mode.
+- AI: Modular (Gemini + local embedding store, following the existing integration patterns).
+
+### Why This Works for Tim
+| Tim’s trait | Atlas feature |
+| --- | --- |
+| Moves across many projects | Multi-world dashboards |
+| Likes incremental structure | Reveal-depth UI + small quests |
+| Worlds merge & echo | Cross-universe linking & export |
+| Games + novels coexist | Game + narrative pipelines |
+| Aesthetics matter | Inspiration card system |
+| Conlangs & rules | System builders + lexicon manager |
+| Iterative AI partner | Canon guardrails + muse agents |
+
+### Final Vision
+This isn’t a note app — it’s the Creative Engine, Lore Forge, and AI Codex Compiler. Sacred Truth vampires update Dustland myths, Tamenzut relics shape PIT fauna, Spatch emotional rules cross-pollinate Steamweave factions, STACI Starlight earns her meta show bible, and the Aputi timeline ripples into Edruel artifacts. Tim’s creative continuity becomes visible, lovable, and playable — a personal Alexandria and an evolving creative skill tree.
 
 ## Productionization Roadmap
 
@@ -355,7 +410,7 @@ Reveal advanced controls as users “level up” or when data density crosses th
 
 ## 9) Integrations & Automations
 - **GitHub GraphQL:** repo metadata, issues/PRs, releases, actions badges.
-- **AI Providers (abstracted):** prompt templates for: synopsis, beat outline, lexeme suggestions, release notes; provider keys pluggable (OpenAI/Vertex etc.).
+- **AI Providers (abstracted):** prompt templates for: synopsis, beat outline, lexeme suggestions, release notes; provider keys stay pluggable with Gemini as the default (Vertex, others optional via existing adapters).
 - **Build Hooks:** webhooks/CLI to trigger Dustland/Spatch builds and capture artifacts.
 
 **Automation Rules (no‑code):**
