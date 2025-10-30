@@ -871,8 +871,9 @@ export default function App() {
         return;
       }
       setProjectActivityLog((prev) => {
-        const { [projectId]: _removed, ...rest } = prev;
-        return rest;
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
       });
       setSelectedProjectId((current) => (current === projectId ? null : current));
       setSelectedArtifactId((current) =>
