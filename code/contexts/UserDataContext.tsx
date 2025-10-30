@@ -234,7 +234,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       cancelled = true;
     };
-  }, [user, isGuestMode, getIdToken]);
+  }, [user, isGuestMode, getIdToken, reportError]);
 
   const loadProjectArtifacts = useCallback(
     async (projectId: string, { reset = false }: { reset?: boolean } = {}) => {
@@ -275,7 +275,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
     },
-    [artifactPageTokens, getIdToken, isGuestMode],
+    [artifactPageTokens, getIdToken, isGuestMode, reportError],
   );
 
   const ensureProjectArtifacts = useCallback(
@@ -338,7 +338,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         'We could not load more projects from the data service. Please try again later.',
       );
     }
-  }, [getIdToken, isGuestMode, projectPageToken]);
+  }, [getIdToken, isGuestMode, projectPageToken, reportError]);
 
   const mergeArtifacts = useCallback((projectId: string, incoming: Artifact[]) => {
     if (incoming.length === 0) {
@@ -402,7 +402,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [getIdToken, isGuestMode, profile],
+    [getIdToken, isGuestMode, profile, reportError],
   );
 
   const updateProject = useCallback(
@@ -439,7 +439,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [getIdToken, isGuestMode, projects],
+    [getIdToken, isGuestMode, projects, reportError],
   );
 
   const deleteProject = useCallback(
@@ -486,7 +486,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return false;
       }
     },
-    [getIdToken, isDataApiConfigured, isGuestMode],
+    [getIdToken, isGuestMode, reportError],
   );
 
   const createArtifactsBulk = useCallback(
@@ -531,7 +531,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [];
       }
     },
-    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid],
+    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid, reportError],
   );
 
   const createArtifact = useCallback(
@@ -596,7 +596,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [artifacts, getIdToken, isGuestMode],
+    [artifacts, getIdToken, isGuestMode, reportError],
   );
 
   const deleteArtifact = useCallback(
@@ -648,7 +648,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return false;
       }
     },
-    [artifactsByProject, getIdToken, isDataApiConfigured, isGuestMode],
+    [artifactsByProject, getIdToken, isGuestMode, reportError],
   );
 
   const updateProfile = useCallback(
@@ -710,7 +710,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
     },
-    [getIdToken, isGuestMode],
+    [getIdToken, isGuestMode, reportError],
   );
 
   const addXp = useCallback(
@@ -763,7 +763,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
     },
-    [getIdToken, isGuestMode],
+    [getIdToken, isGuestMode, reportError],
   );
 
   const value = useMemo<UserDataContextValue>(
