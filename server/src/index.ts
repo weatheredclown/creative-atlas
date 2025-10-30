@@ -3,10 +3,17 @@ import cors, { type CorsOptions } from 'cors';
 import morgan from 'morgan';
 import workspaceRouter from './routes/workspace.js';
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? [];
+const rawAllowedOrigins = process.env.ALLOWED_ORIGINS ?? '';
+const parsedAllowedOrigins = rawAllowedOrigins
+  .split(/[\s,]+/)
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowAllOrigins = parsedAllowedOrigins.includes('*');
+const allowedOrigins = allowAllOrigins ? [] : parsedAllowedOrigins;
+const originSetting: CorsOptions['origin'] = allowAllOrigins || allowedOrigins.length === 0 ? '*' : allowedOrigins;
 
 const corsOptions: CorsOptions = {
-  origin: allowedOrigins.length > 0 ? allowedOrigins : '*',
+  origin: originSetting,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
