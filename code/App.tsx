@@ -1038,16 +1038,36 @@ export default function App() {
     return projectActivityLog[selectedProjectId] ?? emptyActivity;
   }, [projectActivityLog, selectedProjectId, emptyActivity]);
   const milestoneProgress = useMemo<MilestoneProgressOverview[]>(() => {
-    if (!selectedProject) {
-      return [];
+    if (!selectedProjectId || !selectedProject) {
+      return milestoneRoadmap.map((milestone) => ({
+        milestone,
+        objectives: milestone.objectives.map((objective) => ({
+          ...objective,
+          status: 'not-started' as const,
+          detail: 'Select a project to track progress.',
+        })),
+        completion: 0,
+      }));
     }
+
     return evaluateMilestoneProgress(milestoneRoadmap, {
       project: selectedProject,
       artifacts: projectArtifacts,
       profile,
       activity: selectedProjectActivity,
     });
-  }, [selectedProject, projectArtifacts, profile, selectedProjectActivity]);
+  }, [
+    selectedProjectId,
+    selectedProject,
+    projectArtifacts,
+    profile,
+    selectedProjectActivity,
+  ]);
+
+  const upcomingMilestoneOverview = useMemo(() => {
+    const nextIncomplete = milestoneProgress.find((item) => item.completion < 1);
+    return nextIncomplete ?? milestoneProgress[0] ?? null;
+  }, [milestoneProgress]);
 
   const handleProfileUpdate = useCallback((updates: { displayName?: string; settings?: Partial<UserProfile['settings']> }) => {
     updateProfile(updates);
@@ -1162,7 +1182,6 @@ export default function App() {
   const level = Math.floor(profile.xp / 100) + 1;
   const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
   const featuredAssistant = aiAssistants[0];
-  const upcomingMilestone = milestoneRoadmap[0];
 
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
@@ -1475,11 +1494,14 @@ export default function App() {
                                 <p className="text-xs text-slate-400">{featuredAssistant.focus}</p>
                             </div>
                         )}
-                        {upcomingMilestone && (
-                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
+                        {upcomingMilestoneOverview && (
+                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3 space-y-1.5">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/80">Next milestone</p>
-                                <p className="text-base font-semibold text-slate-100">{upcomingMilestone.title}</p>
-                                <p className="text-xs text-slate-400">{upcomingMilestone.focus}</p>
+                                <p className="text-base font-semibold text-slate-100">{upcomingMilestoneOverview.milestone.title}</p>
+                                <p className="text-xs text-slate-400">{upcomingMilestoneOverview.milestone.focus}</p>
+                                <p className="text-xs text-slate-500">
+                                    {Math.round(upcomingMilestoneOverview.completion * 100)}% complete
+                                </p>
                             </div>
                         )}
                         <p className="text-xs text-slate-500">
@@ -1518,7 +1540,7 @@ export default function App() {
       </Modal>
       <SecondaryInsightsPanel
         assistants={aiAssistants}
-        milestones={milestoneRoadmap}
+        milestones={milestoneProgress}
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
       />
