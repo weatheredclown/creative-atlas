@@ -3,8 +3,6 @@ import cors, { type CorsOptions } from 'cors';
 import morgan from 'morgan';
 import workspaceRouter from './routes/workspace.js';
 
-import { CorsOptions } from 'cors'; // Assuming you have this import
-
 const defaultAllowedOrigins = ['https://creative-atlas.web.app'];
 
 const rawAllowedOrigins = process.env.ALLOWED_ORIGINS ?? '';
