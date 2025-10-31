@@ -17,7 +17,7 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 ### Phase 1 — Core Lore OS (MVP)
 The “Organize My Worlds Without Pain” release.
-- [ ] Project selection across Sacred Truth, Dustland, Aputi, and more.
+- [x] Project selection across Sacred Truth, Dustland, Aputi, and more.
 - [ ] Core artifact types at launch (characters, timelines, locations, rules/systems, terminology, scenes/chapters, game modules/quests).
 - [ ] Rich text editor with Markdown and AI assist.
 - [ ] Relationship graph linking characters ↔ events ↔ worlds.
