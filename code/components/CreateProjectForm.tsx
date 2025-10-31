@@ -6,10 +6,40 @@ interface CreateProjectFormProps {
   onClose: () => void;
 }
 
+const projectTemplates = [
+  {
+    id: 'sacred-truth',
+    title: 'Sacred Truth',
+    summary: 'A modern-day vampire saga.',
+  },
+  {
+    id: 'dustland',
+    title: 'Dustland',
+    summary: 'A retro-futuristic RPG.',
+  },
+  {
+    id: 'aputi',
+    title: 'Aputi',
+    summary: 'An epic journey of discovery.',
+  },
+];
+
 const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose }) => {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
+
+  const handleTemplateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const templateId = event.target.value;
+    const template = projectTemplates.find(t => t.id === templateId);
+    if (template) {
+      setTitle(template.title);
+      setSummary(template.summary);
+    } else {
+      setTitle('');
+      setSummary('');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +53,22 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label htmlFor="project-template" className="block text-sm font-medium text-slate-300 mb-1">
+          Project Template (Optional)
+        </label>
+        <select
+          id="project-template"
+          onChange={handleTemplateChange}
+          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+        >
+          <option value="">-- Select a template --</option>
+          {projectTemplates.map(template => (
+            <option key={template.id} value={template.id}>{template.title}</option>
+          ))}
+        </select>
+      </div>
+
       <div>
         <label htmlFor="project-title" className="block text-sm font-medium text-slate-300 mb-1">
           Project Title
