@@ -18,13 +18,16 @@ import {
     TemplateCategory,
     UserProfile,
 } from './types';
-import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
+import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
+import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
 import CreateProjectForm from './components/CreateProjectForm';
+import ProjectCard from './components/ProjectCard';
 import Quests from './components/Quests';
 import Achievements from './components/Achievements';
 import ArtifactDetail from './components/ArtifactDetail';
+import ArtifactListItem from './components/ArtifactListItem';
 import GraphView from './components/GraphView';
 import ConlangLexiconEditor from './components/ConlangLexiconEditor';
 import StoryEditor from './components/StoryEditor';
@@ -581,109 +584,8 @@ const aiAssistants: AIAssistant[] = [
     },
 ];
 
-const getInitials = (name: string) => {
-  if (!name) return 'C';
-  const parts = name.trim().split(' ');
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
-};
 
-const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void; onStartTutorial: () => void; }> = ({ profile, xpProgress, level, onSignOut, onStartTutorial }) => (
-  <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
-    <div className="flex items-center gap-3">
-      <CubeIcon className="w-7 h-7 text-cyan-400" />
-      <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
-    </div>
-    <div className="flex items-center gap-4">
-      <div className="hidden sm:flex flex-col items-end">
-        <span className="text-sm font-semibold text-slate-200">{profile.displayName}</span>
-        <span className="text-xs text-slate-400">Level {level}</span>
-      </div>
-      <div className="relative w-32 h-6 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
-        <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${Math.min(xpProgress, 100)}%` }}></div>
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white tracking-wider">{xpProgress} / 100 XP</span>
-      </div>
-      {profile.photoURL ? (
-        <img src={profile.photoURL} alt={profile.displayName} className="hidden sm:block w-9 h-9 rounded-full object-cover border border-slate-600" />
-      ) : (
-        <div className="hidden sm:flex w-9 h-9 rounded-full bg-cyan-600/20 border border-cyan-500/40 items-center justify-center text-sm font-semibold text-cyan-200">
-          {getInitials(profile.displayName)}
-        </div>
-      )}
-      <button
-        onClick={onStartTutorial}
-        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
-      >
-        Start Tutorial
-      </button>
-      <button
-        onClick={() => { void onSignOut(); }}
-        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
-      >
-        Sign out
-      </button>
-    </div>
-  </header>
-);
 
-const ProjectCard: React.FC<{ project: Project; onSelect: (id: string) => void; isSelected: boolean }> = ({ project, onSelect, isSelected }) => {
-    const statusColors: Record<ProjectStatus, string> = {
-        [ProjectStatus.Active]: 'bg-green-500',
-        [ProjectStatus.Idea]: 'bg-yellow-500',
-        [ProjectStatus.Paused]: 'bg-orange-500',
-        [ProjectStatus.Archived]: 'bg-slate-600',
-    };
-
-    return (
-        <div
-            onClick={() => onSelect(project.id)}
-            className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer ${isSelected ? 'bg-slate-700/50 border-cyan-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}
-            role="button"
-            aria-pressed={isSelected}
-            tabIndex={0}
-            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onSelect(project.id);
-                }
-            }}
-        >
-            <div className="flex justify-between items-start">
-                <h3 className="font-bold text-slate-100">{project.title}</h3>
-                <span className={`w-3 h-3 rounded-full mt-1 ${statusColors[project.status]}`} title={`Status: ${project.status}`}></span>
-            </div>
-            <p className="text-sm text-slate-400 mt-1 line-clamp-2">{project.summary}</p>
-        </div>
-    );
-};
-
-const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) => void; isSelected: boolean }> = ({ artifact, onSelect, isSelected }) => (
-    <tr
-        onClick={() => onSelect(artifact.id)}
-        className={`border-b border-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-cyan-900/30' : 'hover:bg-slate-700/50'}`}
-        role="button"
-        aria-pressed={isSelected}
-        tabIndex={0}
-        onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(artifact.id);
-            }
-        }}
-    >
-        <td className="p-3 flex items-center gap-3">
-            <BookOpenIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-            <span className="font-semibold">{artifact.title}</span>
-        </td>
-        <td className="p-3 text-slate-400">{artifact.type}</td>
-        <td className="p-3">
-            <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusClasses(artifact.status)}`}>
-                {formatStatusLabel(artifact.status)}
-            </span>
-        </td>
-        <td className="p-3 text-slate-500 hidden lg:table-cell">{artifact.summary}</td>
-    </tr>
-);
 
 
 export default function App() {
