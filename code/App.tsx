@@ -54,7 +54,8 @@ import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
-import Tutorial from './components/Tutorial';
+import TutorialGuide from './components/TutorialGuide';
+import ErrorBoundary from './components/ErrorBoundary';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 
 const dailyQuests: Quest[] = [
@@ -1154,7 +1155,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {isTutorialVisible && <Tutorial onClose={() => setIsTutorialVisible(false)} />}
+      {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
@@ -1171,6 +1172,7 @@ export default function App() {
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
                 <button
+                    id="create-new-project-button"
                     onClick={() => setIsCreateProjectModalOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-cyan-300 bg-cyan-900/50 hover:bg-cyan-800/50 rounded-md transition-colors"
                     title="Create New Project"
@@ -1245,6 +1247,7 @@ export default function App() {
                             Publish Site
                         </button>
                         <button
+                            id="add-new-artifact-button"
                             onClick={() => setIsCreateModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors shadow-lg hover:shadow-cyan-500/50"
                         >
