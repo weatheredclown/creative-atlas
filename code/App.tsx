@@ -16,6 +16,7 @@ import {
     TaskData,
     TaskState,
     TemplateCategory,
+    TemplateEntry,
     UserProfile,
 } from './types';
 import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
@@ -149,13 +150,13 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Tamenzut'],
         relatedProjectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad'],
         templates: [
-            { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
-            { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
-            { id: 'tam-city', name: 'City', description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
-            { id: 'tam-faction', name: 'Faction', description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
-            { id: 'tam-edruel', name: 'Edruel Ruins', description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
-            { id: 'tam-thread-log', name: 'ThreadWeaving Log', description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
-            { id: 'tam-canon', name: 'Canon Tracker', description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
+            { id: 'tam-magic-system', name: 'MagicSystem', type: ArtifactType.MagicSystem, description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
+            { id: 'tam-rulebook', name: 'Rulebook', type: ArtifactType.Wiki, description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
+            { id: 'tam-city', name: 'City', type: ArtifactType.Location, description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
+            { id: 'tam-faction', name: 'Faction', type: ArtifactType.Faction, description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
+            { id: 'tam-edruel', name: 'Edruel Ruins', type: ArtifactType.Location, description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
+            { id: 'tam-thread-log', name: 'ThreadWeaving Log', type: ArtifactType.MagicSystem, description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
+            { id: 'tam-canon', name: 'Canon Tracker', type: ArtifactType.Wiki, description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
         ],
     },
     {
@@ -165,12 +166,12 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Steamweave'],
         relatedProjectTemplateIds: ['serial-comic-kit'],
         templates: [
-            { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
-            { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
-            { id: 'steam-scene', name: 'Scene', description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
-            { id: 'steam-villain', name: 'Villain (Red-Eyes)', description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
-            { id: 'steam-triangle', name: 'Love Triangle Map', description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
-            { id: 'steam-release', name: 'Release Notes', description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
+            { id: 'steam-clan', name: 'Clan', type: ArtifactType.Faction, description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
+            { id: 'steam-workshop', name: 'Workshop', type: ArtifactType.Location, description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
+            { id: 'steam-scene', name: 'Scene', type: ArtifactType.Scene, description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
+            { id: 'steam-villain', name: 'Villain (Red-Eyes)', type: ArtifactType.Character, description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
+            { id: 'steam-triangle', name: 'Love Triangle Map', type: ArtifactType.Wiki, description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
+            { id: 'steam-release', name: 'Release Notes', type: ArtifactType.Release, description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
         ],
     },
     {
@@ -180,15 +181,15 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Dustland'],
         relatedProjectTemplateIds: ['game-design-lab'],
         templates: [
-            { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
-            { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
-            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
-            { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
-            { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
-            { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
-            { id: 'dust-memory', name: 'World Memory Log', description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
-            { id: 'dust-effect', name: 'Effect Pack', description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
-            { id: 'dust-build', name: 'Build', description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
+            { id: 'dust-module', name: 'Module', type: ArtifactType.Wiki, description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
+            { id: 'dust-quest', name: 'Quest', type: ArtifactType.Task, description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
+            { id: 'dust-mask', name: 'Persona Mask', type: ArtifactType.MagicSystem, description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
+            { id: 'dust-npc', name: 'NPC', type: ArtifactType.Character, description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
+            { id: 'dust-item', name: 'Item', type: ArtifactType.Wiki, description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
+            { id: 'dust-tileset', name: 'Tileset', type: ArtifactType.Location, description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
+            { id: 'dust-memory', name: 'World Memory Log', type: ArtifactType.Wiki, description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
+            { id: 'dust-effect', name: 'Effect Pack', type: ArtifactType.MagicSystem, description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
+            { id: 'dust-build', name: 'Build', type: ArtifactType.Character, description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
         ],
     },
     {
@@ -198,11 +199,11 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Spatch'],
         relatedProjectTemplateIds: ['serial-comic-kit'],
         templates: [
-            { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
-            { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
-            { id: 'spatch-rule', name: 'Rule Variant', description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
-            { id: 'spatch-match', name: 'Match', description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
-            { id: 'spatch-board', name: 'Panel Board', description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
+            { id: 'spatch-team', name: 'Team', type: ArtifactType.Faction, description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
+            { id: 'spatch-mentor', name: 'Mentor', type: ArtifactType.Character, description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
+            { id: 'spatch-rule', name: 'Rule Variant', type: ArtifactType.Wiki, description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
+            { id: 'spatch-match', name: 'Match', type: ArtifactType.Story, description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
+            { id: 'spatch-board', name: 'Panel Board', type: ArtifactType.Timeline, description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
         ],
     },
     {
@@ -212,11 +213,11 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Darv'],
         relatedProjectTemplateIds: ['conlang-workbench'],
         templates: [
-            { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
-            { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
-            { id: 'darv-paradigm', name: 'Paradigm', description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
-            { id: 'darv-proverb', name: 'Proverb', description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
-            { id: 'darv-myth', name: 'Myth', description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
+            { id: 'darv-lexicon', name: 'Lexicon', type: ArtifactType.Conlang, description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
+            { id: 'darv-phonology', name: 'Phonology', type: ArtifactType.Wiki, description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
+            { id: 'darv-paradigm', name: 'Paradigm', type: ArtifactType.Wiki, description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
+            { id: 'darv-proverb', name: 'Proverb', type: ArtifactType.Wiki, description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
+            { id: 'darv-myth', name: 'Myth', type: ArtifactType.Story, description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
         ],
     },
     {
@@ -226,10 +227,10 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Sacred Truth'],
         relatedProjectTemplateIds: ['world-wiki-launchpad'],
         templates: [
-            { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
-            { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
-            { id: 'sacred-codex', name: 'Monster Codex', description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
-            { id: 'sacred-cathedral', name: 'Cathedral Asset', description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
+            { id: 'sacred-episode', name: 'Episode', type: ArtifactType.Story, description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
+            { id: 'sacred-case', name: 'Case File', type: ArtifactType.Timeline, description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
+            { id: 'sacred-codex', name: 'Monster Codex', type: ArtifactType.Wiki, description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
+            { id: 'sacred-cathedral', name: 'Cathedral Asset', type: ArtifactType.Location, description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
         ],
     },
 ];
@@ -860,6 +861,29 @@ export default function App() {
     [selectedProjectId, profile, createArtifact, addXp],
   );
 
+  const handleSelectTemplate = useCallback(async (template: TemplateEntry) => {
+    if (!selectedProjectId) {
+      alert('Please select a project before adding an artifact from a template.');
+      return;
+    }
+
+    const data: Artifact['data'] = getDefaultDataForType(template.type, template.name);
+    const created = await createArtifact(selectedProjectId, {
+      type: template.type,
+      title: template.name,
+      summary: template.description,
+      status: 'draft',
+      tags: template.tags ?? [],
+      relations: [],
+      data,
+    });
+
+    if (created) {
+      void addXp(5);
+      setSelectedArtifactId(created.id);
+    }
+  }, [selectedProjectId, createArtifact, addXp]);
+
   const handleApplyProjectTemplate = useCallback(async (template: ProjectTemplate) => {
     if (!profile || !selectedProjectId) return;
 
@@ -1427,6 +1451,7 @@ export default function App() {
                     categories={templateLibrary}
                     projectTemplates={projectTemplates}
                     activeProjectTitle={selectedProject.title}
+                    onSelectTemplate={handleSelectTemplate}
                   />
                 </div>
                 <ReleaseNotesGenerator
