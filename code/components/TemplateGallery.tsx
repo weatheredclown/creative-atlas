@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ProjectTemplate, TemplateCategory } from '../types';
+import { ProjectTemplate, TemplateCategory, TemplateEntry } from '../types';
 import { ChevronDownIcon, MagnifyingGlassIcon, SparklesIcon } from './Icons';
 import Zippy from './Zippy';
 
@@ -7,9 +7,15 @@ interface TemplateGalleryProps {
   categories: TemplateCategory[];
   projectTemplates: ProjectTemplate[];
   activeProjectTitle?: string;
+  onSelectTemplate: (template: TemplateEntry) => void;
 }
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTemplates, activeProjectTitle }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({
+  categories,
+  projectTemplates,
+  activeProjectTitle,
+  onSelectTemplate,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
 
@@ -115,7 +121,12 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
           <div className="mt-3 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {category.templates.map((template) => (
-                <div key={template.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+                <button
+                  type="button"
+                  key={template.id}
+                  onClick={() => onSelectTemplate(template)}
+                  className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-left w-full hover:bg-slate-700/50 transition-colors"
+                >
                   <h5 className="text-sm font-semibold text-slate-200">{template.name}</h5>
                   <p className="text-xs text-slate-400 mt-1">{template.description}</p>
                   {template.tags && template.tags.length > 0 && (
@@ -130,7 +141,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ categories, projectTe
                       ))}
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
             {linkedProjectTemplates.length > 0 && (

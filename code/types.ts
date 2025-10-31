@@ -207,6 +207,7 @@ export interface ProjectTemplate {
 export interface TemplateEntry {
     id: string;
     name: string;
+    type: ArtifactType;
     description: string;
     tags?: string[];
     blueprint?: TemplateArtifactBlueprint;
