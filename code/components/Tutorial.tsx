@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Stepper from './Stepper';
 import Modal from './Modal';
 import { tutorialSteps } from '../utils/tutorial';
+import { TutorialContent } from './tutorial/TutorialContent';
 
 interface TutorialProps {
   onClose: () => void;
@@ -37,7 +38,7 @@ const Tutorial: React.FC<TutorialProps> = ({ onClose }) => {
       <Stepper steps={tutorialSteps.map(step => step.title)} currentStep={currentStep} />
       <Modal isOpen={isModalOpen} onClose={handleClose} title={currentTutorialStep.title}>
         <div className="p-4">
-          <p className="text-slate-300">{currentTutorialStep.explanation}</p>
+          <TutorialContent step={currentStep} />
           <div className="mt-4 flex justify-end">
             <button
               onClick={handleNextStep}
