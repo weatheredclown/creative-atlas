@@ -40,3 +40,14 @@ This document provides instructions for agents working on the Creative Atlas cod
 *   To run the backend in development mode, use `npm run dev --prefix server`.
 *   To run backend tests, run `npm test --prefix server`.
 *   To build the backend, run `npm run build --prefix server`.
+
+# general
+*   If your changes affect the onboarding flow, update the tutorial steps in `code/utils/tutorial.ts` to reflect the new user experience.
+
+## Pull Requests
+- Provide a concise summary of the changes along with any notable implementation details.
+- Note any new dependencies introduced and justify their necessity.
+- Include screenshots or GIFs when modifying UI components.
+- Capture product screenshots using guest mode (`?guest=1`) so logged-in features are visible, unless you are intentionally showing the authentication screen.
+
+
