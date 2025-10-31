@@ -50,6 +50,7 @@ import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
+import Tutorial from './components/Tutorial';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 
 const dailyQuests: Quest[] = [
@@ -546,7 +547,7 @@ const getInitials = (name: string) => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 };
 
-const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void }> = ({ profile, xpProgress, level, onSignOut }) => (
+const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void; onStartTutorial: () => void; }> = ({ profile, xpProgress, level, onSignOut, onStartTutorial }) => (
   <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
     <div className="flex items-center gap-3">
       <CubeIcon className="w-7 h-7 text-cyan-400" />
@@ -568,6 +569,12 @@ const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number
           {getInitials(profile.displayName)}
         </div>
       )}
+      <button
+        onClick={onStartTutorial}
+        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
+      >
+        Start Tutorial
+      </button>
       <button
         onClick={() => { void onSignOut(); }}
         className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
@@ -672,6 +679,7 @@ export default function App() {
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
+  const [isTutorialVisible, setIsTutorialVisible] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -1203,7 +1211,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} />
+      {isTutorialVisible && <Tutorial onClose={() => setIsTutorialVisible(false)} />}
+      <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
           <ErrorBanner message={error} onDismiss={clearError} />
