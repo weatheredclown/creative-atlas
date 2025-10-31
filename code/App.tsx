@@ -33,6 +33,7 @@ import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
+import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
@@ -393,6 +394,8 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
             return { content: `# ${title ?? 'Untitled'}\n\n` };
         case ArtifactType.Location:
             return { description: '', features: [] };
+        case ArtifactType.Timeline:
+            return { events: [] };
         default:
             return {};
     }
@@ -1456,6 +1459,12 @@ export default function App() {
                     )}
                     {selectedArtifact.type === ArtifactType.Task && (
                         <TaskEditor
+                            artifact={selectedArtifact}
+                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                        />
+                    )}
+                    {selectedArtifact.type === ArtifactType.Timeline && (
+                        <TimelineEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
                         />
