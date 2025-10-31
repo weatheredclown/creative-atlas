@@ -134,6 +134,44 @@ const questlines: Questline[] = [
             },
         ],
     },
+    {
+        id: 'tamenzut-series-bible',
+        name: 'Tamenzut Series Bible',
+        description: 'Magic systems, canon trackers, and city profiles for the Tamenzut saga.',
+        recommendedFor: ['Tamenzut'],
+        relatedCategoryIds: ['tamenzut'],
+        projectTags: ['novel', 'fantasy', 'magic'],
+        artifacts: [
+            {
+                title: 'Magic System Overview',
+                type: ArtifactType.MagicSystem,
+                summary: 'Define the rules and consequences of threadweaving.',
+                status: 'draft',
+                tags: ['magic', 'rules'],
+            },
+            {
+                title: 'Canon Tracker',
+                type: ArtifactType.Wiki,
+                summary: 'Log continuity-sensitive details, from character lineage to prophecies.',
+                status: 'in-progress',
+                tags: ['canon', 'continuity'],
+                data: { content: '# Canon Tracker\n\n## Core Principles\n- Document foundational truths here.\n\n## Open Questions\n- What needs clarification?' },
+            },
+            {
+                title: 'Primary City Profile',
+                type: ArtifactType.Location,
+                summary: 'Flesh out the main city, its districts, and its role in the narrative.',
+                status: 'draft',
+                tags: ['location', 'city'],
+                data: {
+                    description: 'The central hub of the first novel.',
+                    features: [
+                        { id: 'tmpl-feature-2', name: 'Weaver\'s Spire', description: 'The center of magical learning and intrigue.' },
+                    ],
+                },
+            },
+        ],
+    },
 ];
 
 const templateLibrary: TemplateCategory[] = [
