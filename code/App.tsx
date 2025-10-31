@@ -1217,7 +1217,6 @@ export default function App() {
                   onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
-              <MilestoneTracker items={milestoneProgress} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
@@ -1411,6 +1410,7 @@ export default function App() {
                     )}
                 </div>
               )}
+              <MilestoneTracker items={milestoneProgress} />
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
                 <div className="space-y-6 xl:col-span-2">
                   <ProjectTemplatePicker
