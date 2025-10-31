@@ -9,3 +9,6 @@ server/dist/
 code/.env
 code/.env.local
 server/.env
+
+# Log files
+*.log
