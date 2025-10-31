@@ -52,7 +52,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label htmlFor="project-template" className="block text-sm font-medium text-slate-300 mb-1">
           Project Template (Optional)
