@@ -46,7 +46,7 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData,
 
       {isAiPanelOpen && (
         <div className="mb-4">
-          <AICopilotPanel assistants={assistants} />
+          <AICopilotPanel assistants={assistants} onGenerate={handleInsertText} />
         </div>
       )}
 
