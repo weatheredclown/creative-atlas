@@ -5,4 +5,7 @@ entrypoint: npm start
 
 env_variables:
   NODE_ENV: production
-  ALLOWED_ORIGINS: https://creative-atlas.web.app
+  ALLOWED_ORIGins: https://creative-atlas.web.app
+  GITHUB_CLIENT_ID: ${{ GITHUB_CLIENT_ID }}
+  GITHUB_CLIENT_SECRET: ${{ GITHUB_CLIENT_SECRET }}
+  APP_BASE_URL: ${{ APP_BASE_URL }}
