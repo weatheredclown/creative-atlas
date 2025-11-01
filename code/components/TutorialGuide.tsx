@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import Stepper from './Stepper';
@@ -7,6 +7,16 @@ import Stepper from './Stepper';
 const TutorialGuide: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
+
+  const handleNextStep = useCallback(() => {
+    setCurrentStep((previousStep) => {
+      if (previousStep < tutorialSteps.length - 1) {
+        return previousStep + 1;
+      }
+
+      return previousStep;
+    });
+  }, []);
 
   useEffect(() => {
     const step = tutorialSteps[currentStep];
@@ -37,7 +47,7 @@ const TutorialGuide: React.FC = () => {
         }
       }
     };
-  }, [currentStep]);
+  }, [currentStep, handleNextStep]);
 
   const handleNextStep = () => {
     setCurrentStep(previous => (previous < tutorialSteps.length - 1 ? previous + 1 : previous));
@@ -47,7 +57,7 @@ const TutorialGuide: React.FC = () => {
     setCurrentStep(previous => (previous > 0 ? previous - 1 : previous));
   };
 
-  const currentTutorialStep = tutorialSteps[currentStep];
+  const currentTutorialStep: TutorialStep = tutorialSteps[currentStep];
   const isLastStep = currentStep === tutorialSteps.length - 1;
   const canGoBack = currentStep > 0;
 

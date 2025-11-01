@@ -49,5 +49,6 @@ This document provides instructions for agents working on the Creative Atlas cod
 - Note any new dependencies introduced and justify their necessity.
 - Include screenshots or GIFs when modifying UI components.
 - Capture product screenshots using guest mode (`?guest=1`) so logged-in features are visible, unless you are intentionally showing the authentication screen.
+- Do not submit changes unless `npm run lint --prefix code` completes successfully.
 
 
