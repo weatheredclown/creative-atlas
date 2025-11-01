@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Artifact, ArtifactType, TaskData, TaskState } from '../types';
+import { Artifact, ArtifactType, TaskData, TASK_STATE, TASK_STATE_VALUES, type TaskState } from '../types';
 
 interface KanbanCardProps {
   task: Artifact;
@@ -10,7 +10,7 @@ interface KanbanCardProps {
 const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState }) => {
   const taskData = task.data as TaskData;
 
-  const availableStates = Object.values(TaskState).filter(s => s !== taskData.state);
+  const availableStates = TASK_STATE_VALUES.filter((state) => state !== taskData.state);
 
   return (
     <div className="bg-slate-700/70 p-3 rounded-lg border border-slate-600/80 shadow-md">
@@ -40,9 +40,9 @@ interface KanbanColumnProps {
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, onUpdateTaskState }) => {
   const columnColors = {
-    [TaskState.Todo]: 'border-t-blue-400',
-    [TaskState.InProgress]: 'border-t-yellow-400',
-    [TaskState.Done]: 'border-t-green-400',
+    [TASK_STATE.Todo]: 'border-t-blue-400',
+    [TASK_STATE.InProgress]: 'border-t-yellow-400',
+    [TASK_STATE.Done]: 'border-t-green-400',
   };
 
   return (
@@ -74,7 +74,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ artifacts, onUpdateArtifactDa
     }
   };
 
-  const columns = Object.values(TaskState).map(state => ({
+  const columns = TASK_STATE_VALUES.map((state) => ({
     title: state,
     tasks: tasks.filter(task => (task.data as TaskData).state === state),
   }));

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Artifact, ArtifactType, ConlangLexeme, TaskData, TaskState } from '../types';
+import { Artifact, ArtifactType, ConlangLexeme, TaskData, TASK_STATE } from '../types';
 import { generateReleaseNotes } from '../services/geminiService';
 import { MegaphoneIcon, SparklesIcon, Spinner } from './Icons';
 
@@ -46,7 +46,7 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
       .filter((artifact) => artifact.type === ArtifactType.Task)
       .filter((artifact) => {
         const data = artifact.data as TaskData | undefined;
-        return data?.state === TaskState.Done;
+        return data?.state === TASK_STATE.Done;
       });
     if (completedTasks.length > 0) {
       lines.push(`Completed quests: ${formatListPreview(completedTasks.map((task) => task.title))}.`);

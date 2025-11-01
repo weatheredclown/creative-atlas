@@ -1,4 +1,4 @@
-import { Artifact, ArtifactType, ConlangLexeme, LocationData, Project, ProjectStatus, TaskData, TaskState, CharacterData, WikiData, TimelineData } from './types';
+import { Artifact, ArtifactType, ConlangLexeme, LocationData, Project, ProjectStatus, TaskData, TASK_STATE, CharacterData, WikiData, TimelineData } from './types';
 
 export interface SeedWorkspace {
   projects: Project[];
@@ -76,7 +76,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       status: 'in-progress',
       tags: ['design'],
       relations: [],
-      data: { state: TaskState.InProgress } as TaskData,
+      data: { state: TASK_STATE.InProgress } as TaskData,
     },
     {
       id: 'art-5',
@@ -88,7 +88,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       status: 'todo',
       tags: ['writing'],
       relations: [],
-      data: { state: TaskState.Todo } as TaskData,
+      data: { state: TASK_STATE.Todo } as TaskData,
     },
     {
       id: 'art-6',

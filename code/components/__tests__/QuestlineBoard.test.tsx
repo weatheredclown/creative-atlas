@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import QuestlineBoard from '../QuestlineBoard';
-import { ArtifactType, Questline, TaskState, UserProfile } from '../../types';
+import { ArtifactType, Questline, TASK_STATE, type TaskState, UserProfile } from '../../types';
 
 const baseQuestline: Questline = {
   id: 'questline-test',
@@ -19,7 +19,7 @@ const baseQuestline: Questline = {
       isCompleted: (artifacts) =>
         artifacts.some(
           (artifact) =>
-            artifact.type === ArtifactType.Task && (artifact.data as { state: TaskState }).state === TaskState.Done,
+            artifact.type === ArtifactType.Task && (artifact.data as { state: TaskState }).state === TASK_STATE.Done,
         ),
     },
   ],
@@ -48,7 +48,7 @@ const completedArtifact = {
   status: 'done',
   tags: [],
   relations: [],
-  data: { state: TaskState.Done },
+  data: { state: TASK_STATE.Done },
 };
 
 describe('QuestlineBoard', () => {

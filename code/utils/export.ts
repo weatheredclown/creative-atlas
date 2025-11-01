@@ -8,7 +8,7 @@ import {
     LocationData,
     ConlangLexeme,
     TaskData,
-    TaskState,
+    TASK_STATE,
     WikiData,
     RepositoryData,
     IssueData,
@@ -330,7 +330,7 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         const task = artifact.data as TaskData;
         content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Task Details</h2>";
         content += "<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 space-y-2 text-slate-300'>";
-        content += `<p><span class='text-slate-400'>State:</span> ${task?.state ?? TaskState.Todo}</p>`;
+        content += `<p><span class='text-slate-400'>State:</span> ${task?.state ?? TASK_STATE.Todo}</p>`;
         if (task?.assignee) {
             content += `<p><span class='text-slate-400'>Assignee:</span> ${task.assignee}</p>`;
         }

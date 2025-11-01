@@ -6,7 +6,7 @@ import {
   MilestoneObjective,
   Project,
   TaskData,
-  TaskState,
+  TASK_STATE,
   UserProfile,
   isNarrativeArtifactType,
 } from '../types';
@@ -121,7 +121,7 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
     case 'progression-loops': {
       const doneTasks = artifacts.filter((artifact) => artifact.type === ArtifactType.Task).filter((artifact) => {
         const data = artifact.data as TaskData | undefined;
-        return data?.state === TaskState.Done;
+        return data?.state === TASK_STATE.Done;
       }).length;
       const achievementsUnlocked = profile?.achievementsUnlocked?.length ?? 0;
       const xp = profile?.xp ?? 0;

@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ReleaseNotesGenerator from '../ReleaseNotesGenerator';
-import { Artifact, ArtifactType, TaskState } from '../../types';
+import { Artifact, ArtifactType, TASK_STATE } from '../../types';
 import { generateReleaseNotes } from '../../services/geminiService';
 
 vi.mock('../../services/geminiService', () => ({
@@ -23,7 +23,7 @@ const baseArtifacts: Artifact[] = [
     status: 'done',
     tags: ['story'],
     relations: [],
-    data: { state: TaskState.Done },
+    data: { state: TASK_STATE.Done },
   },
   {
     id: 'story-1',
