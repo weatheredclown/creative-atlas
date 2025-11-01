@@ -304,4 +304,5 @@ export interface TutorialStep {
   target: string;
   prefill?: { [key: string]: string };
   showNextButton?: boolean;
+  advanceEvent?: 'click' | 'submit';
 }

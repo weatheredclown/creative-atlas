@@ -11,24 +11,24 @@
 ### Phase 1 — Core Lore OS (MVP)
 The “Organize My Worlds Without Pain” release.
 - [x] Project selection across Sacred Truth, Dustland, Aputi, and more.
-- [ ] Core artifact types at launch (characters, timelines, locations, rules/systems, terminology, scenes/chapters, game modules/quests).
-- [ ] Rich text editor with Markdown and AI assist.
-- [ ] Relationship graph linking characters ↔ events ↔ worlds.
-- [ ] Import pipelines for Markdown and text dumps (chat, drafts).
+- [x] Core artifact types at launch (characters, timelines, locations, rules/systems, terminology, scenes/chapters, game modules/quests).
+- [x] Rich text editor with Markdown and AI assist.
+- [x] Relationship graph linking characters ↔ events ↔ worlds.
+- [x] Import pipelines for Markdown and text dumps (chat, drafts).
 - [ ] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
-- [ ] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
 - [x] "Add one fact" button to reduce overwhelm.
-- [ ] "Reveal depth" toggle for simple → detailed fields.
+- [x] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
+- [ ] - [ ] "Reveal depth" toggle for simple → detailed fields.
 - [ ] "Narrative need heatmap" that flags characters not seen recently.
 - [ ] Memory sync with Gemini-powered conversations gated by user approval.
 
 ### Phase 2 — Gamification & XP Loop
 "Writing and making worlds gives XP. Lorebuilding is a game."
-- [ ] XP system tied to adding artifacts, refining drafts, importing pages, and completing quests.
-- [ ] Daily challenge board to surface fresh prompts.
-- [ ] Level-up tree with creativity perks (Lore Weaver, Archivist, World Alchemist, Dungeon Master).
+- [x] XP system tied to adding artifacts, refining drafts, importing pages, and completing quests.
+- [x] Daily challenge board to surface fresh prompts.
+- [x] Level-up tree with creativity perks (Lore Weaver, Archivist, World Alchemist, Dungeon Master).
 - [ ] Collectible inspiration cards covering archetypes, vibes, visual prompts, and genre modifiers.
-- [ ] Player profile with creative streak tracking.
+- [x] Player profile with creative streak tracking.
 - [ ] Inspiration deck draw interface for mid-writing boosts.
 
 ### Phase 3 — World Simulation Layer
