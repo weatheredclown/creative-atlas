@@ -12,3 +12,4 @@ server/.env
 
 # Log files
 *.log
+npm_output.log

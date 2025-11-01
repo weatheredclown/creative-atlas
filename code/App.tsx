@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     AIAssistant,
     Achievement,
@@ -8,7 +8,6 @@ import {
     ConlangLexeme,
     Milestone,
     Project,
-    ProjectStatus,
     ProjectTemplate,
     Quest,
     Questline,
@@ -16,15 +15,19 @@ import {
     TaskData,
     TaskState,
     TemplateCategory,
+    TemplateEntry,
     UserProfile,
 } from './types';
-import { CubeIcon, BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
+import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon  } from './components/Icons';
+import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
 import CreateProjectForm from './components/CreateProjectForm';
+import ProjectCard from './components/ProjectCard';
 import Quests from './components/Quests';
 import Achievements from './components/Achievements';
 import ArtifactDetail from './components/ArtifactDetail';
+import ArtifactListItem from './components/ArtifactListItem';
 import GraphView from './components/GraphView';
 import ConlangLexiconEditor from './components/ConlangLexiconEditor';
 import StoryEditor from './components/StoryEditor';
@@ -33,10 +36,11 @@ import CharacterEditor from './components/CharacterEditor';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
+import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
-import { getStatusClasses, formatStatusLabel } from './utils/status';
+import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
@@ -50,8 +54,12 @@ import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
-import Tutorial from './components/Tutorial';
+import TutorialGuide from './components/TutorialGuide';
+import ErrorBoundary from './components/ErrorBoundary';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
+import InfoModal from './components/InfoModal';
+import PublishToGitHubModal from './components/PublishToGitHubModal';
+import { publishToGitHub } from './services/dataApi';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -144,13 +152,13 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Tamenzut'],
         relatedProjectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad'],
         templates: [
-            { id: 'tam-magic-system', name: 'MagicSystem', description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
-            { id: 'tam-rulebook', name: 'Rulebook', description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
-            { id: 'tam-city', name: 'City', description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
-            { id: 'tam-faction', name: 'Faction', description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
-            { id: 'tam-edruel', name: 'Edruel Ruins', description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
-            { id: 'tam-thread-log', name: 'ThreadWeaving Log', description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
-            { id: 'tam-canon', name: 'Canon Tracker', description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
+            { id: 'tam-magic-system', name: 'MagicSystem', type: ArtifactType.MagicSystem, description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
+            { id: 'tam-rulebook', name: 'Rulebook', type: ArtifactType.Wiki, description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
+            { id: 'tam-city', name: 'City', type: ArtifactType.Location, description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
+            { id: 'tam-faction', name: 'Faction', type: ArtifactType.Faction, description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
+            { id: 'tam-edruel', name: 'Edruel Ruins', type: ArtifactType.Location, description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
+            { id: 'tam-thread-log', name: 'ThreadWeaving Log', type: ArtifactType.MagicSystem, description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
+            { id: 'tam-canon', name: 'Canon Tracker', type: ArtifactType.Wiki, description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
         ],
     },
     {
@@ -160,12 +168,12 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Steamweave'],
         relatedProjectTemplateIds: ['serial-comic-kit'],
         templates: [
-            { id: 'steam-clan', name: 'Clan', description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
-            { id: 'steam-workshop', name: 'Workshop', description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
-            { id: 'steam-scene', name: 'Scene', description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
-            { id: 'steam-villain', name: 'Villain (Red-Eyes)', description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
-            { id: 'steam-triangle', name: 'Love Triangle Map', description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
-            { id: 'steam-release', name: 'Release Notes', description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
+            { id: 'steam-clan', name: 'Clan', type: ArtifactType.Faction, description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
+            { id: 'steam-workshop', name: 'Workshop', type: ArtifactType.Location, description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
+            { id: 'steam-scene', name: 'Scene', type: ArtifactType.Scene, description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
+            { id: 'steam-villain', name: 'Villain (Red-Eyes)', type: ArtifactType.Character, description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
+            { id: 'steam-triangle', name: 'Love Triangle Map', type: ArtifactType.Wiki, description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
+            { id: 'steam-release', name: 'Release Notes', type: ArtifactType.Release, description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
         ],
     },
     {
@@ -175,15 +183,15 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Dustland'],
         relatedProjectTemplateIds: ['game-design-lab'],
         templates: [
-            { id: 'dust-module', name: 'Module', description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
-            { id: 'dust-quest', name: 'Quest', description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
-            { id: 'dust-mask', name: 'Persona Mask', description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
-            { id: 'dust-npc', name: 'NPC', description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
-            { id: 'dust-item', name: 'Item', description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
-            { id: 'dust-tileset', name: 'Tileset', description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
-            { id: 'dust-memory', name: 'World Memory Log', description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
-            { id: 'dust-effect', name: 'Effect Pack', description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
-            { id: 'dust-build', name: 'Build', description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
+            { id: 'dust-module', name: 'Module', type: ArtifactType.Wiki, description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
+            { id: 'dust-quest', name: 'Quest', type: ArtifactType.Task, description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
+            { id: 'dust-mask', name: 'Persona Mask', type: ArtifactType.MagicSystem, description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
+            { id: 'dust-npc', name: 'NPC', type: ArtifactType.Character, description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
+            { id: 'dust-item', name: 'Item', type: ArtifactType.Wiki, description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
+            { id: 'dust-tileset', name: 'Tileset', type: ArtifactType.Location, description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
+            { id: 'dust-memory', name: 'World Memory Log', type: ArtifactType.Wiki, description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
+            { id: 'dust-effect', name: 'Effect Pack', type: ArtifactType.MagicSystem, description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
+            { id: 'dust-build', name: 'Build', type: ArtifactType.Character, description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
         ],
     },
     {
@@ -193,11 +201,11 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Spatch'],
         relatedProjectTemplateIds: ['serial-comic-kit'],
         templates: [
-            { id: 'spatch-team', name: 'Team', description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
-            { id: 'spatch-mentor', name: 'Mentor', description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
-            { id: 'spatch-rule', name: 'Rule Variant', description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
-            { id: 'spatch-match', name: 'Match', description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
-            { id: 'spatch-board', name: 'Panel Board', description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
+            { id: 'spatch-team', name: 'Team', type: ArtifactType.Faction, description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
+            { id: 'spatch-mentor', name: 'Mentor', type: ArtifactType.Character, description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
+            { id: 'spatch-rule', name: 'Rule Variant', type: ArtifactType.Wiki, description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
+            { id: 'spatch-match', name: 'Match', type: ArtifactType.Story, description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
+            { id: 'spatch-board', name: 'Panel Board', type: ArtifactType.Timeline, description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
         ],
     },
     {
@@ -207,11 +215,11 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Darv'],
         relatedProjectTemplateIds: ['conlang-workbench'],
         templates: [
-            { id: 'darv-lexicon', name: 'Lexicon', description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
-            { id: 'darv-phonology', name: 'Phonology', description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
-            { id: 'darv-paradigm', name: 'Paradigm', description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
-            { id: 'darv-proverb', name: 'Proverb', description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
-            { id: 'darv-myth', name: 'Myth', description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
+            { id: 'darv-lexicon', name: 'Lexicon', type: ArtifactType.Conlang, description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
+            { id: 'darv-phonology', name: 'Phonology', type: ArtifactType.Wiki, description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
+            { id: 'darv-paradigm', name: 'Paradigm', type: ArtifactType.Wiki, description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
+            { id: 'darv-proverb', name: 'Proverb', type: ArtifactType.Wiki, description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
+            { id: 'darv-myth', name: 'Myth', type: ArtifactType.Story, description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
         ],
     },
     {
@@ -221,15 +229,53 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Sacred Truth'],
         relatedProjectTemplateIds: ['world-wiki-launchpad'],
         templates: [
-            { id: 'sacred-episode', name: 'Episode', description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
-            { id: 'sacred-case', name: 'Case File', description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
-            { id: 'sacred-codex', name: 'Monster Codex', description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
-            { id: 'sacred-cathedral', name: 'Cathedral Asset', description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
+            { id: 'sacred-episode', name: 'Episode', type: ArtifactType.Story, description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
+            { id: 'sacred-case', name: 'Case File', type: ArtifactType.Timeline, description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
+            { id: 'sacred-codex', name: 'Monster Codex', type: ArtifactType.Wiki, description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
+            { id: 'sacred-cathedral', name: 'Cathedral Asset', type: ArtifactType.Location, description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
         ],
     },
 ];
 
 const projectTemplates: ProjectTemplate[] = [
+    {
+        id: 'tamenzut-series-bible',
+        name: 'Tamenzut Series Bible',
+        description: 'Magic systems, canon trackers, and city profiles for the Tamenzut saga.',
+        recommendedFor: ['Tamenzut'],
+        relatedCategoryIds: ['tamenzut'],
+        projectTags: ['novel', 'fantasy', 'magic'],
+        artifacts: [
+            {
+                title: 'Magic System Overview',
+                type: ArtifactType.MagicSystem,
+                summary: 'Define the rules and consequences of threadweaving.',
+                status: 'draft',
+                tags: ['magic', 'rules'],
+            },
+            {
+                title: 'Canon Tracker',
+                type: ArtifactType.Wiki,
+                summary: 'Log continuity-sensitive details, from character lineage to prophecies.',
+                status: 'in-progress',
+                tags: ['canon', 'continuity'],
+                data: { content: '# Canon Tracker\n\n## Core Principles\n- Document foundational truths here.\n\n## Open Questions\n- What needs clarification?' },
+            },
+            {
+                title: 'Primary City Profile',
+                type: ArtifactType.Location,
+                summary: 'Flesh out the main city, its districts, and its role in the narrative.',
+                status: 'draft',
+                tags: ['location', 'city'],
+                data: {
+                    description: 'The central hub of the first novel.',
+                    features: [
+                        { id: 'tmpl-feature-2', name: "Weaver's Spire", description: 'The center of magical learning and intrigue.' },
+                    ],
+                },
+            },
+        ],
+    },
     {
         id: 'serial-comic-kit',
         name: 'Serial Comic Kit',
@@ -393,6 +439,8 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
             return { content: `# ${title ?? 'Untitled'}\n\n` };
         case ArtifactType.Location:
             return { description: '', features: [] };
+        case ArtifactType.Timeline:
+            return { events: [] };
         default:
             return {};
     }
@@ -540,109 +588,8 @@ const aiAssistants: AIAssistant[] = [
     },
 ];
 
-const getInitials = (name: string) => {
-  if (!name) return 'C';
-  const parts = name.trim().split(' ');
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
-};
 
-const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void; onStartTutorial: () => void; }> = ({ profile, xpProgress, level, onSignOut, onStartTutorial }) => (
-  <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
-    <div className="flex items-center gap-3">
-      <CubeIcon className="w-7 h-7 text-cyan-400" />
-      <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
-    </div>
-    <div className="flex items-center gap-4">
-      <div className="hidden sm:flex flex-col items-end">
-        <span className="text-sm font-semibold text-slate-200">{profile.displayName}</span>
-        <span className="text-xs text-slate-400">Level {level}</span>
-      </div>
-      <div className="relative w-32 h-6 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
-        <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${Math.min(xpProgress, 100)}%` }}></div>
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white tracking-wider">{xpProgress} / 100 XP</span>
-      </div>
-      {profile.photoURL ? (
-        <img src={profile.photoURL} alt={profile.displayName} className="hidden sm:block w-9 h-9 rounded-full object-cover border border-slate-600" />
-      ) : (
-        <div className="hidden sm:flex w-9 h-9 rounded-full bg-cyan-600/20 border border-cyan-500/40 items-center justify-center text-sm font-semibold text-cyan-200">
-          {getInitials(profile.displayName)}
-        </div>
-      )}
-      <button
-        onClick={onStartTutorial}
-        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
-      >
-        Start Tutorial
-      </button>
-      <button
-        onClick={() => { void onSignOut(); }}
-        className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
-      >
-        Sign out
-      </button>
-    </div>
-  </header>
-);
 
-const ProjectCard: React.FC<{ project: Project; onSelect: (id: string) => void; isSelected: boolean }> = ({ project, onSelect, isSelected }) => {
-    const statusColors: Record<ProjectStatus, string> = {
-        [ProjectStatus.Active]: 'bg-green-500',
-        [ProjectStatus.Idea]: 'bg-yellow-500',
-        [ProjectStatus.Paused]: 'bg-orange-500',
-        [ProjectStatus.Archived]: 'bg-slate-600',
-    };
-
-    return (
-        <div
-            onClick={() => onSelect(project.id)}
-            className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer ${isSelected ? 'bg-slate-700/50 border-cyan-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}
-            role="button"
-            aria-pressed={isSelected}
-            tabIndex={0}
-            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onSelect(project.id);
-                }
-            }}
-        >
-            <div className="flex justify-between items-start">
-                <h3 className="font-bold text-slate-100">{project.title}</h3>
-                <span className={`w-3 h-3 rounded-full mt-1 ${statusColors[project.status]}`} title={`Status: ${project.status}`}></span>
-            </div>
-            <p className="text-sm text-slate-400 mt-1 line-clamp-2">{project.summary}</p>
-        </div>
-    );
-};
-
-const ArtifactListItem: React.FC<{ artifact: Artifact; onSelect: (id: string) => void; isSelected: boolean }> = ({ artifact, onSelect, isSelected }) => (
-    <tr
-        onClick={() => onSelect(artifact.id)}
-        className={`border-b border-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-cyan-900/30' : 'hover:bg-slate-700/50'}`}
-        role="button"
-        aria-pressed={isSelected}
-        tabIndex={0}
-        onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(artifact.id);
-            }
-        }}
-    >
-        <td className="p-3 flex items-center gap-3">
-            <BookOpenIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-            <span className="font-semibold">{artifact.title}</span>
-        </td>
-        <td className="p-3 text-slate-400">{artifact.type}</td>
-        <td className="p-3">
-            <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusClasses(artifact.status)}`}>
-                {formatStatusLabel(artifact.status)}
-            </span>
-        </td>
-        <td className="p-3 text-slate-500 hidden lg:table-cell">{artifact.summary}</td>
-    </tr>
-);
 
 
 export default function App() {
@@ -680,6 +627,9 @@ export default function App() {
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const [isTutorialVisible, setIsTutorialVisible] = useState(true);
+  const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -703,6 +653,15 @@ export default function App() {
       setSelectedArtifactId(null);
     }
   }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('github_auth') === 'success') {
+      setIsPublishModalOpen(true);
+      // Clean up the URL
+      window.history.replaceState({}, document.title, "/");
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -805,11 +764,42 @@ export default function App() {
   const handleAddRelation = useCallback(
     (fromId: string, toId: string, kind: string) => {
       const source = artifacts.find((artifact) => artifact.id === fromId);
-      if (!source) {
+      const target = artifacts.find((artifact) => artifact.id === toId);
+      if (!source || !target) {
         return;
       }
+
       const newRelation: Relation = { toId, kind };
-      void updateArtifact(fromId, { relations: [...source.relations, newRelation] });
+      const reciprocalRelation: Relation = { toId: fromId, kind };
+
+      const sourceHasRelation = source.relations.some((relation) => relation.toId === toId);
+      const nextSourceRelations = sourceHasRelation
+        ? source.relations.map((relation) => (relation.toId === toId ? newRelation : relation))
+        : [...source.relations, newRelation];
+
+      const shouldUpdateSource = sourceHasRelation
+        ? source.relations.some((relation) => relation.toId === toId && relation.kind !== kind)
+        : true;
+      if (shouldUpdateSource) {
+        void updateArtifact(fromId, { relations: nextSourceRelations });
+      }
+
+      const reciprocalExists = target.relations.some((relation) => relation.toId === fromId);
+      const nextTargetRelations = reciprocalExists
+        ? target.relations.map((relation) =>
+            relation.toId === fromId ? reciprocalRelation : relation,
+          )
+        : [...target.relations, reciprocalRelation];
+
+      const shouldUpdateTarget = reciprocalExists
+        ? target.relations.some(
+            (relation) => relation.toId === fromId && relation.kind !== kind,
+          )
+        : true;
+
+      if (shouldUpdateTarget) {
+        void updateArtifact(toId, { relations: nextTargetRelations });
+      }
     },
     [artifacts, updateArtifact],
   );
@@ -820,8 +810,26 @@ export default function App() {
       if (!source) {
         return;
       }
+
+      const relationToRemove = source.relations[relationIndex];
+      if (!relationToRemove) {
+        return;
+      }
+
       const nextRelations = source.relations.filter((_, index) => index !== relationIndex);
       void updateArtifact(fromId, { relations: nextRelations });
+
+      const target = artifacts.find((artifact) => artifact.id === relationToRemove.toId);
+      if (!target) {
+        return;
+      }
+
+      const nextTargetRelations = target.relations.filter(
+        (relation) => relation.toId !== fromId,
+      );
+      if (nextTargetRelations.length !== target.relations.length) {
+        void updateArtifact(relationToRemove.toId, { relations: nextTargetRelations });
+      }
     },
     [artifacts, updateArtifact],
   );
@@ -916,6 +924,29 @@ export default function App() {
     [selectedProjectId, profile, createArtifact, addXp],
   );
 
+  const handleSelectTemplate = useCallback(async (template: TemplateEntry) => {
+    if (!selectedProjectId) {
+      alert('Please select a project before adding an artifact from a template.');
+      return;
+    }
+
+    const data: Artifact['data'] = getDefaultDataForType(template.type, template.name);
+    const created = await createArtifact(selectedProjectId, {
+      type: template.type,
+      title: template.name,
+      summary: template.description,
+      status: 'draft',
+      tags: template.tags ?? [],
+      relations: [],
+      data,
+    });
+
+    if (created) {
+      void addXp(5);
+      setSelectedArtifactId(created.id);
+    }
+  }, [selectedProjectId, createArtifact, addXp]);
+
   const handleApplyProjectTemplate = useCallback(async (template: ProjectTemplate) => {
     if (!profile || !selectedProjectId) return;
 
@@ -941,10 +972,16 @@ export default function App() {
       if (created.length > 0) {
         void addXp(created.length * 5);
         setSelectedArtifactId(created[0].id);
-        alert(`Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`);
+        setInfoModalContent({
+          title: 'Template Applied',
+          message: `Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`,
+        });
       }
     } else {
-      alert('All of the template\'s starter artifacts already exist in this project.');
+      setInfoModalContent({
+        title: 'Template Not Applied',
+        message: 'All of the template\'s starter artifacts already exist in this project.',
+      });
     }
 
     if (template.projectTags.length > 0) {
@@ -1035,6 +1072,25 @@ export default function App() {
         addXp(25); // XP Source: publish (+25)
     } else {
         alert('Please select a project with artifacts to publish.');
+    }
+  };
+
+  const handlePublishToGithub = () => {
+    window.location.href = `/api/github/oauth/start`;
+  }
+
+  const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
+    setIsPublishing(true);
+    try {
+      const token = await getIdToken();
+      const result = await publishToGitHub(token, repoName, publishDir);
+      console.log('Publish result:', result);
+      alert(`Publishing process started for ${repoName}. You will be notified upon completion.`);
+      setIsPublishModalOpen(false);
+    } catch (err) {
+      alert(`Error creating repository: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -1211,7 +1267,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {isTutorialVisible && <Tutorial onClose={() => setIsTutorialVisible(false)} />}
+      {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
@@ -1228,6 +1284,7 @@ export default function App() {
             <div className="flex justify-between items-center px-2 mb-4">
                 <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
                 <button
+                    id="create-new-project-button"
                     onClick={() => setIsCreateProjectModalOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-cyan-300 bg-cyan-900/50 hover:bg-cyan-800/50 rounded-md transition-colors"
                     title="Create New Project"
@@ -1274,7 +1331,6 @@ export default function App() {
                   onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
-              <MilestoneTracker items={milestoneProgress} />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
@@ -1302,7 +1358,12 @@ export default function App() {
                             <BuildingStorefrontIcon className="w-5 h-5" />
                             Publish Site
                         </button>
+                        <button onClick={handlePublishToGithub} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors shadow-lg hover:shadow-gray-600/50">
+                            <GitHubIcon className="w-5 h-5" />
+                            Publish to GitHub
+                        </button>
                         <button
+                            id="add-new-artifact-button"
                             onClick={() => setIsCreateModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors shadow-lg hover:shadow-cyan-500/50"
                         >
@@ -1443,6 +1504,7 @@ export default function App() {
                         <WikiEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                            assistants={aiAssistants}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Location && (
@@ -1460,8 +1522,15 @@ export default function App() {
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
                         />
                     )}
+                    {selectedArtifact.type === ArtifactType.Timeline && (
+                        <TimelineEditor
+                            artifact={selectedArtifact}
+                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                        />
+                    )}
                 </div>
               )}
+              <MilestoneTracker items={milestoneProgress} />
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
                 <div className="space-y-6 xl:col-span-2">
                   <ProjectTemplatePicker
@@ -1475,6 +1544,7 @@ export default function App() {
                     categories={templateLibrary}
                     projectTemplates={projectTemplates}
                     activeProjectTitle={selectedProject.title}
+                    onSelectTemplate={handleSelectTemplate}
                   />
                 </div>
                 <ReleaseNotesGenerator
@@ -1561,6 +1631,20 @@ export default function App() {
         milestones={milestoneProgress}
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
+      />
+      {infoModalContent && (
+        <InfoModal
+          isOpen={!!infoModalContent}
+          onClose={() => setInfoModalContent(null)}
+          title={infoModalContent.title}
+          message={infoModalContent.message}
+        />
+      )}
+      <PublishToGitHubModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onPublish={handlePublishToGithubRepo}
+        isPublishing={isPublishing}
       />
     </div>
   );

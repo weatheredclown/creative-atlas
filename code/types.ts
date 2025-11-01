@@ -33,6 +33,7 @@ export enum ArtifactType {
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
+  Timeline = 'Timeline',
 }
 
 export enum TaskState {
@@ -133,7 +134,19 @@ export interface Artifact {
     | RepositoryData
     | IssueData
     | ReleaseData
+    | TimelineData
     | Record<string, unknown>;
+}
+
+export interface TimelineEvent {
+    id: string;
+    date: string;
+    title: string;
+    description: string;
+}
+
+export interface TimelineData {
+    events: TimelineEvent[];
 }
 
 export interface ConlangLexeme {
@@ -198,6 +211,7 @@ export interface ProjectTemplate {
 export interface TemplateEntry {
     id: string;
     name: string;
+    type: ArtifactType;
     description: string;
     tags?: string[];
     blueprint?: TemplateArtifactBlueprint;
@@ -267,4 +281,13 @@ export interface UserProfile {
     achievementsUnlocked: string[];
     questlinesClaimed: string[];
     settings: UserSettings;
+}
+
+export interface TutorialStep {
+  title: string;
+  explanation: string;
+  action: string;
+  target: string;
+  prefill?: { [key: string]: string };
+  showNextButton?: boolean;
 }

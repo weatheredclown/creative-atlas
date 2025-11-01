@@ -1,16 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Artifact, WikiData } from '../types';
-import { GlobeAltIcon } from './Icons';
+import { Artifact, WikiData, AIAssistant } from '../types';
+import { GlobeAltIcon, SparklesIcon } from './Icons';
 import { simpleMarkdownToHtml } from '../utils/markdown';
+import AICopilotPanel from './AICopilotPanel';
 
 interface WikiEditorProps {
   artifact: Artifact;
   onUpdateArtifactData: (artifactId: string, data: WikiData) => void;
+  assistants: AIAssistant[];
 }
 
-const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData }) => {
+const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData, assistants }) => {
   const data = (artifact.data as WikiData) || { content: `# ${artifact.title}\n\nStart writing your wiki page here.` };
   const [content, setContent] = useState(data.content);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -21,10 +24,26 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData 
 
   return (
     <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
-      <h3 className="text-xl font-bold text-indigo-400 mb-4 flex items-center gap-2">
-        <GlobeAltIcon className="w-6 h-6" />
-        Wiki Editor: {artifact.title}
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-indigo-400 flex items-center gap-2">
+          <GlobeAltIcon className="w-6 h-6" />
+          Wiki Editor: {artifact.title}
+        </h3>
+        <button
+          onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors bg-pink-600/30 border border-pink-500/60 text-pink-200 hover:bg-pink-600/40"
+        >
+          <SparklesIcon className="w-4 h-4" />
+          {isAiPanelOpen ? 'Close Copilot' : 'Open Copilot'}
+        </button>
+      </div>
+
+      {isAiPanelOpen && (
+        <div className="mb-4">
+          <AICopilotPanel assistants={assistants} />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="wiki-content" className="block text-sm font-medium text-slate-300 mb-1">

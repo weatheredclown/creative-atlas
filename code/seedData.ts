@@ -1,4 +1,4 @@
-import { Artifact, ArtifactType, ConlangLexeme, LocationData, Project, ProjectStatus, TaskData, TaskState, CharacterData, WikiData } from './types';
+import { Artifact, ArtifactType, ConlangLexeme, LocationData, Project, ProjectStatus, TaskData, TaskState, CharacterData, WikiData, TimelineData } from './types';
 
 export interface SeedWorkspace {
   projects: Project[];
@@ -110,12 +110,17 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       ownerId,
       projectId: 'proj-5',
       type: ArtifactType.Timeline,
-      title: 'First Age of Aputi',
-      summary: 'A timeline of the early Aputi civilization.',
+      title: 'Aputi People Timeline',
+      summary: 'A historical timeline of the Aputi people.',
       status: 'draft',
       tags: ['history', 'timeline'],
       relations: [],
-      data: [],
+      data: {
+        events: [
+          { id: 'ev-1', date: '-1000', title: 'First Settlers', description: 'The first Aputi settlers arrive in the valley.' },
+          { id: 'ev-2', date: '-500', title: 'The Great Flood', description: 'A great flood reshapes the landscape.' },
+        ],
+      } as TimelineData,
     },
     {
       id: 'art-9',

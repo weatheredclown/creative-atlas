@@ -1,38 +1,76 @@
-export const tutorialSteps = [
+import { TutorialStep } from '../types';
+
+export const tutorialSteps: TutorialStep[] = [
   {
-    title: 'Welcome!',
+    title: 'Welcome to Creative Atlas!',
     explanation:
-      "This tutorial guides you through Creative Atlas. First, we'll create a Project to hold your ideas.",
-    action: 'Create a Project',
+      "This tutorial will guide you through creating your first project. Let's start by creating a new project.",
+    action: 'Create a New Project',
+    target: '#create-new-project-button',
+    showNextButton: true,
   },
   {
-    title: 'Name Your Project',
+    title: 'Creating Your Project',
     explanation:
-      "Give your project a title and a summary. Let's call it 'My First World' for now.",
+      "Every great story starts with a project. Give your project a name and a brief description. For our tutorial, we'll use the world of Aethelgard.",
     action: 'Fill in project details',
+    target: '#create-project-form',
+    prefill: {
+      '#project-title': 'Aethelgard',
+      '#project-summary': 'A world of magic and adventure.',
+    },
   },
   {
-    title: 'Create an Artifact',
+    title: 'Your Project Dashboard',
     explanation:
-      'Projects are made of Artifacts—your ideas. Click "New Seed" to create your first one.',
-    action: 'Click "New Seed"',
+      "This is your project dashboard, where you can manage all your artifacts. Let's add your first artifact: a world-building wiki.",
+    action: 'Add a New Artifact',
+    target: '#add-new-artifact-button',
   },
   {
-    title: 'Choose an Artifact Type',
+    title: 'Adding a Wiki',
     explanation:
-      'Artifacts have different types. A "Wiki" is great for notes. Select that and give it a title.',
-    action: 'Select "Wiki" type',
+      "A wiki is a great way to organize your world's lore. Give your wiki a title and a short description.",
+    action: 'Fill in wiki details',
+    target: '#create-artifact-form',
+    prefill: {
+      '#artifact-title': 'Aethelgard Wiki',
+      '#artifact-summary': 'The official wiki for the world of Aethelgard.',
+    },
   },
   {
-    title: 'Explore the Graph',
+    title: 'Adding Content to Your Wiki',
     explanation:
-      "Now you have a Project and an Artifact. Use the 'Graph' view to see how they connect.",
-    action: 'Switch to Graph View',
+      "Now, let's add your first wiki entry. You can create articles for characters, locations, and historical events.",
+    action: 'Create a new wiki article',
+    target: '#create-new-wiki-article-button',
   },
   {
-    title: 'You Did It!',
+    title: 'Connecting Projects',
     explanation:
-      "That's the core loop! Keep adding artifacts and linking them to build your world.",
+      "Creative Atlas allows you to connect your projects. Let's add a web comic and link it to your wiki.",
+    action: 'Add a new web comic project and link it to a wiki article',
+    target: '#add-web-comic-button',
+  },
+  {
+    title: 'Setting Milestones',
+    explanation:
+      "Milestones help you track your progress. Let's set a milestone for completing the first chapter of your web comic.",
+    action: 'Create a new milestone',
+    target: '#create-milestone-button',
+  },
+  {
+    title: 'Publishing Your World',
+    explanation:
+      "Ready to share your world? You can publish it to the Creative Atlas community. Let's publish your world.",
+    action: 'Publish your world',
+    target: '#publish-world-button',
+  },
+  {
+    title: 'Congratulations!',
+    explanation:
+      "Congratulations! You've created and published your first world. You can continue to build your world and share your progress with the community.",
     action: 'Finish',
+    target: '#finish-tutorial-button',
   },
 ];
