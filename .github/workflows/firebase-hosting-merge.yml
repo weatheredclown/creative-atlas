@@ -88,8 +88,8 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
       - name: Inject secrets into app.yaml
         run: |
-          sed -i "s/GITHUB_CLIENT_ID: .*/GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}/" app.yaml
-          sed -i "s/GITHUB_CLIENT_SECRET: .*/GITHUB_CLIENT_SECRET: ${{ secrets.CA_GITHUB_CLIENT_SECRET }}/" app.yaml
+          sed -i "s/CA_GITHUB_CLIENT_ID: .*/CA_GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}/" app.yaml
+          sed -i "s/CA_GITHUB_CLIENT_SECRET: .*/CA_GITHUB_CLIENT_SECRET: ${{ secrets.CA_GITHUB_CLIENT_SECRET }}/" app.yaml
           sed -i "s/APP_BASE_URL: .*/APP_BASE_URL: ${{ secrets.APP_BASE_URL }}/" app.yaml
         working-directory: server
       - name: Deploy to App Engine
