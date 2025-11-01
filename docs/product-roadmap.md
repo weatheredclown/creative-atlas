@@ -19,7 +19,7 @@ The “Organize My Worlds Without Pain” release.
 - [x] "Add one fact" button to reduce overwhelm.
 - [x] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
 - [x] "Reveal depth" toggle for simple → detailed fields.
-- [ ] "Narrative need heatmap" that flags characters not seen recently.
+- [x] "Narrative need heatmap" that flags characters not seen recently.
 - [ ] Memory sync with Gemini-powered conversations gated by user approval.
 
 ### Phase 2 — Gamification & XP Loop
@@ -27,14 +27,14 @@ The “Organize My Worlds Without Pain” release.
 - [x] XP system tied to adding artifacts, refining drafts, importing pages, and completing quests.
 - [x] Daily challenge board to surface fresh prompts.
 - [x] Level-up tree with creativity perks (Lore Weaver, Archivist, World Alchemist, Dungeon Master).
-- [ ] Collectible inspiration cards covering archetypes, vibes, visual prompts, and genre modifiers.
+- [x] Collectible inspiration cards covering archetypes, vibes, visual prompts, and genre modifiers.
 - [x] Player profile with creative streak tracking.
-- [ ] Inspiration deck draw interface for mid-writing boosts.
+- [x] Inspiration deck draw interface for mid-writing boosts.
 
 ### Phase 3 — World Simulation Layer
 "World memory and logic enforcement."
-- [ ] Time and continuity tracking across worlds.
-- [ ] Lore validator to prevent contradictions against canon.
+- [x] Time and continuity tracking across worlds.
+- [x] Lore validator to prevent contradictions against canon.
 - [ ] Magic system structure builder (Tamenzut rules encoded).
 - [ ] Physics/metaphysics constraint annotations.
 - [ ] "World age" progression that evolves lore events.
@@ -44,8 +44,8 @@ The “Organize My Worlds Without Pain” release.
 
 ### Phase 4 — Narrative & Game Pipelines
 Stories become game worlds, and game worlds fuel story arcs.
-- [ ] Scene board for novels and narrative arcs.
-- [ ] Quest board for game modules.
+- [x] Scene board for novels and narrative arcs.
+- [x] Quest board for game modules.
 - [ ] Character arcs tooling with progression states.
 - [ ] Procedural encounter generator blending Dustland and PIT lore.
 - [ ] Story → module export supporting Dustland ACK, D&D cards, visual novel scenes, and script formats.
@@ -57,7 +57,7 @@ Personalized Gemini-driven co-writers trained on Tim’s universes.
 - [ ] Muse agent providing inspiration, aesthetics, and poetic voice.
 - [ ] Game Designer agent that turns lore into encounters.
 - [ ] Conlang Steward agent that grows Darv.
-- [ ] Publisher Mode that turns the atlas into a website/wiki.
+- [x] Publisher Mode that turns the atlas into a website/wiki.
 - [ ] NPC memory mode for canon-locked roleplay.
 - [ ] Truth/Canon lock workflow where every addition requires approval.
 - [ ] Lore distillation pipeline to produce mythic summaries from notes.
@@ -86,5 +86,5 @@ Personalized Gemini-driven co-writers trained on Tim’s universes.
 ### Final Vision
 This isn’t a note app — it’s the Creative Engine, Lore Forge, and AI Codex Compiler. Sacred Truth vampires update Dustland myths, Tamenzut relics shape PIT fauna, Spatch emotional rules cross-pollinate Steamweave factions, STACI Starlight earns her meta show bible, and the Aputi timeline ripples into Edruel artifacts. Tim’s creative continuity becomes visible, lovable, and playable — a personal Alexandria and an evolving creative skill tree.
 
-- [ ] Provide onboarding quests and tooltips that introduce graph navigation, publishing, and import/export power features.
+- [x] Provide onboarding quests and tooltips that introduce graph navigation, publishing, and import/export power features.
 - [ ] Migrate storage to the managed backend plan in `docs/firebase-backend-migration.md`, including auth, persistence, and role-aware access.
