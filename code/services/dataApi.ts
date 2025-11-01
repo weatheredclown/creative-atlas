@@ -316,3 +316,32 @@ export const exportLexiconViaApi = async (
 
   return response.text();
 };
+
+export const exchangeCodeForToken = async (
+  token: string | null,
+  code: string,
+): Promise<{ accessToken: string }> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  return sendJson<{ accessToken: string }>(token, '/api/github/oauth/callback', {
+    method: 'POST',
+    body: { code },
+  });
+}
+
+export const publishToGitHub = async (
+  token: string | null,
+  repoName: string,
+  publishDir: string,
+): Promise<{ message: string, data: any }> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  return sendJson<{ message: string, data: any }>(token, '/api/github/publish', {
+    method: 'POST',
+    body: { repoName, publishDir },
+  });
+}
