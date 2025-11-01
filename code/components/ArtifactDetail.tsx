@@ -3,7 +3,7 @@ import { Artifact } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
 import { getStatusClasses, formatStatusLabel } from '../utils/status';
-import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon, ChevronDownIcon } from './Icons';
+import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon, ChevronDownIcon, FolderPlusIcon } from './Icons';
 
 interface ArtifactDetailProps {
   artifact: Artifact;
@@ -12,6 +12,7 @@ interface ArtifactDetailProps {
   onAddRelation: (fromId: string, toId: string, kind: string) => void;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   onDeleteArtifact: (artifactId: string) => Promise<void> | void;
+  onDuplicateArtifact: (artifactId: string) => Promise<void> | void;
   addXp: (amount: number) => void;
 }
 
@@ -24,6 +25,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   onAddRelation,
   onRemoveRelation,
   onDeleteArtifact,
+  onDuplicateArtifact,
   addXp,
 }) => {
   const [isExpanding, setIsExpanding] = useState(false);
@@ -161,6 +163,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
                 >
                   <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void onDuplicateArtifact(artifact.id);
+                    setShowActions(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                >
+                  <FolderPlusIcon className="w-4 h-4" /> Duplicate
                 </button>
                 <button
                   type="button"
