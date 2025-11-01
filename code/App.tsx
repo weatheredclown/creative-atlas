@@ -25,7 +25,7 @@ import {
     WikiData,
     isNarrativeArtifactType,
 } from './types';
-import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -55,7 +55,7 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
-import { downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
+import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
@@ -390,6 +390,32 @@ const DAILY_QUEST_POOL: Quest[] = [
     xp: 13,
   },
 ];
+
+const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
+  <div className="min-h-screen flex flex-col bg-slate-950">
+    <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800/70 px-4 sm:px-8 py-3">
+      <div className="flex items-center gap-3">
+        <CubeIcon className="w-7 h-7 text-cyan-400" />
+        <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
+      </div>
+    </header>
+    <main className="flex flex-1 items-center justify-center p-8">
+      <div className="text-center space-y-4" aria-live="polite">
+        <div className="flex items-center justify-center">
+          <div
+            aria-hidden="true"
+            className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400/60 border-t-transparent"
+          ></div>
+        </div>
+        <p className="text-sm text-slate-300">
+          {loading
+            ? 'Preparing your Creative Atlas workspace…'
+            : 'Your workspace is almost ready. If this message persists, please refresh the page.'}
+        </p>
+      </div>
+    </main>
+  </div>
+);
 
 const getCurrentDateKey = () => new Date().toISOString().slice(0, 10);
 
@@ -1236,6 +1262,7 @@ export default function App() {
     projects,
     artifacts,
     profile,
+    loading,
     error,
     clearError,
     addXp,
@@ -1275,6 +1302,11 @@ export default function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+  const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
+  const projectArtifacts = useMemo(
+    () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
+    [artifacts, selectedProjectId],
+  );
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1843,7 +1875,12 @@ export default function App() {
   };
 
   const handlePublishToGithub = () => {
-    window.location.href = `/api/github/oauth/start`;
+    if (!isDataApiConfigured || !dataApiBaseUrl) {
+      alert('Publishing to GitHub is unavailable because the data API is not configured.');
+      return;
+    }
+
+    window.location.href = `${dataApiBaseUrl}/api/github/oauth/start`;
   }
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
@@ -1860,6 +1897,36 @@ export default function App() {
       setIsPublishing(false);
     }
   };
+
+  const visibleProjects = useMemo(() => {
+    const normalizedQuery = projectSearchTerm.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      if (projectStatusFilter !== 'ALL' && project.status !== projectStatusFilter) {
+        return false;
+      }
+
+      if (normalizedQuery) {
+        const haystack = `${project.title} ${project.summary} ${project.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projects, projectStatusFilter, projectSearchTerm]);
+  const quickFacts = useMemo(() => {
+    if (!selectedProjectId) {
+      return [];
+    }
+    return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
+  }, [projectArtifacts, selectedProjectId]);
+  const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
+  const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
+  const selectedProjectHiddenBySidebarFilters = Boolean(
+    selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
+  );
 
   const handleResetProjectFilters = useCallback(() => {
     setProjectStatusFilter('ALL');
@@ -2103,7 +2170,7 @@ export default function App() {
   }, [markSelectedProjectActivity]);
 
   if (!profile) {
-    return null;
+    return <DashboardShellPlaceholder loading={loading} />;
   }
 
   const xpProgress = profile.xp % 100;
