@@ -17,24 +17,38 @@ export interface Project {
 
 export enum ArtifactType {
   Story = 'Story',
+  Novel = 'Novel',
+  ShortStory = 'ShortStory',
+  WebComic = 'WebComic',
+  Audiobook = 'Audiobook',
   Character = 'Character',
   Location = 'Location',
   Conlang = 'Conlang',
   Game = 'Game',
   Wiki = 'Wiki',
   Scene = 'Scene',
+  Chapter = 'Chapter',
   Faction = 'Faction',
   MagicSystem = 'MagicSystem',
   Timeline = 'Timeline',
   Terminology = 'Terminology',
-  Chapter = 'Chapter',
   GameModule = 'GameModule',
   Task = 'Task',
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
-  Timeline = 'Timeline',
 }
+
+export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [
+  ArtifactType.Story,
+  ArtifactType.Novel,
+  ArtifactType.ShortStory,
+  ArtifactType.WebComic,
+  ArtifactType.Audiobook,
+];
+
+export const isNarrativeArtifactType = (type: ArtifactType): boolean =>
+  NARRATIVE_ARTIFACT_TYPES.includes(type);
 
 export enum TaskState {
     Todo = 'Todo',

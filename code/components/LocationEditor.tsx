@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { Artifact, ArtifactType, LocationData, LocationFeature } from '../types';
+import { Artifact, ArtifactType, LocationData, LocationFeature, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, MapPinIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 
 const LOCATION_APPEARANCE_TYPES: ArtifactType[] = [
-  ArtifactType.Story,
+  ...NARRATIVE_ARTIFACT_TYPES,
   ArtifactType.Scene,
   ArtifactType.Task,
   ArtifactType.Release,
