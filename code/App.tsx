@@ -25,7 +25,7 @@ import {
     WikiData,
     isNarrativeArtifactType,
 } from './types';
-import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -390,6 +390,32 @@ const DAILY_QUEST_POOL: Quest[] = [
     xp: 13,
   },
 ];
+
+const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
+  <div className="min-h-screen flex flex-col bg-slate-950">
+    <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800/70 px-4 sm:px-8 py-3">
+      <div className="flex items-center gap-3">
+        <CubeIcon className="w-7 h-7 text-cyan-400" />
+        <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
+      </div>
+    </header>
+    <main className="flex flex-1 items-center justify-center p-8">
+      <div className="text-center space-y-4" aria-live="polite">
+        <div className="flex items-center justify-center">
+          <div
+            aria-hidden="true"
+            className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400/60 border-t-transparent"
+          ></div>
+        </div>
+        <p className="text-sm text-slate-300">
+          {loading
+            ? 'Preparing your Creative Atlas workspace…'
+            : 'Your workspace is almost ready. If this message persists, please refresh the page.'}
+        </p>
+      </div>
+    </main>
+  </div>
+);
 
 const getCurrentDateKey = () => new Date().toISOString().slice(0, 10);
 
@@ -990,6 +1016,7 @@ export default function App() {
     projects,
     artifacts,
     profile,
+    loading,
     error,
     clearError,
     addXp,
@@ -1029,6 +1056,11 @@ export default function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+  const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId), [projects, selectedProjectId]);
+  const projectArtifacts = useMemo(
+    () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
+    [artifacts, selectedProjectId],
+  );
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1577,7 +1609,6 @@ export default function App() {
     }
   };
 
-  const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const visibleProjects = useMemo(() => {
     const normalizedQuery = projectSearchTerm.trim().toLowerCase();
 
@@ -1596,7 +1627,6 @@ export default function App() {
       return true;
     });
   }, [projects, projectStatusFilter, projectSearchTerm]);
-  const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const quickFacts = useMemo(() => {
     if (!selectedProjectId) {
       return [];
@@ -1851,7 +1881,7 @@ export default function App() {
   }, [markSelectedProjectActivity]);
 
   if (!profile) {
-    return null;
+    return <DashboardShellPlaceholder loading={loading} />;
   }
 
   const xpProgress = profile.xp % 100;
