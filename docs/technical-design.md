@@ -333,8 +333,19 @@ lx2,banushkadaum,n,ship (sea-building),,darv;mythic
 
 ---
 
-## 20) Next Steps
-1. Confirm MVP scope + must‑have editors (Conlang, Storyboard, Table, Graph).
-2. Approve data shapes and initial adapters (GitHub, Markdown).
-3. Build M1 spike: Project/Artifact/Relation + CSV I/O + basic Graph.
-4. Prepare templates for Tamenzut, Steamweave, Dustland, Spatch, Darv.
+## 20) Next Steps (Completed)
+
+As of the M1-M3 milestones, all core technical design objectives have been achieved:
+
+1. ✅ **Confirmed MVP scope + must‑have editors** – Conlang, Storyboard, Table, Graph views are all implemented and functional.
+2. ✅ **Approved data shapes and initial adapters** – GitHub and Markdown import/export adapters are operational with well-defined TypeScript interfaces.
+3. ✅ **Built M1 spike** – Project/Artifact/Relation core graph model is complete with CSV I/O and interactive Graph view.
+4. ✅ **Prepared comprehensive templates** – All requested project templates have been implemented:
+   - **Tamenzut Series Bible**: MagicSystem, Rulebook, City, Faction, Edruel Ruins, Thread-Weaving Log, Canon Tracker
+   - **Steamweave/Anya (Serial Comic Kit)**: Clan, Workshop, Scene, Villain, Love Triangle Map, Release Notes, Panel Board
+   - **Dustland (Game Design Lab)**: Module, Quest, Persona Mask, NPC, Item, Tileset, Build
+   - **Spatch (Serial Comic Kit)**: Team, Mentor, Rule Variant, Match, Panel Board
+   - **Darv (Conlang Workbench)**: Lexicon, Phonology, Paradigm, Proverb, Myth
+   - **Sacred Truth (Vampires)**: Episode, Case File, Monster Codex, Cathedral Asset
+
+**Status**: The platform is ready for Phase 4 (M4) – Polish & Extensibility.
