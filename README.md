@@ -85,7 +85,9 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
     *   Click "New OAuth App".
     *   **Application name:** "Creative Atlas (local)" or similar.
     *   **Homepage URL:** The URL of your frontend application (e.g., `http://localhost:5173`).
-    *   **Authorization callback URL:** The callback URL for your backend API. For local development, this should be `http://localhost:5173/api/github/oauth/callback`. *Note: The frontend Vite server will proxy this to the backend.*
+    *   **Authorization callback URL:** This URL must point to your backend's OAuth callback endpoint.
+        *   For **local development**, use `http://localhost:5173/api/github/oauth/callback`. The Vite frontend server will proxy this to your local backend.
+        *   For a **production deployment**, use the public URL of your application, e.g., `https://creative-atlas.web.app/api/github/oauth/callback`. You may need to create a separate GitHub OAuth App for your production environment.
 
 2.  **Configure Environment Variables:**
     *   In the `server/` directory, copy the `.env.example` file to a new file named `.env`:
