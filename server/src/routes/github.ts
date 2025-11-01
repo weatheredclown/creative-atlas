@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import { firestore } from '../firebaseAdmin.js';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
@@ -20,21 +20,98 @@ router.use(authenticate);
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
-const oauthCallbackSchema = z.object({
-  code: z.string().min(1),
-});
+const createGithubAuthUrl = (req: AuthenticatedRequest): string => {
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.github_oauth_state = state;
+
+  const redirectUri = `${process.env.APP_BASE_URL}/api/github/oauth/callback`;
+  const scope = 'repo,user';
+
+  return `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+};
+
+const respondWithOAuthPage = (
+  res: Response,
+  result: { status: 'success' | 'error'; message?: string },
+) => {
+  const appBaseUrl = process.env.APP_BASE_URL ?? '';
+  let targetOrigin = '*';
+  let fallbackUrl = appBaseUrl || '/';
+
+  try {
+    if (appBaseUrl) {
+      const url = new URL(appBaseUrl);
+      targetOrigin = url.origin;
+      if (result.status === 'success') {
+        url.searchParams.set('github_auth', 'success');
+      }
+      fallbackUrl = url.toString();
+    }
+  } catch (error) {
+    console.warn('Failed to parse APP_BASE_URL for OAuth response', error);
+    targetOrigin = appBaseUrl || '*';
+    fallbackUrl = appBaseUrl || '/';
+  }
+
+  const payload = JSON.stringify({
+    type: 'github-oauth',
+    status: result.status,
+    message: result.message,
+  });
+
+  const pageMessage =
+    result.status === 'success'
+      ? 'GitHub authorization complete. You may close this window.'
+      : result.message ?? 'GitHub authorization failed. You may close this window.';
+
+  res
+    .status(result.status === 'success' ? 200 : 400)
+    .setHeader('Content-Type', 'text/html; charset=utf-8')
+    .send(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GitHub Authorization</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <p>${pageMessage}</p>
+    <script>
+      (function() {
+        const payload = ${payload};
+        const targetOrigin = ${JSON.stringify(targetOrigin)};
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, targetOrigin);
+            window.close();
+            return;
+          }
+        } catch (error) {
+          console.error('Unable to notify opener about GitHub OAuth result', error);
+        }
+        if (payload.status === 'success') {
+          window.location.replace(${JSON.stringify(fallbackUrl)});
+        }
+      })();
+    </script>
+  </body>
+</html>`);
+};
 
 router.get('/oauth/start', asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const state = crypto.randomBytes(16).toString('hex');
-    req.session.github_oauth_state = state;
-
-    const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-    const redirectUri = `${process.env.APP_BASE_URL}/api/github/oauth/callback`;
-    const scope = 'repo,user';
-
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
-
+    const authUrl = createGithubAuthUrl(req);
+    if (req.accepts('json')) {
+        res.json({ authUrl });
+        return;
+    }
     res.redirect(authUrl);
+}));
+
+router.post('/oauth/start', asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const authUrl = createGithubAuthUrl(req);
+    res.json({ authUrl });
 }));
 
 router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res) => {
@@ -42,7 +119,8 @@ router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res
     const storedState = req.session.github_oauth_state;
 
     if (!state || state !== storedState) {
-        return res.status(400).json({ error: 'Invalid state parameter' });
+        respondWithOAuthPage(res, { status: 'error', message: 'Invalid state parameter.' });
+        return;
     }
 
     req.session.github_oauth_state = undefined;
@@ -63,12 +141,13 @@ router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res
     const data = await response.json();
 
     if (data.error) {
-        return res.status(400).json({ error: data.error_description });
+        respondWithOAuthPage(res, { status: 'error', message: data.error_description ?? 'GitHub authorization failed.' });
+        return;
     }
 
     req.session.github_access_token = data.access_token;
 
-    res.redirect(`${process.env.APP_BASE_URL}?github_auth=success`);
+    respondWithOAuthPage(res, { status: 'success' });
 }));
 
 const publishSchema = z.object({
