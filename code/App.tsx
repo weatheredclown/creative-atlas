@@ -58,6 +58,7 @@ import ErrorBanner from './components/ErrorBanner';
 import TutorialGuide from './components/TutorialGuide';
 import ErrorBoundary from './components/ErrorBoundary';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
+import InfoModal from './components/InfoModal';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -625,6 +626,7 @@ export default function App() {
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const [isTutorialVisible, setIsTutorialVisible] = useState(true);
+  const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -909,10 +911,16 @@ export default function App() {
       if (created.length > 0) {
         void addXp(created.length * 5);
         setSelectedArtifactId(created[0].id);
-        alert(`Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`);
+        setInfoModalContent({
+          title: 'Template Applied',
+          message: `Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`,
+        });
       }
     } else {
-      alert('All of the template\'s starter artifacts already exist in this project.');
+      setInfoModalContent({
+        title: 'Template Not Applied',
+        message: 'All of the template\'s starter artifacts already exist in this project.',
+      });
     }
 
     if (template.projectTags.length > 0) {
@@ -1539,6 +1547,14 @@ export default function App() {
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
       />
+      {infoModalContent && (
+        <InfoModal
+          isOpen={!!infoModalContent}
+          onClose={() => setInfoModalContent(null)}
+          title={infoModalContent.title}
+          message={infoModalContent.message}
+        />
+      )}
     </div>
   );
 }
