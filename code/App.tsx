@@ -61,12 +61,14 @@ import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
 import TutorialGuide from './components/TutorialGuide';
 import ErrorBoundary from './components/ErrorBoundary';
+import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
+import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -948,6 +950,8 @@ export default function App() {
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
   const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
@@ -1221,6 +1225,8 @@ export default function App() {
       setIsCreateProjectModalOpen(false);
       setSelectedProjectId(created.id);
       setSelectedArtifactId(null);
+      setProjectStatusFilter('ALL');
+      setProjectSearchTerm('');
     },
     [profile, createProject, addXp],
   );
@@ -1444,6 +1450,24 @@ export default function App() {
   };
 
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+  const filteredProjects = useMemo(() => {
+    const normalizedQuery = projectSearchTerm.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      if (projectStatusFilter !== 'ALL' && project.status !== projectStatusFilter) {
+        return false;
+      }
+
+      if (normalizedQuery) {
+        const haystack = `${project.title} ${project.summary} ${project.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projects, projectStatusFilter, projectSearchTerm]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const quickFacts = useMemo(() => {
     if (!selectedProjectId) {
@@ -1452,6 +1476,14 @@ export default function App() {
     return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
   }, [projectArtifacts, selectedProjectId]);
   const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
+  const availableProjectStatuses = useMemo(
+    () => Array.from(new Set(projects.map((project) => project.status))).sort((a, b) => a.localeCompare(b)),
+    [projects],
+  );
+  const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
+  const isSelectedProjectHiddenByFilters = Boolean(
+    selectedProjectId && !filteredProjects.some((project) => project.id === selectedProjectId),
+  );
 
   const handleQuickFactSubmit = useCallback(
     async ({ fact, detail }: { fact: string; detail?: string }) => {
@@ -1675,7 +1707,8 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <DepthPreferencesProvider>
+      <div className="min-h-screen flex flex-col">
       {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
@@ -1702,10 +1735,86 @@ export default function App() {
                     New
                 </button>
             </div>
-            <div className="space-y-3">
-                {projects.map(p => (
-                    <ProjectCard key={p.id} project={p} onSelect={handleSelectProject} isSelected={p.id === selectedProjectId} />
-                ))}
+            <div className="mt-3 space-y-3">
+              <div className="space-y-3 rounded-lg border border-slate-700/60 bg-slate-900/40 p-3">
+                <div className="space-y-2">
+                  <label htmlFor="project-search" className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Search
+                  </label>
+                  <input
+                    id="project-search"
+                    type="search"
+                    value={projectSearchTerm}
+                    onChange={(event) => setProjectSearchTerm(event.target.value)}
+                    placeholder="Title, summary, or tag"
+                    className="w-full rounded-md border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="project-status-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Stage
+                    </label>
+                    <select
+                      id="project-status-filter"
+                      value={projectStatusFilter}
+                      onChange={(event) => setProjectStatusFilter(event.target.value as 'ALL' | ProjectStatus)}
+                      className="rounded-md border border-slate-700 bg-slate-800/80 px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      <option value="ALL">All stages</option>
+                      {availableProjectStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {formatStatusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {hasProjectFilters && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProjectSearchTerm('');
+                        setProjectStatusFilter('ALL');
+                      }}
+                      className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isSelectedProjectHiddenByFilters && (
+                <div className="rounded-lg border border-amber-600/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                  The selected project is hidden by the current filters.
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectSearchTerm('');
+                      setProjectStatusFilter('ALL');
+                    }}
+                    className="ml-2 font-semibold underline underline-offset-4 hover:text-amber-50"
+                  >
+                    Show all projects
+                  </button>
+                </div>
+              )}
+              <div className="space-y-3">
+                {filteredProjects.length > 0 ? (
+                  filteredProjects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onSelect={handleSelectProject}
+                      isSelected={project.id === selectedProjectId}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-slate-700/60 bg-slate-900/40 px-3 py-4 text-sm text-slate-400">
+                    {hasProjectFilters
+                      ? 'No projects match the current filters.'
+                      : 'No projects yet. Create your first world to begin.'}
+                  </p>
+                )}
                 {canLoadMoreProjects && (
                   <button
                     type="button"
@@ -1716,6 +1825,7 @@ export default function App() {
                     {isLoadingMoreProjects ? 'Loading more projects…' : 'Load more projects'}
                   </button>
                 )}
+              </div>
             </div>
           </div>
           <Quests quests={todaysDailyQuests} artifacts={artifacts} projects={projects} />
@@ -1850,8 +1960,11 @@ export default function App() {
                             </button>
                         )}
                     </div>
-                    <div className="text-xs text-slate-400">
-                        Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                    <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
+                        <RevealDepthToggle />
+                        <span>
+                            Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                        </span>
                     </div>
                 </div>
                 {viewMode === 'table' && (
@@ -2093,6 +2206,7 @@ export default function App() {
         onPublish={handlePublishToGithubRepo}
         isPublishing={isPublishing}
       />
-    </div>
+      </div>
+    </DepthPreferencesProvider>
   );
 }
