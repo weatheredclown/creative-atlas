@@ -1,4 +1,3 @@
-/* eslint-disable no-redeclare */
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     AIAssistant,
@@ -25,7 +24,7 @@ import {
     WikiData,
     isNarrativeArtifactType,
 } from './types';
-import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon, BookOpenIcon } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -2216,6 +2215,36 @@ export default function App() {
     }
   }, [selectedProject, projectArtifacts, markSelectedProjectActivity]);
 
+  const handleExportOptionSelection = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = event.target;
+
+    if (value === '') {
+      return;
+    }
+
+    switch (value) {
+      case 'export-csv':
+        void handleExportArtifacts('csv');
+        break;
+      case 'export-tsv':
+        void handleExportArtifacts('tsv');
+        break;
+      case 'export-chapter-markdown':
+        void handleChapterBibleExport('markdown');
+        break;
+      case 'export-chapter-pdf':
+        void handleChapterBibleExport('pdf');
+        break;
+      case 'export-lore-json':
+        handleLoreJsonExport();
+        break;
+      default:
+        break;
+    }
+
+    event.target.value = '';
+  }, [handleExportArtifacts, handleChapterBibleExport, handleLoreJsonExport]);
+
   const handleLoadMoreProjects = useCallback(async () => {
     if (!canLoadMoreProjects) {
       return;
@@ -2421,61 +2450,76 @@ export default function App() {
               />
               <ProjectInsights artifacts={projectArtifacts} />
               <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
-                    <div className="flex items-center gap-2">
-                        <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv,.tsv" className="hidden" />
-                        <button onClick={handleImportClick} title="Import from CSV or TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <ArrowUpTrayIcon className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => { void handleExportArtifacts('csv'); }} title="Export to CSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <ArrowDownTrayIcon className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => { void handleExportArtifacts('tsv'); }} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
-                        </button>
-                        <button onClick={() => { void handleChapterBibleExport('markdown'); }} title="Export chapter bible (Markdown)" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <BookOpenIcon className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => { void handleChapterBibleExport('pdf'); }} title="Export chapter bible (PDF)" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">PDF</span>
-                        </button>
-                        <button onClick={handleLoreJsonExport} title="Export lore JSON for game engines" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
-                            <CubeIcon className="w-5 h-5" />
-                        </button>
-                        <ViewSwitcher />
-                        <button
-                            type="button"
-                            onClick={() => setIsQuickFactModalOpen(true)}
-                            className="flex items-center gap-2 rounded-md bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 shadow-lg transition-colors hover:bg-amber-500/30 hover:shadow-amber-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={!selectedProject}
-                            title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
-                        >
-                            <SparklesIcon className="w-5 h-5" />
-                            Add One Fact
-                        </button>
-                        <button onClick={handlePublish} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 rounded-md transition-colors shadow-lg hover:shadow-green-500/50">
-                            <BuildingStorefrontIcon className="w-5 h-5" />
-                            Publish Site
-                        </button>
-                        <button
-                          onClick={() => {
-                            void handlePublishToGithub();
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors shadow-lg hover:shadow-gray-600/50"
-                        >
-                            <GitHubIcon className="w-5 h-5" />
-                            Publish to GitHub
-                        </button>
-                        <button
-                            id="add-new-artifact-button"
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors shadow-lg hover:shadow-cyan-500/50"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            New Seed
-                        </button>
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</span>
+                      <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv,.tsv" className="hidden" />
+                      <button
+                        onClick={handleImportClick}
+                        title="Import artifacts from CSV or TSV"
+                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                      >
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                        Import
+                      </button>
+                      <label htmlFor="artifact-export-select" className="sr-only">Export artifacts</label>
+                      <select
+                        id="artifact-export-select"
+                        onChange={handleExportOptionSelection}
+                        defaultValue=""
+                        className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                      >
+                        <option value="">Export…</option>
+                        <option value="export-csv">Artifacts (CSV)</option>
+                        <option value="export-tsv">Artifacts (TSV)</option>
+                        <option value="export-chapter-markdown">Chapter Bible (Markdown)</option>
+                        <option value="export-chapter-pdf">Chapter Bible (PDF)</option>
+                        <option value="export-lore-json">Lore Bundle (JSON)</option>
+                      </select>
                     </div>
+                    <div className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">View</span>
+                      <ViewSwitcher />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickFactModalOpen(true)}
+                        className="flex items-center gap-2 rounded-md bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 shadow-lg transition-colors hover:bg-amber-500/30 hover:shadow-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-300/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!selectedProject}
+                        title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
+                      >
+                        <SparklesIcon className="h-5 w-5" />
+                        Add One Fact
+                      </button>
+                      <button
+                        onClick={handlePublish}
+                        className="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-green-500 hover:shadow-green-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                      >
+                        <BuildingStorefrontIcon className="h-5 w-5" />
+                        Publish Site
+                      </button>
+                      <button
+                        onClick={() => {
+                          void handlePublishToGithub();
+                        }}
+                        className="flex items-center gap-2 rounded-md bg-gray-700 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-gray-600 hover:shadow-gray-600/50 focus:outline-none focus:ring-2 focus:ring-slate-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                      >
+                        <GitHubIcon className="h-5 w-5" />
+                        Publish to GitHub
+                      </button>
+                      <button
+                        id="add-new-artifact-button"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                      >
+                        <PlusIcon className="h-5 w-5" />
+                        New Seed
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 bg-slate-900/40 border border-slate-700/50 rounded-lg px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-wrap items-center gap-3">
