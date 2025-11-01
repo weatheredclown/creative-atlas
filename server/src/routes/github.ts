@@ -17,8 +17,16 @@ const router = Router();
 
 router.use(authenticate);
 
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_CLIENT_ID =
+  process.env.CA_GITHUB_CLIENT_ID ?? process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET =
+  process.env.CA_GITHUB_CLIENT_SECRET ?? process.env.GITHUB_CLIENT_SECRET;
+
+if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
+  throw new Error(
+    'GitHub OAuth credentials are not configured. Set CA_GITHUB_CLIENT_ID and CA_GITHUB_CLIENT_SECRET.',
+  );
+}
 
 const createGithubAuthUrl = (req: AuthenticatedRequest): string => {
   const state = crypto.randomBytes(16).toString('hex');

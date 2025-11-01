@@ -9,3 +9,4 @@ env_variables:
   CA_GITHUB_CLIENT_ID: "placeholder"
   CA_GITHUB_CLIENT_SECRET: "placeholder"
   APP_BASE_URL: "placeholder"
+  SESSION_SECRET: "replace_me"
