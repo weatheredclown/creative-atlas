@@ -37,6 +37,7 @@ export enum ArtifactType {
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
+  Rulebook = 'Rulebook',
 }
 
 export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [

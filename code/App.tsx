@@ -399,7 +399,8 @@ const templateLibrary: TemplateCategory[] = [
         relatedProjectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad'],
         templates: [
             { id: 'tam-magic-system', name: 'MagicSystem', type: ArtifactType.MagicSystem, description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
-            { id: 'tam-rulebook', name: 'Rulebook', type: ArtifactType.Wiki, description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
+            { id: 'tam-rulebook-wiki', name: 'Rulebook', type: ArtifactType.Wiki, description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
+            { id: 'tam-rulebook', name: 'Rulebook', type: ArtifactType.Rulebook, description: 'Detail the rules for a game or system.', tags: ['rules', 'game-design'] },
             { id: 'tam-city', name: 'City', type: ArtifactType.Location, description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
             { id: 'tam-faction', name: 'Faction', type: ArtifactType.Faction, description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
             { id: 'tam-edruel', name: 'Edruel Ruins', type: ArtifactType.Location, description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
@@ -681,6 +682,7 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
         case ArtifactType.Character:
             return { bio: '', traits: [] };
         case ArtifactType.Wiki:
+        case ArtifactType.Rulebook:
             return { content: `# ${title ?? 'Untitled'}\n\n` };
         case ArtifactType.Location:
             return { description: '', features: [] };
@@ -1768,7 +1770,7 @@ export default function App() {
                             onRemoveRelation={handleRemoveRelation}
                         />
                     )}
-                    {selectedArtifact.type === ArtifactType.Wiki && (
+                    {(selectedArtifact.type === ArtifactType.Wiki || selectedArtifact.type === ArtifactType.Rulebook) && (
                         <WikiEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
