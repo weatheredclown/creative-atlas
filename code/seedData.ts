@@ -170,6 +170,18 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       relations: [],
       data: [],
     },
+    {
+      id: 'art-12',
+      ownerId,
+      projectId: 'proj-4',
+      type: ArtifactType.Rulebook,
+      title: 'Dustland Core Rules',
+      summary: 'The core rulebook for the Dustland RPG.',
+      status: 'draft',
+      tags: ['rules', 'core'],
+      relations: [],
+      data: { content: '# Dustland Core Rules\n\n## Character Creation\n...' } as WikiData,
+    },
   ];
 
   return {
