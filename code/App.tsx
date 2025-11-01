@@ -2304,31 +2304,6 @@ export default function App() {
                   onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <NarrativeHealthPanel artifacts={projectArtifacts} />
-                <ContinuityMonitor artifacts={projectArtifacts} />
-              </div>
-              <NarrativePipelineBoard artifacts={projectArtifacts} />
-              <InspirationDeck
-                onCaptureCard={handleCaptureInspirationCard}
-                isCaptureDisabled={!selectedProjectId}
-              />
-              <GitHubImportPanel
-                  projectId={selectedProject.id}
-                  ownerId={profile.uid}
-                  existingArtifacts={projectArtifacts}
-                  onArtifactsImported={handleGitHubArtifactsImported}
-                  addXp={addXp}
-              />
-
-              <QuickFactsPanel
-                facts={quickFactPreview}
-                totalFacts={quickFacts.length}
-                projectTitle={selectedProject.title}
-                onSelectFact={setSelectedArtifactId}
-                onAddFact={() => setIsQuickFactModalOpen(true)}
-              />
-
               <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
@@ -2534,6 +2509,31 @@ export default function App() {
                     )}
                 </div>
               )}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <NarrativeHealthPanel artifacts={projectArtifacts} />
+                <ContinuityMonitor artifacts={projectArtifacts} />
+              </div>
+              <NarrativePipelineBoard artifacts={projectArtifacts} />
+              <InspirationDeck
+                onCaptureCard={handleCaptureInspirationCard}
+                isCaptureDisabled={!selectedProjectId}
+              />
+              <GitHubImportPanel
+                  projectId={selectedProject.id}
+                  ownerId={profile.uid}
+                  existingArtifacts={projectArtifacts}
+                  onArtifactsImported={handleGitHubArtifactsImported}
+                  addXp={addXp}
+              />
+
+              <QuickFactsPanel
+                facts={quickFactPreview}
+                totalFacts={quickFacts.length}
+                projectTitle={selectedProject.title}
+                onSelectFact={setSelectedArtifactId}
+                onAddFact={() => setIsQuickFactModalOpen(true)}
+              />
+
               <MilestoneTracker items={milestoneProgress} />
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
                 <div className="space-y-6 xl:col-span-2">
