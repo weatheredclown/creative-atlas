@@ -22,8 +22,9 @@ const TutorialGuide: React.FC = () => {
   useEffect(() => {
     const step = tutorialSteps[currentStep];
     if (step.target) {
-      const element = document.querySelector(step.target) as HTMLElement;
-      setReferenceElement(element);
+      const element = document.querySelector(step.target);
+      setReferenceElement(element instanceof HTMLElement ? element : null);
+      const eventType = step.advanceEvent ?? 'click';
 
       if (step.prefill) {
         Object.entries(step.prefill).forEach(([selector, value]) => {
@@ -35,16 +36,17 @@ const TutorialGuide: React.FC = () => {
       }
 
       if (element) {
-        element.addEventListener('click', handleNextStep);
+        element.addEventListener(eventType, handleNextStep);
       }
     }
 
     return () => {
       const step = tutorialSteps[currentStep];
       if (step.target) {
-        const element = document.querySelector(step.target) as HTMLElement;
+        const element = document.querySelector(step.target);
         if (element) {
-          element.removeEventListener('click', handleNextStep);
+          const eventType = step.advanceEvent ?? 'click';
+          element.removeEventListener(eventType, handleNextStep);
         }
       }
     };

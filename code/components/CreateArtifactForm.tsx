@@ -29,7 +29,7 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClo
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="create-artifact-form" onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label htmlFor="artifact-title" className="block text-sm font-medium text-slate-300 mb-1">
           Title
