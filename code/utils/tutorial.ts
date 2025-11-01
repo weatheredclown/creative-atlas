@@ -1,10 +1,13 @@
-export const tutorialSteps = [
+import { TutorialStep } from '../types';
+
+export const tutorialSteps: TutorialStep[] = [
   {
     title: 'Welcome to Creative Atlas!',
     explanation:
       "This tutorial will guide you through creating your first project. Let's start by creating a new project.",
     action: 'Create a New Project',
     target: '#create-new-project-button',
+    showNextButton: true,
   },
   {
     title: 'Creating Your Project',
