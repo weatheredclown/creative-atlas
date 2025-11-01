@@ -76,6 +76,27 @@ Grant the App Engine runtime service account (by default `<project-id>@appspot.g
 
 When GitHub Actions deploys `main`, it now reuses that App Engine configuration. Store a service-account JSON (granted App Engine Deployer permissions) in the `GCP_APP_ENGINE_SERVICE_ACCOUNT` repository secret so [the merge deployment workflow](.github/workflows/firebase-hosting-merge.yml) can authenticate and run `gcloud app deploy` with the `server/app.yaml` manifest.
 
+### GitHub Integration (Optional)
+
+To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth application and add its credentials to the backend environment.
+
+1.  **Create a GitHub OAuth App:**
+    *   Go to your GitHub developer settings: [https://github.com/settings/developers](https://github.com/settings/developers)
+    *   Click "New OAuth App".
+    *   **Application name:** "Creative Atlas (local)" or similar.
+    *   **Homepage URL:** The URL of your frontend application (e.g., `http://localhost:5173`).
+    *   **Authorization callback URL:** The callback URL for your backend API. For local development, this should be `http://localhost:5173/api/github/oauth/callback`. *Note: The frontend Vite server will proxy this to the backend.*
+
+2.  **Configure Environment Variables:**
+    *   In the `server/` directory, copy the `.env.example` file to a new file named `.env`:
+        ```bash
+        cp server/.env.example server/.env
+        ```
+    *   Open `server/.env` and fill in the following values from your GitHub OAuth app:
+        *   `GITHUB_CLIENT_ID`: The "Client ID" of your GitHub OAuth app.
+        *   `GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
+        *   `APP_BASE_URL`: The base URL of your frontend application (e.g., `http://localhost:5173`).
+
 ### 4. Start the development server
 
 Use the Vite dev server to run the app with hot reloading:
