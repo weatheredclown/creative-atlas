@@ -65,6 +65,7 @@ import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOver
 import InfoModal from './components/InfoModal';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
+import QuickFactForm from './components/QuickFactForm';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -862,6 +863,8 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
+  const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
@@ -1364,6 +1367,60 @@ export default function App() {
 
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
+
+  const handleQuickFactSubmit = useCallback(
+    async ({ fact, detail }: { fact: string; detail?: string }) => {
+      if (!selectedProjectId || !selectedProject) {
+        return;
+      }
+
+      setIsSavingQuickFact(true);
+
+      try {
+        const existingFactCount = projectArtifacts.filter((artifact) => {
+          if (artifact.type !== ArtifactType.Wiki) {
+            return false;
+          }
+          if (artifact.tags.some((tag) => tag.toLowerCase() === 'fact')) {
+            return true;
+          }
+          return /fact\s+#\d+/i.test(artifact.title);
+        }).length;
+
+        const safeProjectTitle = selectedProject.title.trim().length > 0 ? selectedProject.title : 'Project';
+        const factTitle = `${safeProjectTitle} Fact #${existingFactCount + 1}`;
+        const summary = detail ? `${fact} — ${detail}` : fact;
+        const contentLines = [`# ${factTitle}`, '', fact];
+        if (detail) {
+          contentLines.push('', detail);
+        }
+
+        const created = await createArtifact(selectedProjectId, {
+          type: ArtifactType.Wiki,
+          title: factTitle,
+          summary,
+          status: 'draft',
+          tags: ['fact'],
+          relations: [],
+          data: { content: contentLines.join('\n') },
+        });
+
+        if (created) {
+          void addXp(3);
+          setSelectedArtifactId(created.id);
+          setIsQuickFactModalOpen(false);
+        } else {
+          alert('We could not save your fact. Please try again.');
+        }
+      } catch (error) {
+        console.error('Failed to save quick fact', error);
+        alert('We could not save your fact. Please try again.');
+      } finally {
+        setIsSavingQuickFact(false);
+      }
+    },
+    [selectedProjectId, selectedProject, projectArtifacts, createArtifact, addXp],
+  );
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
   const emptyActivity = useMemo(() => createProjectActivity(), []);
@@ -1622,6 +1679,16 @@ export default function App() {
                             <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
                         </button>
                         <ViewSwitcher />
+                        <button
+                            type="button"
+                            onClick={() => setIsQuickFactModalOpen(true)}
+                            className="flex items-center gap-2 rounded-md bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 shadow-lg transition-colors hover:bg-amber-500/30 hover:shadow-amber-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={!selectedProject}
+                            title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
+                        >
+                            <SparklesIcon className="w-5 h-5" />
+                            Add One Fact
+                        </button>
                         <button onClick={handlePublish} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 rounded-md transition-colors shadow-lg hover:shadow-green-500/50">
                             <BuildingStorefrontIcon className="w-5 h-5" />
                             Publish Site
@@ -1882,6 +1949,26 @@ export default function App() {
         <CreateArtifactForm
           onCreate={handleCreateArtifact}
           onClose={() => setIsCreateModalOpen(false)}
+        />
+      </Modal>
+      <Modal
+        isOpen={isQuickFactModalOpen}
+        onClose={() => {
+          if (!isSavingQuickFact) {
+            setIsQuickFactModalOpen(false);
+          }
+        }}
+        title="Add One Fact"
+      >
+        <QuickFactForm
+          projectTitle={selectedProject?.title ?? 'your world'}
+          onSubmit={handleQuickFactSubmit}
+          onCancel={() => {
+            if (!isSavingQuickFact) {
+              setIsQuickFactModalOpen(false);
+            }
+          }}
+          isSubmitting={isSavingQuickFact}
         />
       </Modal>
       <Modal
