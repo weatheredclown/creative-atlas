@@ -18,7 +18,7 @@ import {
     TemplateEntry,
     UserProfile,
 } from './types';
-import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon  } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon  } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';

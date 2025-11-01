@@ -33,7 +33,6 @@ export enum ArtifactType {
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
-  Timeline = 'Timeline',
 }
 
 export enum TaskState {

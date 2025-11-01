@@ -331,16 +331,20 @@ export const exchangeCodeForToken = async (
   });
 }
 
+export interface PublishToGitHubResponse {
+  message: string;
+}
+
 export const publishToGitHub = async (
   token: string | null,
   repoName: string,
   publishDir: string,
-): Promise<{ message: string, data: any }> => {
+): Promise<PublishToGitHubResponse> => {
   if (!isDataApiConfigured) {
     throw new Error('Data API is not configured.');
   }
 
-  return sendJson<{ message: string, data: any }>(token, '/api/github/publish', {
+  return sendJson<PublishToGitHubResponse>(token, '/api/github/publish', {
     method: 'POST',
     body: { repoName, publishDir },
   });
