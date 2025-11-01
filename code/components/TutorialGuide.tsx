@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { TutorialStep } from '../types';
 import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import Stepper from './Stepper';
@@ -48,10 +49,6 @@ const TutorialGuide: React.FC = () => {
       }
     };
   }, [currentStep, handleNextStep]);
-
-  const handleNextStep = () => {
-    setCurrentStep(previous => (previous < tutorialSteps.length - 1 ? previous + 1 : previous));
-  };
 
   const handlePreviousStep = () => {
     setCurrentStep(previous => (previous > 0 ? previous - 1 : previous));
