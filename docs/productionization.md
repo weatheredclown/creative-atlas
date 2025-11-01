@@ -31,4 +31,4 @@
 ### Productization & Compliance (low priority)
 - [ ] Layer in onboarding, documentation, accessibility, and localization improvements for first-time users.
 - [ ] Establish policies for data retention, content moderation, and privacy covering generated and uploaded content.
-- [ ] Provide support and education content (tutorials, FAQs) that make the product approachable for new creators.
+- [x] Provide support and education content (tutorials, FAQs) that make the product approachable for new creators.
