@@ -19,6 +19,7 @@ const corsOptions: CorsOptions = {
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
 };
 
 // To test:
@@ -32,7 +33,10 @@ app.use(session({
   secret: 'keyboard cat', // TODO: Use a real secret
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  },
 }));
 
 app.get('/health', (_req, res) => {

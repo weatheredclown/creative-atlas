@@ -14,7 +14,9 @@ const withAuth = async (token: string | null, init: RequestInit = {}): Promise<R
   const headers = new Headers(init.headers ?? {});
   headers.set('Authorization', `Bearer ${token}`);
 
-  return { ...init, headers };
+  const credentials = init.credentials ?? 'include';
+
+  return { ...init, headers, credentials };
 };
 
 const parseJson = async <T>(response: Response): Promise<T> => {
@@ -350,4 +352,27 @@ export const publishToGitHub = async (
     method: 'POST',
     body: { repoName, publishDir },
   });
+};
+
+export interface GitHubOAuthStartResponse {
+  authUrl: string;
 }
+
+export const startGitHubOAuth = async (
+  token: string | null,
+): Promise<GitHubOAuthStartResponse> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/github/oauth/start`, {
+    method: 'POST',
+    ...(await withAuth(token, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })),
+  });
+
+  return parseJson<GitHubOAuthStartResponse>(response);
+};

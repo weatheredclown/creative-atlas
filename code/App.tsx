@@ -1,4 +1,4 @@
-
+/* eslint-disable no-redeclare */
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     AIAssistant,
@@ -55,7 +55,7 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
-import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
+import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured, startGitHubOAuth } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
@@ -1358,6 +1358,45 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let apiOrigin: string | null = null;
+    if (dataApiBaseUrl) {
+      try {
+        apiOrigin = new URL(dataApiBaseUrl).origin;
+      } catch (error) {
+        console.warn('Unable to parse data API base URL for GitHub OAuth messaging', error);
+      }
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (apiOrigin && event.origin !== apiOrigin) {
+        return;
+      }
+
+      const data = event.data;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+
+      const payload = data as { type?: unknown; status?: unknown; message?: unknown };
+      if (payload.type !== 'github-oauth') {
+        return;
+      }
+
+      if (payload.status === 'success') {
+        setIsPublishModalOpen(true);
+      } else if (payload.status === 'error') {
+        const message = typeof payload.message === 'string' ? payload.message : 'GitHub authorization failed.';
+        alert(message);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedProjectId) {
       return;
     }
@@ -1870,14 +1909,37 @@ export default function App() {
     }
   };
 
-  const handlePublishToGithub = () => {
+  const handlePublishToGithub = async () => {
     if (!isDataApiConfigured || !dataApiBaseUrl) {
       alert('Publishing to GitHub is unavailable because the data API is not configured.');
       return;
     }
 
-    window.location.href = `${dataApiBaseUrl}/api/github/oauth/start`;
-  }
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to authenticate the GitHub authorization request.');
+      }
+
+      const { authUrl } = await startGitHubOAuth(token);
+      const popup = window.open(
+        authUrl,
+        'creative-atlas-github-oauth',
+        'width=600,height=700,noopener,noreferrer',
+      );
+
+      if (!popup) {
+        window.location.href = authUrl;
+      }
+    } catch (error) {
+      console.error('Failed to initiate GitHub authorization', error);
+      alert(
+        `Unable to start GitHub authorization. ${
+          error instanceof Error ? error.message : 'Please try again.'
+        }`,
+      );
+    }
+  };
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
     setIsPublishing(true);
@@ -2396,7 +2458,12 @@ export default function App() {
                             <BuildingStorefrontIcon className="w-5 h-5" />
                             Publish Site
                         </button>
-                        <button onClick={handlePublishToGithub} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors shadow-lg hover:shadow-gray-600/50">
+                        <button
+                          onClick={() => {
+                            void handlePublishToGithub();
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors shadow-lg hover:shadow-gray-600/50"
+                        >
                             <GitHubIcon className="w-5 h-5" />
                             Publish to GitHub
                         </button>
