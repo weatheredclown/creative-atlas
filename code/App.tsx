@@ -19,7 +19,7 @@ import {
     TemplateEntry,
     UserProfile,
 } from './types';
-import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
+import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -58,6 +58,8 @@ import ErrorBanner from './components/ErrorBanner';
 import TutorialGuide from './components/TutorialGuide';
 import ErrorBoundary from './components/ErrorBoundary';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
+import PublishToGitHubModal from './components/PublishToGitHubModal';
+import { publishToGitHub } from './services/dataApi';
 
 const dailyQuests: Quest[] = [
     { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
@@ -625,6 +627,8 @@ export default function App() {
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const [isTutorialVisible, setIsTutorialVisible] = useState(true);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -648,6 +652,15 @@ export default function App() {
       setSelectedArtifactId(null);
     }
   }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('github_auth') === 'success') {
+      setIsPublishModalOpen(true);
+      // Clean up the URL
+      window.history.replaceState({}, document.title, "/");
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -1006,6 +1019,25 @@ export default function App() {
     }
   };
 
+  const handlePublishToGithub = () => {
+    window.location.href = `/api/github/oauth/start`;
+  }
+
+  const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
+    setIsPublishing(true);
+    try {
+      const token = await getIdToken();
+      const result = await publishToGitHub(token, repoName, publishDir);
+      console.log('Publish result:', result);
+      alert(`Publishing process started for ${repoName}. You will be notified upon completion.`);
+      setIsPublishModalOpen(false);
+    } catch (err) {
+      alert(`Error creating repository: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
@@ -1269,6 +1301,10 @@ export default function App() {
                         <button onClick={handlePublish} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-500 rounded-md transition-colors shadow-lg hover:shadow-green-500/50">
                             <BuildingStorefrontIcon className="w-5 h-5" />
                             Publish Site
+                        </button>
+                        <button onClick={handlePublishToGithub} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors shadow-lg hover:shadow-gray-600/50">
+                            <GitHubIcon className="w-5 h-5" />
+                            Publish to GitHub
                         </button>
                         <button
                             id="add-new-artifact-button"
@@ -1538,6 +1574,12 @@ export default function App() {
         milestones={milestoneProgress}
         isOpen={isInsightsOpen}
         onClose={() => setIsInsightsOpen(false)}
+      />
+      <PublishToGitHubModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onPublish={handlePublishToGithubRepo}
+        isPublishing={isPublishing}
       />
     </div>
   );
