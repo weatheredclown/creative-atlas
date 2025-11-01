@@ -1412,6 +1412,7 @@ export default function App() {
                         <WikiEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                            assistants={aiAssistants}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Location && (
