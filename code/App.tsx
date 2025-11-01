@@ -910,6 +910,10 @@ export default function App() {
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<ProjectStatus | 'ALL'>(
+    'ALL',
+  );
   const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
@@ -951,6 +955,31 @@ export default function App() {
   const todaysDailyQuests = useMemo(
     () => selectDailyQuestsForDate(dailyQuestDayKey),
     [dailyQuestDayKey],
+  );
+
+  const visibleProjects = useMemo(() => {
+    const normalizedQuery = projectSearchTerm.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      if (projectStatusFilter !== 'ALL' && project.status !== projectStatusFilter) {
+        return false;
+      }
+
+      if (normalizedQuery) {
+        const haystack = `${project.title} ${project.summary} ${project.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projects, projectSearchTerm, projectStatusFilter]);
+
+  const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
+
+  const selectedProjectHiddenBySidebarFilters = Boolean(
+    selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
   );
 
   useEffect(() => {
@@ -1559,6 +1588,11 @@ export default function App() {
     setSearchTerm('');
   };
 
+  const handleResetProjectFilters = useCallback(() => {
+    setProjectStatusFilter('ALL');
+    setProjectSearchTerm('');
+  }, []);
+
   const handleExportArtifacts = useCallback(
     async (format: 'csv' | 'tsv') => {
       if (!selectedProject) {
@@ -1665,20 +1699,108 @@ export default function App() {
                     New
                 </button>
             </div>
-            <div className="space-y-3">
-                {projects.map(p => (
-                    <ProjectCard key={p.id} project={p} onSelect={handleSelectProject} isSelected={p.id === selectedProjectId} />
-                ))}
-                {canLoadMoreProjects && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-3 space-y-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="project-search"
+                    className="text-xs font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    Search
+                  </label>
+                  <input
+                    id="project-search"
+                    type="search"
+                    value={projectSearchTerm}
+                    onChange={(event) => setProjectSearchTerm(event.target.value)}
+                    placeholder="Project name, summary, or tag"
+                    className="w-full rounded-md border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="project-status-filter"
+                    className="text-xs font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="project-status-filter"
+                    value={projectStatusFilter}
+                    onChange={(event) =>
+                      setProjectStatusFilter(event.target.value as ProjectStatus | 'ALL')
+                    }
+                    className="w-full rounded-md border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="ALL">All statuses</option>
+                    {Object.values(ProjectStatus).map((status) => (
+                      <option key={status} value={status}>
+                        {formatStatusLabel(status)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>
+                    {hasProjectFilters
+                      ? `Showing ${visibleProjects.length} of ${projects.length} projects`
+                      : `${projects.length} project${projects.length === 1 ? '' : 's'} available`}
+                  </span>
+                  {hasProjectFilters && (
+                    <button
+                      type="button"
+                      onClick={handleResetProjectFilters}
+                      className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {selectedProjectHiddenBySidebarFilters && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 space-y-2">
+                  <p>The selected project is hidden by the current filters.</p>
                   <button
                     type="button"
-                    onClick={() => { void handleLoadMoreProjects(); }}
+                    onClick={handleResetProjectFilters}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-400/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-100 transition-colors hover:border-amber-300/60 hover:text-amber-50"
+                  >
+                    Show project
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {visibleProjects.length > 0 ? (
+                  visibleProjects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onSelect={handleSelectProject}
+                      isSelected={project.id === selectedProjectId}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-slate-700/70 px-4 py-6 text-center text-sm text-slate-400">
+                    {hasProjectFilters
+                      ? 'No projects match the current filters. Adjust your search or clear the filters to rediscover a world.'
+                      : 'No projects yet. Start your first world to build an atlas.'}
+                  </div>
+                )}
+                {!hasProjectFilters && canLoadMoreProjects && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleLoadMoreProjects();
+                    }}
                     className="w-full px-3 py-2 text-sm font-semibold text-cyan-200 bg-cyan-950/50 hover:bg-cyan-900/60 border border-cyan-800/50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     disabled={isLoadingMoreProjects}
                   >
                     {isLoadingMoreProjects ? 'Loading more projects…' : 'Load more projects'}
                   </button>
                 )}
+              </div>
             </div>
           </div>
           <Quests quests={todaysDailyQuests} artifacts={artifacts} projects={projects} />
