@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Artifact, ArtifactType, LocationData, LocationFeature, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, MapPinIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
+import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
 
 const LOCATION_APPEARANCE_TYPES: ArtifactType[] = [
   ...NARRATIVE_ARTIFACT_TYPES,
@@ -33,6 +34,7 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
   const [features, setFeatures] = useState<LocationFeature[]>(data.features);
   const [newFeatureName, setNewFeatureName] = useState('');
   const [newFeatureDesc, setNewFeatureDesc] = useState('');
+  const { showDetailedFields } = useDepthPreferences();
 
   const handleUpdate = (updatedData: Partial<LocationData>) => {
     onUpdateArtifactData(artifact.id, { ...data, ...updatedData });
@@ -92,36 +94,44 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
                 <div key={feature.id} className="bg-slate-700/50 p-2 rounded-md relative group">
                   <strong className="text-slate-300 text-sm">{feature.name}</strong>
                   <p className="text-slate-400 text-xs">{feature.description}</p>
-                  <button onClick={() => handleDeleteFeature(feature.id)} className="absolute top-1 right-1 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
+                  {showDetailedFields && (
+                    <button onClick={() => handleDeleteFeature(feature.id)} className="absolute top-1 right-1 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               {features.length === 0 && (
                 <p className="text-xs text-slate-500 bg-slate-900/50 border border-dashed border-slate-700/60 rounded-md px-3 py-2">
-                  No features yet. Map districts, landmarks, or sensory details to anchor the space.
+                  {showDetailedFields
+                    ? 'No features yet. Map districts, landmarks, or sensory details to anchor the space.'
+                    : 'No features yet. Reveal depth to start charting landmarks and sensory details.'}
                 </p>
               )}
             </div>
-            <div className="space-y-2 p-3 bg-slate-900/50 rounded-md border border-slate-700">
-              <input
-                type="text"
-                value={newFeatureName}
-                onChange={e => setNewFeatureName(e.target.value)}
-                placeholder="Feature Name"
-                className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-violet-500"
-              />
-              <input
-                type="text"
-                value={newFeatureDesc}
-                onChange={e => setNewFeatureDesc(e.target.value)}
-                placeholder="Brief description"
-                className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-violet-500"
-              />
-              <button onClick={handleAddFeature} className="w-full flex items-center justify-center gap-1 px-3 py-1 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-500 rounded-md transition-colors">
-                <PlusIcon className="w-4 h-4" /> Add Feature
-              </button>
-            </div>
+            {showDetailedFields ? (
+              <div className="space-y-2 p-3 bg-slate-900/50 rounded-md border border-slate-700">
+                <input
+                  type="text"
+                  value={newFeatureName}
+                  onChange={e => setNewFeatureName(e.target.value)}
+                  placeholder="Feature Name"
+                  className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-violet-500"
+                />
+                <input
+                  type="text"
+                  value={newFeatureDesc}
+                  onChange={e => setNewFeatureDesc(e.target.value)}
+                  placeholder="Brief description"
+                  className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-violet-500"
+                />
+                <button onClick={handleAddFeature} className="w-full flex items-center justify-center gap-1 px-3 py-1 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-500 rounded-md transition-colors">
+                  <PlusIcon className="w-4 h-4" /> Add Feature
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Reveal depth to add or adjust notable features.</p>
+            )}
           </div>
         </div>
 

@@ -18,7 +18,7 @@ The “Organize My Worlds Without Pain” release.
 - [ ] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
 - [x] "Add one fact" button to reduce overwhelm.
 - [x] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
-- [ ] - [ ] "Reveal depth" toggle for simple → detailed fields.
+- [x] "Reveal depth" toggle for simple → detailed fields.
 - [ ] "Narrative need heatmap" that flags characters not seen recently.
 - [ ] Memory sync with Gemini-powered conversations gated by user approval.
 

@@ -61,11 +61,13 @@ import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
 import TutorialGuide from './components/TutorialGuide';
 import ErrorBoundary from './components/ErrorBoundary';
+import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
+import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -1638,7 +1640,8 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <DepthPreferencesProvider>
+      <div className="min-h-screen flex flex-col">
       {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
@@ -1805,8 +1808,11 @@ export default function App() {
                             </button>
                         )}
                     </div>
-                    <div className="text-xs text-slate-400">
-                        Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                    <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
+                        <RevealDepthToggle />
+                        <span>
+                            Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                        </span>
                     </div>
                 </div>
                 {viewMode === 'table' && (
@@ -2048,6 +2054,7 @@ export default function App() {
         onPublish={handlePublishToGithubRepo}
         isPublishing={isPublishing}
       />
-    </div>
+      </div>
+    </DepthPreferencesProvider>
   );
 }

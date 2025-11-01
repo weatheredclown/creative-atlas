@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Artifact, ArtifactType, CharacterData, CharacterTrait, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, UserCircleIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
+import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
 
 const CHARACTER_APPEARS_IN_TYPES: ArtifactType[] = [
   ...NARRATIVE_ARTIFACT_TYPES,
@@ -36,6 +37,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
   const [traits, setTraits] = useState<CharacterTrait[]>(data.traits);
   const [newTraitKey, setNewTraitKey] = useState('');
   const [newTraitValue, setNewTraitValue] = useState('');
+  const { showDetailedFields } = useDepthPreferences();
 
   const handleUpdate = (updatedData: Partial<CharacterData>) => {
     onUpdateArtifactData(artifact.id, { ...data, ...updatedData });
@@ -95,36 +97,44 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                 <div key={trait.id} className="flex items-center gap-2 bg-slate-700/50 p-2 rounded-md">
                   <strong className="text-slate-300 text-sm">{trait.key}:</strong>
                   <span className="text-slate-400 text-sm flex-grow">{trait.value}</span>
-                  <button onClick={() => handleDeleteTrait(trait.id)} className="p-1 text-slate-500 hover:text-red-400">
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
+                  {showDetailedFields && (
+                    <button onClick={() => handleDeleteTrait(trait.id)} className="p-1 text-slate-500 hover:text-red-400">
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               {traits.length === 0 && (
                 <p className="text-xs text-slate-500 bg-slate-900/50 border border-dashed border-slate-700/60 rounded-md px-3 py-2">
-                  No signature traits yet. Capture quirks, bonds, or stats to bring them to life.
+                  {showDetailedFields
+                    ? 'No signature traits yet. Capture quirks, bonds, or stats to bring them to life.'
+                    : 'No signature traits yet. Reveal depth to start tracking quirks and bonds.'}
                 </p>
               )}
             </div>
-            <div className="space-y-2 p-3 bg-slate-900/50 rounded-md border border-slate-700">
-              <input
-                type="text"
-                value={newTraitKey}
-                onChange={e => setNewTraitKey(e.target.value)}
-                placeholder="Trait (e.g., Age)"
-                className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                value={newTraitValue}
-                onChange={e => setNewTraitValue(e.target.value)}
-                placeholder="Value (e.g., 27)"
-                className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
-              />
-              <button onClick={handleAddTrait} className="w-full flex items-center justify-center gap-1 px-3 py-1 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors">
-                <PlusIcon className="w-4 h-4" /> Add Trait
-              </button>
-            </div>
+            {showDetailedFields ? (
+              <div className="space-y-2 p-3 bg-slate-900/50 rounded-md border border-slate-700">
+                <input
+                  type="text"
+                  value={newTraitKey}
+                  onChange={e => setNewTraitKey(e.target.value)}
+                  placeholder="Trait (e.g., Age)"
+                  className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={newTraitValue}
+                  onChange={e => setNewTraitValue(e.target.value)}
+                  placeholder="Value (e.g., 27)"
+                  className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
+                />
+                <button onClick={handleAddTrait} className="w-full flex items-center justify-center gap-1 px-3 py-1 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors">
+                  <PlusIcon className="w-4 h-4" /> Add Trait
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Reveal depth to add or adjust character traits.</p>
+            )}
           </div>
         </div>
 
