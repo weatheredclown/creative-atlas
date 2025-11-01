@@ -5,6 +5,20 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 📘 **Universe Briefs:** Looking for a deep dive on a flagship world? Start with the [Dustland Project Overview](docs/dustland-overview.md) to see how the retro RPG framework, persona mask system, and CRT aesthetic map into Creative Atlas artifacts.
 📘 Lore reference: see [`docs/darv-language.md`](docs/darv-language.md) for the Darv language primer that anchors Tamenzut rituals, myths, and conlang work.
 
+## Issue Drafts from Documentation
+
+The `issue-drafts/` directory contains GitHub issue bodies generated from unchecked tasks in the documentation. Refresh the drafts after editing the docs:
+
+```bash
+node scripts/generateIssueDraftsFromDocs.js
+```
+
+Each markdown file can be pasted directly into a new GitHub issue or used with the GitHub CLI, for example:
+
+```bash
+gh issue create --title "<issue title>" --body-file issue-drafts/<file-name>.md
+```
+
 ## Running the App Locally
 
 The interactive prototype lives in the `code/` directory and is a client-side React application rendered through `index.tsx` and the HTML shell in `index.html`. Follow the steps below to get it running on your machine.
