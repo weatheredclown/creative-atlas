@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useRef, KeyboardEvent, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
     AIAssistant,
     Achievement,
@@ -8,7 +8,6 @@ import {
     ConlangLexeme,
     Milestone,
     Project,
-    ProjectStatus,
     ProjectTemplate,
     Quest,
     Questline,
@@ -19,7 +18,7 @@ import {
     TemplateEntry,
     UserProfile,
 } from './types';
-import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -41,7 +40,7 @@ import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
-import { getStatusClasses, formatStatusLabel } from './utils/status';
+import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import { TutorialStep } from '../types';
@@ -7,6 +7,16 @@ import { TutorialStep } from '../types';
 const TutorialGuide: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
+
+  const handleNextStep = useCallback(() => {
+    setCurrentStep((previousStep) => {
+      if (previousStep < tutorialSteps.length - 1) {
+        return previousStep + 1;
+      }
+
+      return previousStep;
+    });
+  }, []);
 
   useEffect(() => {
     const step = tutorialSteps[currentStep];
@@ -37,15 +47,9 @@ const TutorialGuide: React.FC = () => {
         }
       }
     };
-  }, [currentStep]);
+  }, [currentStep, handleNextStep]);
 
-  const handleNextStep = () => {
-    if (currentStep < tutorialSteps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const currentTutorialStep = tutorialSteps[currentStep];
+  const currentTutorialStep: TutorialStep = tutorialSteps[currentStep];
 
   const nextButton = currentTutorialStep.showNextButton ? (
     <button
