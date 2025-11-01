@@ -85,7 +85,9 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
     *   Click "New OAuth App".
     *   **Application name:** "Creative Atlas (local)" or similar.
     *   **Homepage URL:** The URL of your frontend application (e.g., `http://localhost:5173`).
-    *   **Authorization callback URL:** The callback URL for your backend API. For local development, this should be `http://localhost:5173/api/github/oauth/callback`. *Note: The frontend Vite server will proxy this to the backend.*
+    *   **Authorization callback URL:** This URL must point to your backend's OAuth callback endpoint.
+        *   For **local development**, use `http://localhost:5173/api/github/oauth/callback`. The Vite frontend server will proxy this to your local backend.
+        *   For a **production deployment**, use the public URL of your application, e.g., `https://creative-atlas.web.app/api/github/oauth/callback`. You may need to create a separate GitHub OAuth App for your production environment.
 
 2.  **Configure Environment Variables:**
     *   In the `server/` directory, copy the `.env.example` file to a new file named `.env`:
@@ -96,6 +98,16 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
         *   `GITHUB_CLIENT_ID`: The "Client ID" of your GitHub OAuth app.
         *   `GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
         *   `APP_BASE_URL`: The base URL of your frontend application (e.g., `http://localhost:5173`).
+
+3.  **Configure Deployment Secrets:**
+    *   For the GitHub integration to work in the deployed application, you must also configure these variables as secrets in your GitHub repository.
+    *   Go to your repository's "Settings" > "Secrets and variables" > "Actions".
+    *   Add the following repository secrets:
+        *   `GITHUB_CLIENT_ID`: The Client ID from your OAuth app.
+        *   `GITHUB_CLIENT_SECRET`: The Client Secret from your OAuth app.
+        *   `APP_BASE_URL`: The public URL of your deployed frontend application (e.g., `https://creative-atlas.web.app`).
+
+    The GitHub Actions deployment workflow will use these secrets to configure the App Engine environment.
 
 ### 4. Start the development server
 
