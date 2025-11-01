@@ -175,6 +175,34 @@ const createQuickFactContent = (title: string, fact: string, detail?: string): s
   return content.endsWith('\n') ? content : `${content}\n`;
 };
 
+const cloneArtifactData = (data: Artifact['data']) => {
+  if (data === undefined) {
+    return undefined;
+  }
+
+  const structuredCloneFn = (globalThis as { structuredClone?: <T>(value: T) => T }).structuredClone;
+  if (typeof structuredCloneFn === 'function') {
+    try {
+      return structuredCloneFn(data) as Artifact['data'];
+    } catch (error) {
+      console.warn('Structured clone failed for artifact data, falling back to JSON clone.', error);
+    }
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(data)) as Artifact['data'];
+  } catch (error) {
+    console.warn('JSON clone failed for artifact data, returning shallow copy instead.', error);
+    if (Array.isArray(data)) {
+      return data.map((item) => (typeof item === 'object' && item !== null ? { ...item } : item)) as Artifact['data'];
+    }
+    if (typeof data === 'object' && data !== null) {
+      return { ...data } as Artifact['data'];
+    }
+    return data;
+  }
+};
+
 const QUICK_FACT_TAG = 'fact';
 const QUICK_FACT_TITLE_PATTERN = /fact\s+#\d+/i;
 
@@ -1199,6 +1227,67 @@ export default function App() {
     [deleteArtifact],
   );
 
+  const handleDuplicateArtifact = useCallback(
+    async (artifactId: string) => {
+      if (!selectedProjectId) {
+        alert('Select a project before duplicating an artifact.');
+        return;
+      }
+
+      const source = projectArtifacts.find((artifact) => artifact.id === artifactId);
+      if (!source) {
+        alert('We could not find the artifact to duplicate.');
+        return;
+      }
+
+      const existingTitles = new Set(projectArtifacts.map((artifact) => artifact.title.toLowerCase()));
+      const trimmedSourceTitle = source.title.trim();
+      const baseTitle = trimmedSourceTitle.length > 0 ? `${trimmedSourceTitle} (copy)` : 'Untitled artifact (copy)';
+      let candidateTitle = baseTitle;
+      let attempt = 2;
+      while (existingTitles.has(candidateTitle.toLowerCase())) {
+        candidateTitle = `${baseTitle} ${attempt}`;
+        attempt += 1;
+      }
+
+      const clonedData = cloneArtifactData(source.data);
+      const draft: {
+        type: ArtifactType;
+        title: string;
+        summary: string;
+        status: string;
+        tags: string[];
+        relations: Relation[];
+        data?: Artifact['data'];
+      } = {
+        type: source.type,
+        title: candidateTitle,
+        summary: source.summary,
+        status: source.status,
+        tags: [...source.tags],
+        relations: [],
+      };
+
+      if (clonedData !== undefined) {
+        draft.data = clonedData;
+      }
+
+      const created = await createArtifact(selectedProjectId, draft);
+      if (!created) {
+        alert('We could not duplicate this artifact. Please try again later.');
+        return;
+      }
+
+      setSelectedArtifactId(created.id);
+      void addXp(2);
+      setInfoModalContent({
+        title: 'Artifact duplicated',
+        message: `Created ${created.title} from ${source.title}.`,
+      });
+    },
+    [selectedProjectId, projectArtifacts, createArtifact, addXp, setInfoModalContent],
+  );
+
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     setSelectedArtifactId(null);
@@ -2012,6 +2101,7 @@ export default function App() {
                       onAddRelation={handleAddRelation}
                       onRemoveRelation={handleRemoveRelation}
                       onDeleteArtifact={handleDeleteArtifact}
+                      onDuplicateArtifact={handleDuplicateArtifact}
                       addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
