@@ -45,6 +45,7 @@ import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
+import QuickFactComposer from './components/QuickFactComposer';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
@@ -691,6 +692,35 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
     }
 };
 
+const deriveQuickFactTitle = (fact: string): string => {
+    const sanitized = fact.replace(/\s+/g, ' ').trim();
+    if (sanitized.length === 0) {
+        return 'New Fact';
+    }
+
+    const sentenceMatch = sanitized.match(/^[^.!?\n]+[.!?]?/) ?? [];
+    const firstSentence = (sentenceMatch[0] ?? sanitized).trim();
+    if (firstSentence.length <= 60) {
+        return firstSentence;
+    }
+
+    const truncated = firstSentence.slice(0, 57).trimEnd();
+    return `${truncated}…`;
+};
+
+const createQuickFactSummary = (fact: string): string => {
+    const trimmed = fact.trim();
+    if (trimmed.length <= 160) {
+        return trimmed;
+    }
+    return `${trimmed.slice(0, 157).trimEnd()}…`;
+};
+
+const createQuickFactContent = (fact: string): string => {
+    const trimmed = fact.trim();
+    return trimmed.endsWith('\n') ? trimmed : `${trimmed}\n`;
+};
+
 const milestoneRoadmap: Milestone[] = [
     {
         id: 'm1',
@@ -863,6 +893,8 @@ export default function App() {
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+  const [isQuickFactOpen, setIsQuickFactOpen] = useState(false);
+  const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
@@ -921,6 +953,10 @@ export default function App() {
       setSelectedArtifactId(null);
     }
   }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    setIsQuickFactOpen(false);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -1187,6 +1223,49 @@ export default function App() {
         void addXp(5);
         setIsCreateModalOpen(false);
         setSelectedArtifactId(created.id);
+      }
+    },
+    [selectedProjectId, profile, createArtifact, addXp],
+  );
+
+  const handleQuickFactCreate = useCallback(
+    async (fact: string) => {
+      if (!selectedProjectId || !profile) {
+        throw new Error('Select a project before adding a fact.');
+      }
+
+      const trimmed = fact.trim();
+      if (!trimmed) {
+        throw new Error('Add a short fact before saving it.');
+      }
+
+      setIsSavingQuickFact(true);
+
+      try {
+        const created = await createArtifact(selectedProjectId, {
+          type: ArtifactType.Wiki,
+          title: deriveQuickFactTitle(trimmed),
+          summary: createQuickFactSummary(trimmed),
+          status: 'idea',
+          tags: ['fact'],
+          relations: [],
+          data: { content: createQuickFactContent(trimmed) },
+        });
+
+        if (!created) {
+          throw new Error('Could not save the fact. Please try again.');
+        }
+
+        void addXp(2);
+        setSelectedArtifactId(created.id);
+        setIsQuickFactOpen(false);
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('Could not save the fact. Please try again.');
+      } finally {
+        setIsSavingQuickFact(false);
       }
     },
     [selectedProjectId, profile, createArtifact, addXp],
@@ -1631,6 +1710,20 @@ export default function App() {
                             Publish to GitHub
                         </button>
                         <button
+                            type="button"
+                            onClick={() => setIsQuickFactOpen((current) => !current)}
+                            className={`flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                isQuickFactOpen
+                                    ? 'border-cyan-400/70 bg-cyan-500/20 text-cyan-100'
+                                    : 'border-cyan-900/60 bg-cyan-950/50 text-cyan-200 hover:bg-cyan-900/60'
+                            }`}
+                            aria-expanded={isQuickFactOpen}
+                            disabled={isSavingQuickFact}
+                        >
+                            <SparklesIcon className="w-5 h-5" />
+                            Add one fact
+                        </button>
+                        <button
                             id="add-new-artifact-button"
                             onClick={() => setIsCreateModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors shadow-lg hover:shadow-cyan-500/50"
@@ -1695,6 +1788,14 @@ export default function App() {
                         Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
                     </div>
                 </div>
+                {isQuickFactOpen && (
+                    <QuickFactComposer
+                        onSubmit={handleQuickFactCreate}
+                        onCancel={() => setIsQuickFactOpen(false)}
+                        isSubmitting={isSavingQuickFact}
+                        projectTitle={selectedProject.title}
+                    />
+                )}
                 {viewMode === 'table' && (
                     <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden">
                         <table className="w-full text-left">
