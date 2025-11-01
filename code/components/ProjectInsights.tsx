@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Artifact, ArtifactType, ConlangLexeme, TaskData, TaskState } from '../types';
+import { Artifact, ArtifactType, ConlangLexeme, TaskData, TASK_STATE, type TaskState } from '../types';
 import { CubeIcon, ShareIcon, CheckCircleIcon, SparklesIcon } from './Icons';
 import { formatStatusLabel } from '../utils/status';
 
@@ -24,7 +24,7 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ artifacts }) => {
       },
       {} as Record<TaskState, number>
     );
-    const tasksComplete = taskStates[TaskState.Done] ?? 0;
+    const tasksComplete = taskStates[TASK_STATE.Done] ?? 0;
     const taskCompletionRate = tasks.length === 0 ? 0 : Math.round((tasksComplete / tasks.length) * 100);
 
     const conlangLexemeCount = artifacts
@@ -59,9 +59,9 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ artifacts }) => {
     };
   }, [artifacts]);
 
-  const doneCount = insights.taskStates[TaskState.Done] ?? 0;
-  const inProgressCount = insights.taskStates[TaskState.InProgress] ?? 0;
-  const todoCount = insights.taskStates[TaskState.Todo] ?? 0;
+  const doneCount = insights.taskStates[TASK_STATE.Done] ?? 0;
+  const inProgressCount = insights.taskStates[TASK_STATE.InProgress] ?? 0;
+  const todoCount = insights.taskStates[TASK_STATE.Todo] ?? 0;
 
   if (insights.totalArtifacts === 0) {
     return (

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Artifact, TaskData, TaskState } from '../types';
+import { Artifact, TaskData, TASK_STATE, TASK_STATE_VALUES, type TaskState } from '../types';
 import { CalendarIcon, CheckCircleIcon, UserCircleIcon } from './Icons';
 
 interface TaskEditorProps {
@@ -8,14 +8,14 @@ interface TaskEditorProps {
 }
 
 const TaskEditor: React.FC<TaskEditorProps> = ({ artifact, onUpdateArtifactData }) => {
-  const initialData = (artifact.data as TaskData) ?? { state: TaskState.Todo };
-  const [taskState, setTaskState] = useState<TaskState>(initialData.state ?? TaskState.Todo);
+  const initialData = (artifact.data as TaskData) ?? { state: TASK_STATE.Todo };
+  const [taskState, setTaskState] = useState<TaskState>(initialData.state ?? TASK_STATE.Todo);
   const [assignee, setAssignee] = useState<string>(initialData.assignee ?? '');
   const [due, setDue] = useState<string>(initialData.due ?? '');
 
   useEffect(() => {
-    const currentData = (artifact.data as TaskData) ?? { state: TaskState.Todo };
-    setTaskState(currentData.state ?? TaskState.Todo);
+    const currentData = (artifact.data as TaskData) ?? { state: TASK_STATE.Todo };
+    setTaskState(currentData.state ?? TASK_STATE.Todo);
     setAssignee(currentData.assignee ?? '');
     setDue(currentData.due ?? '');
   }, [artifact.id, artifact.data]);
@@ -27,7 +27,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ artifact, onUpdateArtifactData 
       due,
       ...updates,
     };
-    setTaskState(next.state ?? TaskState.Todo);
+    setTaskState(next.state ?? TASK_STATE.Todo);
     setAssignee(next.assignee ?? '');
     setDue(next.due ?? '');
     onUpdateArtifactData(artifact.id, next);
@@ -93,7 +93,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ artifact, onUpdateArtifactData 
       <div className="space-y-3">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</span>
         <div className="flex flex-wrap gap-2">
-          {Object.values(TaskState).map((stateOption) => {
+          {TASK_STATE_VALUES.map((stateOption) => {
             const isActive = stateOption === taskState;
             return (
               <button

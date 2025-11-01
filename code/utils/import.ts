@@ -6,7 +6,7 @@ import {
     ConlangLexeme,
     Scene,
     TaskData,
-    TaskState,
+    TASK_STATE,
     CharacterData,
     WikiData,
     LocationData,
@@ -27,7 +27,7 @@ const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
         case ArtifactType.Conlang:
             return [];
         case ArtifactType.Task:
-            return { state: TaskState.Todo } as TaskData;
+            return { state: TASK_STATE.Todo } as TaskData;
         case ArtifactType.Character:
             return { bio: '', traits: [] } as CharacterData;
         case ArtifactType.Wiki:

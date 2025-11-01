@@ -11,7 +11,7 @@ import {
   Project,
   ProjectStatus,
   TaskData,
-  TaskState,
+  TASK_STATE,
   UserProfile,
 } from '../../types';
 
@@ -60,7 +60,7 @@ describe('evaluateMilestoneProgress', () => {
       status: 'done',
       tags: ['planning'],
       relations: [{ toId: 'art-story', kind: 'SUPPORTS' }],
-      data: { state: TaskState.Done } as TaskData,
+      data: { state: TASK_STATE.Done } as TaskData,
     },
     {
       id: 'art-conlang',

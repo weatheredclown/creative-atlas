@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import React from 'react';
 import Quests from '../Quests';
-import { Artifact, ArtifactType, Project, ProjectStatus, Quest, TaskData, TaskState } from '../../types';
+import { Artifact, ArtifactType, Project, ProjectStatus, Quest, TaskData, TASK_STATE } from '../../types';
 
 describe('Quests component', () => {
   const projects: Project[] = [
@@ -19,7 +19,7 @@ describe('Quests component', () => {
       status: 'in-progress',
       tags: [],
       relations: [],
-      data: { state: TaskState.InProgress } satisfies TaskData,
+      data: { state: TASK_STATE.InProgress } satisfies TaskData,
     },
   ];
 
@@ -32,7 +32,7 @@ describe('Quests component', () => {
       isCompleted: (artifacts: Artifact[]) =>
         artifacts.some(
           artifact =>
-            artifact.type === ArtifactType.Task && (artifact.data as TaskData).state === TaskState.Done,
+            artifact.type === ArtifactType.Task && (artifact.data as TaskData).state === TASK_STATE.Done,
         ),
     },
     {
@@ -48,7 +48,7 @@ describe('Quests component', () => {
     const completedTask: Artifact = {
       ...baseArtifacts[0],
       id: 'art-2',
-      data: { state: TaskState.Done },
+      data: { state: TASK_STATE.Done },
     };
 
     render(<Quests quests={quests} artifacts={[...baseArtifacts, completedTask]} projects={projects} />);

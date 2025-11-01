@@ -16,7 +16,8 @@ import {
     InspirationCard,
     Relation,
     TaskData,
-    TaskState,
+    TASK_STATE,
+    type TaskState,
     TemplateCategory,
     TemplateEntry,
     TimelineData,
@@ -86,7 +87,7 @@ const countTasksInState = (artifacts: Artifact[], state: TaskState) =>
   ).length;
 
 const getCompletedTaskCount = (artifacts: Artifact[]) =>
-  countTasksInState(artifacts, TaskState.Done);
+  countTasksInState(artifacts, TASK_STATE.Done);
 
 const getTotalRelations = (artifacts: Artifact[]) =>
   artifacts.reduce((total, artifact) => total + artifact.relations.length, 0);
@@ -266,7 +267,7 @@ const DAILY_QUEST_POOL: Quest[] = [
     id: 'daily-task-progress',
     title: 'Kick Off a Task',
     description: 'Move two tasks into progress to build momentum.',
-    isCompleted: (artifacts) => countTasksInState(artifacts, TaskState.InProgress) >= 2,
+    isCompleted: (artifacts) => countTasksInState(artifacts, TASK_STATE.InProgress) >= 2,
     xp: 9,
   },
   {
@@ -490,7 +491,7 @@ const questlines: Questline[] = [
                     artifacts.filter(
                         (artifact) =>
                             artifact.type === ArtifactType.Task &&
-                            (artifact.data as TaskData | undefined)?.state === TaskState.Done,
+                            (artifact.data as TaskData | undefined)?.state === TASK_STATE.Done,
                     ).length >= 3,
             },
             {
@@ -664,7 +665,7 @@ const projectTemplates: ProjectTemplate[] = [
                 summary: 'Track page breakdowns, lettering, and marketing beats for the next drop.',
                 status: 'in-progress',
                 tags: ['sprint', 'release'],
-                data: { state: TaskState.InProgress } as TaskData,
+                data: { state: TASK_STATE.InProgress } as TaskData,
             },
         ],
     },
@@ -732,7 +733,7 @@ const projectTemplates: ProjectTemplate[] = [
                 summary: 'Triage insights from the latest playtest into actionable follow-ups.',
                 status: 'in-progress',
                 tags: ['playtest'],
-                data: { state: TaskState.InProgress } as TaskData,
+                data: { state: TASK_STATE.InProgress } as TaskData,
             },
             {
                 title: 'Design Log',
@@ -791,7 +792,7 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
 
     switch (type) {
         case ArtifactType.Task:
-            return { state: TaskState.Todo } as TaskData;
+            return { state: TASK_STATE.Todo } as TaskData;
         case ArtifactType.Character:
             return { bio: '', traits: [] };
         case ArtifactType.Wiki:
@@ -1163,8 +1164,8 @@ export default function App() {
       }
       if (
         target.type === ArtifactType.Task &&
-        (data as TaskData).state === TaskState.Done &&
-        (target.data as TaskData | undefined)?.state !== TaskState.Done
+        (data as TaskData).state === TASK_STATE.Done &&
+        (target.data as TaskData | undefined)?.state !== TASK_STATE.Done
       ) {
         void addXp(8); // XP Source: close task (+8)
       }

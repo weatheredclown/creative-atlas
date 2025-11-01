@@ -50,11 +50,15 @@ export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [
 export const isNarrativeArtifactType = (type: ArtifactType): boolean =>
   NARRATIVE_ARTIFACT_TYPES.includes(type);
 
-export enum TaskState {
-    Todo = 'Todo',
-    InProgress = 'In Progress',
-    Done = 'Done',
-}
+export const TASK_STATE = {
+    Todo: 'Todo',
+    InProgress: 'In Progress',
+    Done: 'Done',
+} as const;
+
+export type TaskState = typeof TASK_STATE[keyof typeof TASK_STATE];
+
+export const TASK_STATE_VALUES = Object.values(TASK_STATE) as TaskState[];
 
 export interface Relation {
     toId: string;
