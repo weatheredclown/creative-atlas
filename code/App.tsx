@@ -749,11 +749,42 @@ export default function App() {
   const handleAddRelation = useCallback(
     (fromId: string, toId: string, kind: string) => {
       const source = artifacts.find((artifact) => artifact.id === fromId);
-      if (!source) {
+      const target = artifacts.find((artifact) => artifact.id === toId);
+      if (!source || !target) {
         return;
       }
+
       const newRelation: Relation = { toId, kind };
-      void updateArtifact(fromId, { relations: [...source.relations, newRelation] });
+      const reciprocalRelation: Relation = { toId: fromId, kind };
+
+      const sourceHasRelation = source.relations.some((relation) => relation.toId === toId);
+      const nextSourceRelations = sourceHasRelation
+        ? source.relations.map((relation) => (relation.toId === toId ? newRelation : relation))
+        : [...source.relations, newRelation];
+
+      const shouldUpdateSource = sourceHasRelation
+        ? source.relations.some((relation) => relation.toId === toId && relation.kind !== kind)
+        : true;
+      if (shouldUpdateSource) {
+        void updateArtifact(fromId, { relations: nextSourceRelations });
+      }
+
+      const reciprocalExists = target.relations.some((relation) => relation.toId === fromId);
+      const nextTargetRelations = reciprocalExists
+        ? target.relations.map((relation) =>
+            relation.toId === fromId ? reciprocalRelation : relation,
+          )
+        : [...target.relations, reciprocalRelation];
+
+      const shouldUpdateTarget = reciprocalExists
+        ? target.relations.some(
+            (relation) => relation.toId === fromId && relation.kind !== kind,
+          )
+        : true;
+
+      if (shouldUpdateTarget) {
+        void updateArtifact(toId, { relations: nextTargetRelations });
+      }
     },
     [artifacts, updateArtifact],
   );
@@ -764,8 +795,26 @@ export default function App() {
       if (!source) {
         return;
       }
+
+      const relationToRemove = source.relations[relationIndex];
+      if (!relationToRemove) {
+        return;
+      }
+
       const nextRelations = source.relations.filter((_, index) => index !== relationIndex);
       void updateArtifact(fromId, { relations: nextRelations });
+
+      const target = artifacts.find((artifact) => artifact.id === relationToRemove.toId);
+      if (!target) {
+        return;
+      }
+
+      const nextTargetRelations = target.relations.filter(
+        (relation) => relation.toId !== fromId,
+      );
+      if (nextTargetRelations.length !== target.relations.length) {
+        void updateArtifact(relationToRemove.toId, { relations: nextTargetRelations });
+      }
     },
     [artifacts, updateArtifact],
   );
