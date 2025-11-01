@@ -2,6 +2,8 @@ import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_DATA_API_BASE_URL?.replace(/\/$/, '') ?? '';
 
+export const dataApiBaseUrl = API_BASE_URL;
+
 export const isDataApiConfigured = API_BASE_URL.length > 0;
 
 const withAuth = async (token: string | null, init: RequestInit = {}): Promise<RequestInit> => {

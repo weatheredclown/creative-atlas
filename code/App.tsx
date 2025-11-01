@@ -55,7 +55,7 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
-import { downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
+import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
@@ -1837,7 +1837,12 @@ export default function App() {
   };
 
   const handlePublishToGithub = () => {
-    window.location.href = `/api/github/oauth/start`;
+    if (!isDataApiConfigured || !dataApiBaseUrl) {
+      alert('Publishing to GitHub is unavailable because the data API is not configured.');
+      return;
+    }
+
+    window.location.href = `${dataApiBaseUrl}/api/github/oauth/start`;
   }
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
