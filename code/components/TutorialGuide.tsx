@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
+import { TutorialStep } from '../types';
 
 const TutorialGuide: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -46,8 +47,17 @@ const TutorialGuide: React.FC = () => {
 
   const currentTutorialStep = tutorialSteps[currentStep];
 
+  const nextButton = currentTutorialStep.showNextButton ? (
+    <button
+      className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      onClick={handleNextStep}
+    >
+      Next
+    </button>
+  ) : null;
+
   return (
-    <TutorialPopover referenceElement={referenceElement}>
+    <TutorialPopover referenceElement={referenceElement} nextButton={nextButton}>
       <div>
         <h3 className="text-lg font-bold">{currentTutorialStep.title}</h3>
         <p className="mt-2">{currentTutorialStep.explanation}</p>
