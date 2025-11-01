@@ -9,6 +9,18 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'https://creative-atlas.w
   .split(',')
   .map((origin) => origin.trim());
 
+const sessionSecret = process.env.SESSION_SECRET;
+
+if (!sessionSecret) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET must be set in production environments.');
+  }
+
+  console.warn(
+    'SESSION_SECRET is not set; using an insecure fallback secret for development.',
+  );
+}
+
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -30,7 +42,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('dev'));
 app.use(session({
-  secret: 'keyboard cat', // TODO: Use a real secret
+  secret: sessionSecret ?? 'development-insecure-secret',
   resave: false,
   saveUninitialized: true,
   cookie: {
