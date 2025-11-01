@@ -7,6 +7,7 @@ This document provides instructions for agents working on the Creative Atlas cod
 *   The repository is a monorepo with a React frontend in the `code/` directory and a Node.js Express backend in the `server/` directory.
 *   The frontend is a Vite + React + TypeScript application.
 *   The backend is a Node.js Express application written in TypeScript.
+*   When introducing new environment variables or externally configured secrets, document how to provision them in the README and update `.github/workflows/firebase-hosting-merge.yml` so the CI environment stays in sync.
 
 ## Frontend
 
