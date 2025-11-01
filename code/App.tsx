@@ -67,6 +67,7 @@ import InfoModal from './components/InfoModal';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
+import QuickFactsPanel from './components/QuickFactsPanel';
 import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
@@ -172,6 +173,43 @@ const createQuickFactContent = (title: string, fact: string, detail?: string): s
 
   const content = segments.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
   return content.endsWith('\n') ? content : `${content}\n`;
+};
+
+const QUICK_FACT_TAG = 'fact';
+const QUICK_FACT_TITLE_PATTERN = /fact\s+#\d+/i;
+
+const isQuickFactArtifact = (artifact: Artifact): boolean => {
+  if (artifact.type !== ArtifactType.Wiki) {
+    return false;
+  }
+  if (artifact.tags.some((tag) => tag.toLowerCase() === QUICK_FACT_TAG)) {
+    return true;
+  }
+  return QUICK_FACT_TITLE_PATTERN.test(artifact.title);
+};
+
+const extractQuickFactNumber = (artifact: Artifact): number | null => {
+  const match = artifact.title.match(/#(\d+)/);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? '', 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const sortQuickFactsByRecency = (a: Artifact, b: Artifact): number => {
+  const aNumber = extractQuickFactNumber(a);
+  const bNumber = extractQuickFactNumber(b);
+  if (aNumber !== null && bNumber !== null && aNumber !== bNumber) {
+    return bNumber - aNumber;
+  }
+  if (aNumber !== null && bNumber === null) {
+    return -1;
+  }
+  if (aNumber === null && bNumber !== null) {
+    return 1;
+  }
+  return b.title.localeCompare(a.title);
 };
 
 const DAILY_QUESTS_PER_DAY = 4;
@@ -1431,6 +1469,13 @@ export default function App() {
     });
   }, [projects, projectStatusFilter, projectSearchTerm]);
   const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
+  const quickFacts = useMemo(() => {
+    if (!selectedProjectId) {
+      return [];
+    }
+    return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
+  }, [projectArtifacts, selectedProjectId]);
+  const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
   const availableProjectStatuses = useMemo(
     () => Array.from(new Set(projects.map((project) => project.status))).sort((a, b) => a.localeCompare(b)),
     [projects],
@@ -1455,15 +1500,7 @@ export default function App() {
       setIsSavingQuickFact(true);
 
       try {
-        const existingFactCount = projectArtifacts.filter((artifact) => {
-          if (artifact.type !== ArtifactType.Wiki) {
-            return false;
-          }
-          if (artifact.tags.some((tag) => tag.toLowerCase() === 'fact')) {
-            return true;
-          }
-          return /fact\s+#\d+/i.test(artifact.title);
-        }).length;
+        const existingFactCount = projectArtifacts.filter(isQuickFactArtifact).length;
 
         const safeProjectTitle = selectedProject.title.trim().length > 0 ? selectedProject.title.trim() : 'Project';
         const fallbackTitle = `${safeProjectTitle} Fact #${existingFactCount + 1}`;
@@ -1476,7 +1513,7 @@ export default function App() {
           title,
           summary,
           status: 'draft',
-          tags: ['fact'],
+          tags: [QUICK_FACT_TAG],
           relations: [],
           data: { content },
         });
@@ -1819,6 +1856,14 @@ export default function App() {
                   existingArtifacts={projectArtifacts}
                   onArtifactsImported={handleGitHubArtifactsImported}
                   addXp={addXp}
+              />
+
+              <QuickFactsPanel
+                facts={quickFactPreview}
+                totalFacts={quickFacts.length}
+                projectTitle={selectedProject.title}
+                onSelectFact={setSelectedArtifactId}
+                onAddFact={() => setIsQuickFactModalOpen(true)}
               />
 
               <div>
