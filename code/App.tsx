@@ -1500,6 +1500,44 @@ export default function App() {
     [artifacts, updateArtifact],
   );
 
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId),
+    [projects, selectedProjectId],
+  );
+  const visibleProjects = useMemo(() => {
+    const normalizedQuery = projectSearchTerm.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      if (projectStatusFilter !== 'ALL' && project.status !== projectStatusFilter) {
+        return false;
+      }
+
+      if (normalizedQuery) {
+        const haystack = `${project.title} ${project.summary} ${project.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [projects, projectStatusFilter, projectSearchTerm]);
+  const projectArtifacts = useMemo(
+    () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
+    [artifacts, selectedProjectId],
+  );
+  const quickFacts = useMemo(() => {
+    if (!selectedProjectId) {
+      return [];
+    }
+    return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
+  }, [projectArtifacts, selectedProjectId]);
+  const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
+  const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
+  const selectedProjectHiddenBySidebarFilters = Boolean(
+    selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
+  );
+
   const handleDeleteArtifact = useCallback(
     async (artifactId: string) => {
       const success = await deleteArtifact(artifactId);
@@ -1822,38 +1860,6 @@ export default function App() {
       setIsPublishing(false);
     }
   };
-
-  const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
-  const visibleProjects = useMemo(() => {
-    const normalizedQuery = projectSearchTerm.trim().toLowerCase();
-
-    return projects.filter((project) => {
-      if (projectStatusFilter !== 'ALL' && project.status !== projectStatusFilter) {
-        return false;
-      }
-
-      if (normalizedQuery) {
-        const haystack = `${project.title} ${project.summary} ${project.tags.join(' ')}`.toLowerCase();
-        if (!haystack.includes(normalizedQuery)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [projects, projectStatusFilter, projectSearchTerm]);
-  const projectArtifacts = useMemo(() => artifacts.filter(a => a.projectId === selectedProjectId), [artifacts, selectedProjectId]);
-  const quickFacts = useMemo(() => {
-    if (!selectedProjectId) {
-      return [];
-    }
-    return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
-  }, [projectArtifacts, selectedProjectId]);
-  const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
-  const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
-  const selectedProjectHiddenBySidebarFilters = Boolean(
-    selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
-  );
 
   const handleResetProjectFilters = useCallback(() => {
     setProjectStatusFilter('ALL');
