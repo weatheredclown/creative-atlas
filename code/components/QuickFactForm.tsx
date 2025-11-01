@@ -8,21 +8,54 @@ interface QuickFactFormProps {
   isSubmitting: boolean;
 }
 
-const FACT_PROMPTS: readonly string[] = [
-  'The capital city is powered by an ancient engine hidden below the streets.',
-  'Every eclipse awakens a guardian spirit that patrols the border for one night.',
-  'Only members of the lunar guild can read the floating script that appears at dawn.',
-  'The royal family trades in stories instead of gold to pay their allies.',
-  'No one remembers building the lighthouse—yet its flame has never gone out.',
+interface FactPrompt {
+  id: string;
+  prompt: string;
+  spark: string;
+}
+
+const FACT_PROMPTS: readonly FactPrompt[] = [
+  {
+    id: 'leyline-beacon',
+    prompt: 'A dormant leyline beacon beneath headquarters pulses once at dusk, hinting that old wards are waking up.',
+    spark: 'Log a wiki entry about magical infrastructure flickering back online.',
+  },
+  {
+    id: 'clockwork-debt',
+    prompt: 'Someone on the crew secretly owes the Clockwork Guild three favors—and the first repayment is due tonight.',
+    spark: 'Drop a character note about who calls in the debt and why it matters.',
+  },
+  {
+    id: 'whisperwood-rumor',
+    prompt: 'Whisperwood birds fall silent near the northern ridge, the sure sign that a new rift is bleeding through.',
+    spark: 'Map the ridge or queue a quest to seal the breach before dawn.',
+  },
+  {
+    id: 'artifact-glow',
+    prompt: 'A mundane artifact glows whenever it sits beside lexemes that share its root syllable.',
+    spark: 'Link a conlang entry to the relic and explore why language activates it.',
+  },
+  {
+    id: 'streak-charm',
+    prompt: 'Maintaining a seven-day streak unlocks a charm that doubles XP earned from building relations for one session.',
+    spark: 'Celebrate streak milestones or craft a questline tied to the charm\'s power.',
+  },
+  {
+    id: 'map-eclipse',
+    prompt: 'An upcoming eclipse will tint the world map in copper light; any location tagged "eclipse-ready" gains bonus visibility.',
+    spark: 'Tag assets that thrive during the eclipse and note who is preparing.',
+  },
 ];
 
 const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, onCancel, isSubmitting }) => {
   const [fact, setFact] = useState('');
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [promptIndex, setPromptIndex] = useState(() => Math.floor(Math.random() * FACT_PROMPTS.length));
+  const [promptIndex, setPromptIndex] = useState(() =>
+    FACT_PROMPTS.length > 0 ? Math.floor(Math.random() * FACT_PROMPTS.length) : 0,
+  );
 
-  const surprisePrompt = useMemo(() => FACT_PROMPTS[promptIndex] ?? FACT_PROMPTS[0], [promptIndex]);
+  const surprisePrompt = useMemo(() => FACT_PROMPTS[promptIndex] ?? FACT_PROMPTS[0] ?? null, [promptIndex]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -35,14 +68,32 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
     }
 
     setError(null);
-    await onSubmit({ fact: trimmedFact, detail: trimmedDetail.length > 0 ? trimmedDetail : undefined });
+
+    try {
+      await onSubmit({ fact: trimmedFact, detail: trimmedDetail.length > 0 ? trimmedDetail : undefined });
+      setFact('');
+      setDetail('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'We could not save your fact. Please try again.';
+      setError(message);
+    }
   };
 
   const handleSurpriseMe = () => {
+    if (FACT_PROMPTS.length === 0) {
+      return;
+    }
     const nextIndex = (promptIndex + 1) % FACT_PROMPTS.length;
     setPromptIndex(nextIndex);
-    setFact(FACT_PROMPTS[nextIndex]);
+    setFact(FACT_PROMPTS[nextIndex].prompt);
     setError(null);
+  };
+
+  const handleCancel = () => {
+    setFact('');
+    setDetail('');
+    setError(null);
+    onCancel();
   };
 
   return (
@@ -67,9 +118,14 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
           }}
           rows={3}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          placeholder={surprisePrompt}
+          placeholder={
+            surprisePrompt?.prompt ?? 'Capture a small truth, rumor, or detail you can expand later.'
+          }
         />
         {error && <p className="text-xs text-rose-300">{error}</p>}
+        {surprisePrompt?.spark && (
+          <p className="text-xs text-slate-500">Spark: {surprisePrompt.spark}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -102,7 +158,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
       <div className="flex justify-end gap-3">
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
           className="rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
           disabled={isSubmitting}
         >

@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
-import { TagIcon, XMarkIcon } from './Icons';
+import { SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectOverviewProps {
@@ -9,6 +9,64 @@ interface ProjectOverviewProps {
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
 }
+
+interface FactPrompt {
+  id: string;
+  category: string;
+  prompt: string;
+  spark: string;
+}
+
+const FACT_PROMPTS: readonly FactPrompt[] = [
+  {
+    id: 'leyline-beacon',
+    category: 'Lore Hook',
+    prompt: 'A dormant leyline beacon beneath the headquarters pulses once at dusk, hinting that old wards are waking up.',
+    spark: 'Invite collaborators to investigate why the wards are reactivating.',
+  },
+  {
+    id: 'clockwork-debt',
+    category: 'Character Beat',
+    prompt: 'One collaborator secretly owes the Clockwork Guild three favors, and the first repayment comes due tonight.',
+    spark: 'Seed a character or quest artifact about the debt collector showing up early.',
+  },
+  {
+    id: 'whisperwood-rumor',
+    category: 'World Detail',
+    prompt: 'Whisperwood birds fall silent near the northern ridge—a sure sign that a new rift is bleeding through.',
+    spark: 'Capture a location update or quest to secure the ridge before it fractures.',
+  },
+  {
+    id: 'artifact-glow',
+    category: 'Prop Spotlight',
+    prompt: 'An otherwise mundane artifact glows when placed beside conlang lexemes that share its root syllable.',
+    spark: 'Link a lexicon entry to the artifact and explore why language activates it.',
+  },
+  {
+    id: 'streak-charm',
+    category: 'Player Perk',
+    prompt: 'Maintaining a seven-day streak unlocks a charm that doubles XP from relation-building for one session.',
+    spark: 'Add a milestone or quest celebrating the charm and who wields it.',
+  },
+  {
+    id: 'map-eclipse',
+    category: 'Visual Cue',
+    prompt: 'An upcoming eclipse will tint the world map in copper light; any location tagged "eclipse-ready" gains bonus visibility.',
+    spark: 'Tag assets that thrive during the eclipse and note who is preparing.',
+  },
+  {
+    id: 'faction-overture',
+    category: 'Diplomacy Move',
+    prompt: 'A rival faction sends a peace overture encoded in a children\'s rhyme that only veteran players recognize.',
+    spark: 'Draft a lore snippet or quest responding to the coded offer.',
+  },
+  {
+    id: 'memory-orb',
+    category: 'Relic Memory',
+    prompt: 'A crystalline orb replays one pivotal choice differently every time someone touches it.',
+    spark: 'Outline alternate beats for a key scene using the orb as catalyst.',
+  },
+];
 
 const statusOrder: ProjectStatus[] = [
   ProjectStatus.Idea,
@@ -24,6 +82,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState<string | null>(null);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [factSuggestion, setFactSuggestion] = useState<FactPrompt | null>(null);
+  const [factFeedback, setFactFeedback] = useState<string | null>(null);
+  const [lastFactId, setLastFactId] = useState<string | null>(null);
+  const feedbackTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSummaryDraft(project.summary);
@@ -31,7 +93,22 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     setSummaryError(null);
     setTagInput('');
     setTagError(null);
+    setFactSuggestion(null);
+    setFactFeedback(null);
+    setLastFactId(null);
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
   }, [project.id, project.summary]);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        window.clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const tagCount = useMemo(() => project.tags.length, [project.tags]);
 
@@ -87,6 +164,93 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     if (event.key === 'Enter') {
       event.preventDefault();
       handleAddTag();
+    }
+  };
+
+  const pickRandomFactPrompt = (excludeId?: string): FactPrompt | null => {
+    if (FACT_PROMPTS.length === 0) {
+      return null;
+    }
+    if (!excludeId) {
+      return FACT_PROMPTS[Math.floor(Math.random() * FACT_PROMPTS.length)];
+    }
+    const options = FACT_PROMPTS.filter((prompt) => prompt.id !== excludeId);
+    const pool = options.length > 0 ? options : FACT_PROMPTS;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  const resetFeedbackTimer = () => {
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+    }
+    feedbackTimeoutRef.current = window.setTimeout(() => {
+      setFactFeedback(null);
+      feedbackTimeoutRef.current = null;
+    }, 2400);
+  };
+
+  const handleGenerateFact = () => {
+    const next = pickRandomFactPrompt(lastFactId ?? undefined);
+    if (!next) {
+      return;
+    }
+    setFactSuggestion(next);
+    setLastFactId(next.id);
+    setFactFeedback(null);
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+  };
+
+  const handleInsertFact = () => {
+    if (!factSuggestion) {
+      return;
+    }
+
+    setIsEditingSummary(true);
+    setSummaryError(null);
+    setSummaryDraft((previous) => {
+      const trimmed = previous.trim();
+      if (!trimmed) {
+        return factSuggestion.prompt;
+      }
+      if (trimmed.includes(factSuggestion.prompt)) {
+        return previous;
+      }
+      return `${previous.trimEnd()}\n\n${factSuggestion.prompt}`;
+    });
+    setFactFeedback('Added to summary draft');
+    resetFeedbackTimer();
+  };
+
+  const handleCopyFact = async () => {
+    if (!factSuggestion) {
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      setFactFeedback('Copy not supported—select the text and press Ctrl/Cmd + C');
+      resetFeedbackTimer();
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(factSuggestion.prompt);
+      setFactFeedback('Copied to clipboard');
+    } catch (error) {
+      console.warn('Unable to copy fact prompt', error);
+      setFactFeedback('Copy failed—select the text and press Ctrl/Cmd + C');
+    }
+    resetFeedbackTimer();
+  };
+
+  const handleDismissFact = () => {
+    setFactSuggestion(null);
+    setFactFeedback(null);
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
     }
   };
 
@@ -170,6 +334,71 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
         ) : (
           <p className="text-sm text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg px-4 py-3">
             {project.summary || 'No summary yet. Add one to give collaborators context.'}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-cyan-500/20 p-2 text-cyan-200">
+              <SparklesIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Need a starter fact?</p>
+              <h3 className="text-sm font-semibold text-slate-200">Shuffle a prompt to kickstart your next detail.</h3>
+              <p className="text-xs text-slate-400">
+                These hooks pair well with quick facts, wiki entries, or a fast project summary update.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateFact}
+            className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={FACT_PROMPTS.length === 0}
+          >
+            Shuffle prompt
+          </button>
+        </div>
+        {factSuggestion ? (
+          <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">{factSuggestion.category}</p>
+                <p className="text-sm font-semibold text-slate-100">{factSuggestion.prompt}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissFact}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-200"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleInsertFact}
+                className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white"
+              >
+                Drop into summary
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyFact}
+                className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
+              >
+                Copy prompt
+              </button>
+            </div>
+            {factFeedback && <p className="text-xs font-semibold text-emerald-300">{factFeedback}</p>}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
+            Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without
+            overthinking the full seed form.
           </p>
         )}
       </div>

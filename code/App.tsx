@@ -132,6 +132,46 @@ const countTaggedArtifacts = (artifacts: Artifact[], minimumTags: number) =>
 const countProjectsByStatus = (projects: Project[], status: ProjectStatus) =>
   projects.filter((project) => project.status === status).length;
 
+const deriveQuickFactTitle = (fact: string, fallbackTitle: string): string => {
+  const sanitized = fact.replace(/\s+/g, ' ').trim();
+  if (!sanitized) {
+    return fallbackTitle;
+  }
+
+  const sentenceMatch = sanitized.match(/^[^.!?\n]+[.!?]?/);
+  const firstSentence = (sentenceMatch?.[0] ?? sanitized).trim();
+  if (firstSentence.length <= 60) {
+    return firstSentence;
+  }
+
+  const truncated = firstSentence.slice(0, 57).trimEnd();
+  return `${truncated}\u2026`;
+};
+
+const createQuickFactSummary = (fact: string, detail?: string): string => {
+  const trimmedFact = fact.trim();
+  const trimmedDetail = detail?.trim();
+  const combined = trimmedDetail && trimmedDetail.length > 0 ? `${trimmedFact} — ${trimmedDetail}` : trimmedFact;
+
+  if (combined.length <= 160) {
+    return combined;
+  }
+
+  return `${combined.slice(0, 157).trimEnd()}\u2026`;
+};
+
+const createQuickFactContent = (title: string, fact: string, detail?: string): string => {
+  const trimmedFact = fact.trim();
+  const trimmedDetail = detail?.trim();
+  const segments = [`# ${title}`, '', trimmedFact];
+  if (trimmedDetail && trimmedDetail.length > 0) {
+    segments.push('', trimmedDetail);
+  }
+
+  const content = segments.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  return content.endsWith('\n') ? content : `${content}\n`;
+};
+
 const DAILY_QUESTS_PER_DAY = 4;
 
 const DAILY_QUEST_POOL: Quest[] = [
@@ -1371,7 +1411,13 @@ export default function App() {
   const handleQuickFactSubmit = useCallback(
     async ({ fact, detail }: { fact: string; detail?: string }) => {
       if (!selectedProjectId || !selectedProject) {
-        return;
+        throw new Error('Select a project before saving a fact.');
+      }
+
+      const trimmedFact = fact.trim();
+      const trimmedDetail = detail?.trim();
+      if (!trimmedFact) {
+        throw new Error('Capture at least one sentence for your fact.');
       }
 
       setIsSavingQuickFact(true);
@@ -1387,34 +1433,35 @@ export default function App() {
           return /fact\s+#\d+/i.test(artifact.title);
         }).length;
 
-        const safeProjectTitle = selectedProject.title.trim().length > 0 ? selectedProject.title : 'Project';
-        const factTitle = `${safeProjectTitle} Fact #${existingFactCount + 1}`;
-        const summary = detail ? `${fact} — ${detail}` : fact;
-        const contentLines = [`# ${factTitle}`, '', fact];
-        if (detail) {
-          contentLines.push('', detail);
-        }
+        const safeProjectTitle = selectedProject.title.trim().length > 0 ? selectedProject.title.trim() : 'Project';
+        const fallbackTitle = `${safeProjectTitle} Fact #${existingFactCount + 1}`;
+        const title = deriveQuickFactTitle(trimmedFact, fallbackTitle);
+        const summary = createQuickFactSummary(trimmedFact, trimmedDetail);
+        const content = createQuickFactContent(title, trimmedFact, trimmedDetail);
 
         const created = await createArtifact(selectedProjectId, {
           type: ArtifactType.Wiki,
-          title: factTitle,
+          title,
           summary,
           status: 'draft',
           tags: ['fact'],
           relations: [],
-          data: { content: contentLines.join('\n') },
+          data: { content },
         });
 
-        if (created) {
-          void addXp(3);
-          setSelectedArtifactId(created.id);
-          setIsQuickFactModalOpen(false);
-        } else {
-          alert('We could not save your fact. Please try again.');
+        if (!created) {
+          throw new Error('We could not save your fact. Please try again.');
         }
+
+        void addXp(3);
+        setSelectedArtifactId(created.id);
+        setIsQuickFactModalOpen(false);
       } catch (error) {
         console.error('Failed to save quick fact', error);
-        alert('We could not save your fact. Please try again.');
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('We could not save your fact. Please try again.');
       } finally {
         setIsSavingQuickFact(false);
       }
