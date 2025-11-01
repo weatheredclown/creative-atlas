@@ -335,12 +335,12 @@ export const publishToGitHub = async (
   token: string | null,
   repoName: string,
   publishDir: string,
-): Promise<{ message: string, data: any }> => {
+): Promise<{ message: string; data: unknown }> => {
   if (!isDataApiConfigured) {
     throw new Error('Data API is not configured.');
   }
 
-  return sendJson<{ message: string, data: any }>(token, '/api/github/publish', {
+  return sendJson<{ message: string; data: unknown }>(token, '/api/github/publish', {
     method: 'POST',
     body: { repoName, publishDir },
   });

@@ -5,9 +5,11 @@ import {
     Achievement,
     Artifact,
     ArtifactType,
+    CharacterData,
     ConlangLexeme,
     Milestone,
     Project,
+    ProjectStatus,
     ProjectTemplate,
     Quest,
     Questline,
@@ -16,9 +18,11 @@ import {
     TaskState,
     TemplateCategory,
     TemplateEntry,
+    TimelineData,
     UserProfile,
+    WikiData,
 } from './types';
-import { BookOpenIcon, PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon  } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -60,11 +64,252 @@ import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOver
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 
-const dailyQuests: Quest[] = [
-    { id: 'q1', title: 'First Seed', description: 'Create at least one new artifact.', isCompleted: (artifacts) => artifacts.length > 7, xp: 5 },
-    { id: 'q2', title: 'Task Master', description: 'Complete a task.', isCompleted: (artifacts) => artifacts.some(a => a.type === ArtifactType.Task && (a.data as TaskData).state === TaskState.Done), xp: 8 },
-    { id: 'q3', title: 'Daily Forge', description: 'Create a seed and link it to another.', isCompleted: (artifacts) => artifacts.some(a => a.relations.length > 0), xp: 10 },
+const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
+  artifacts.filter((artifact) => artifact.type === type).length;
+
+const countTasksInState = (artifacts: Artifact[], state: TaskState) =>
+  artifacts.filter(
+    (artifact) =>
+      artifact.type === ArtifactType.Task &&
+      ((artifact.data as TaskData | undefined)?.state ?? null) === state,
+  ).length;
+
+const getCompletedTaskCount = (artifacts: Artifact[]) =>
+  countTasksInState(artifacts, TaskState.Done);
+
+const getTotalRelations = (artifacts: Artifact[]) =>
+  artifacts.reduce((total, artifact) => total + artifact.relations.length, 0);
+
+const countArtifactsWithRelations = (artifacts: Artifact[], minimum: number) =>
+  artifacts.filter((artifact) => artifact.relations.length >= minimum).length;
+
+const getConlangLexemeCount = (artifacts: Artifact[]) =>
+  artifacts
+    .filter((artifact) => artifact.type === ArtifactType.Conlang)
+    .reduce((count, artifact) => {
+      const data = artifact.data as ConlangLexeme[] | undefined;
+      return count + (Array.isArray(data) ? data.length : 0);
+    }, 0);
+
+const getWikiWordCount = (artifacts: Artifact[]) =>
+  artifacts
+    .filter((artifact) => artifact.type === ArtifactType.Wiki)
+    .reduce((count, artifact) => {
+      const data = artifact.data as WikiData | undefined;
+      if (!data || typeof data.content !== 'string') {
+        return count;
+      }
+      const words = data.content.trim().split(/\s+/).filter(Boolean);
+      return count + words.length;
+    }, 0);
+
+const getCharacterTraitCount = (artifacts: Artifact[]) =>
+  artifacts
+    .filter((artifact) => artifact.type === ArtifactType.Character)
+    .reduce((count, artifact) => {
+      const data = artifact.data as CharacterData | undefined;
+      return count + (Array.isArray(data?.traits) ? data.traits.length : 0);
+    }, 0);
+
+const getMaxTimelineEventCount = (artifacts: Artifact[]) =>
+  artifacts
+    .filter((artifact) => artifact.type === ArtifactType.Timeline)
+    .reduce((max, artifact) => {
+      const data = artifact.data as TimelineData | undefined;
+      const events = Array.isArray(data?.events) ? data.events.length : 0;
+      return Math.max(max, events);
+    }, 0);
+
+const countTimelineArtifacts = (artifacts: Artifact[]) =>
+  artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline).length;
+
+const countTaggedArtifacts = (artifacts: Artifact[], minimumTags: number) =>
+  artifacts.filter((artifact) => (artifact.tags?.length ?? 0) >= minimumTags).length;
+
+const countProjectsByStatus = (projects: Project[], status: ProjectStatus) =>
+  projects.filter((project) => project.status === status).length;
+
+const DAILY_QUESTS_PER_DAY = 4;
+
+const DAILY_QUEST_POOL: Quest[] = [
+  {
+    id: 'daily-create-artifact',
+    title: 'Forge Something New',
+    description: 'Create at least one new artifact to expand your atlas.',
+    isCompleted: (artifacts) => artifacts.length >= 9,
+    xp: 10,
+  },
+  {
+    id: 'daily-task-finish',
+    title: 'Ship a Task',
+    description: 'Complete a task and mark it as done.',
+    isCompleted: (artifacts) => getCompletedTaskCount(artifacts) >= 1,
+    xp: 12,
+  },
+  {
+    id: 'daily-task-progress',
+    title: 'Kick Off a Task',
+    description: 'Move two tasks into progress to build momentum.',
+    isCompleted: (artifacts) => countTasksInState(artifacts, TaskState.InProgress) >= 2,
+    xp: 9,
+  },
+  {
+    id: 'daily-link-architect',
+    title: 'Weave the Web',
+    description: 'Link artifacts together until at least three relationships exist.',
+    isCompleted: (artifacts) => getTotalRelations(artifacts) >= 3,
+    xp: 14,
+  },
+  {
+    id: 'daily-character-cast',
+    title: 'Expand the Cast',
+    description: 'Profile a second character to deepen your roster.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Character) >= 2,
+    xp: 9,
+  },
+  {
+    id: 'daily-location-cartographer',
+    title: 'Map New Territory',
+    description: 'Document a second location to enrich your world map.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Location) >= 2,
+    xp: 9,
+  },
+  {
+    id: 'daily-wiki-scribe',
+    title: 'Deepen the Lore',
+    description: 'Write at least 150 words across your wiki entries.',
+    isCompleted: (artifacts) => getWikiWordCount(artifacts) >= 150,
+    xp: 15,
+  },
+  {
+    id: 'daily-timeline-chronicler',
+    title: 'Log the Next Beat',
+    description: 'Record enough timeline entries so one timeline holds three events.',
+    isCompleted: (artifacts) => getMaxTimelineEventCount(artifacts) >= 3,
+    xp: 8,
+  },
+  {
+    id: 'daily-conlang-lexicographer',
+    title: 'Grow the Lexicon',
+    description: 'Record five lexemes across your conlangs.',
+    isCompleted: (artifacts) => getConlangLexemeCount(artifacts) >= 5,
+    xp: 11,
+  },
+  {
+    id: 'daily-project-pulse',
+    title: 'Maintain Momentum',
+    description: 'Keep at least three projects active at once.',
+    isCompleted: (_, projects) => countProjectsByStatus(projects, ProjectStatus.Active) >= 3,
+    xp: 6,
+  },
+  {
+    id: 'daily-scene-director',
+    title: 'Storyboard a Scene',
+    description: 'Create at least one scene artifact to visualize the story.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Scene) >= 1,
+    xp: 8,
+  },
+  {
+    id: 'daily-release-herald',
+    title: 'Draft Release Notes',
+    description: 'Add a release artifact summarizing your latest drop.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Release) >= 1,
+    xp: 12,
+  },
+  {
+    id: 'daily-faction-diplomat',
+    title: 'Outline a Faction',
+    description: 'Create a faction artifact to capture alliances and rivalries.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Faction) >= 1,
+    xp: 11,
+  },
+  {
+    id: 'daily-task-backlog',
+    title: 'Balance the Backlog',
+    description: 'Maintain at least three tasks to organize your workflow.',
+    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Task) >= 3,
+    xp: 7,
+  },
+  {
+    id: 'daily-relation-weaver',
+    title: 'Connect the Threads',
+    description: 'Ensure five artifacts each have at least one relationship.',
+    isCompleted: (artifacts) => countArtifactsWithRelations(artifacts, 1) >= 5,
+    xp: 16,
+  },
+  {
+    id: 'daily-project-portfolio',
+    title: 'Curate the Portfolio',
+    description: 'Steward at least five total projects.',
+    isCompleted: (_, projects) => projects.length >= 5,
+    xp: 5,
+  },
+  {
+    id: 'daily-task-streak',
+    title: 'Ship a Trio',
+    description: 'Complete three tasks to earn a burst of XP.',
+    isCompleted: (artifacts) => getCompletedTaskCount(artifacts) >= 3,
+    xp: 18,
+  },
+  {
+    id: 'daily-character-depth',
+    title: 'Detail the Cast',
+    description: 'Record five character traits across your characters.',
+    isCompleted: (artifacts) => getCharacterTraitCount(artifacts) >= 5,
+    xp: 10,
+  },
+  {
+    id: 'daily-tag-curator',
+    title: 'Tag the Archive',
+    description: 'Keep at least four artifacts richly tagged with two or more labels.',
+    isCompleted: (artifacts) => countTaggedArtifacts(artifacts, 2) >= 4,
+    xp: 9,
+  },
+  {
+    id: 'daily-timeline-historian',
+    title: 'Chronicle Two Eras',
+    description: 'Maintain at least two timeline artifacts.',
+    isCompleted: (artifacts) => countTimelineArtifacts(artifacts) >= 2,
+    xp: 13,
+  },
 ];
+
+const getCurrentDateKey = () => new Date().toISOString().slice(0, 10);
+
+const createSeedFromString = (value: string): number => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return hash >>> 0;
+};
+
+const mulberry32 = (seed: number) => {
+  let state = seed;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const selectDailyQuestsForDate = (dateKey: string, count = DAILY_QUESTS_PER_DAY): Quest[] => {
+  const seed = createSeedFromString(dateKey);
+  const random = mulberry32(seed);
+  const pool = [...DAILY_QUEST_POOL];
+  const selection: Quest[] = [];
+  const questCount = Math.min(count, pool.length);
+
+  for (let index = 0; index < questCount; index += 1) {
+    const choiceIndex = Math.floor(random() * pool.length);
+    selection.push(pool.splice(choiceIndex, 1)[0]);
+  }
+
+  return selection;
+};
 
 const achievements: Achievement[] = [
     { id: 'ach-1', title: 'World Builder', description: 'Create your first project.', isUnlocked: (_, projects) => projects.length > 2 },
@@ -621,6 +866,7 @@ export default function App() {
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
@@ -639,6 +885,28 @@ export default function App() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const delay = Math.max(tomorrow.getTime() - now.getTime(), 0);
+    const timeout = window.setTimeout(() => {
+      setDailyQuestDayKey(getCurrentDateKey());
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [dailyQuestDayKey]);
+
+  const todaysDailyQuests = useMemo(
+    () => selectDailyQuestsForDate(dailyQuestDayKey),
+    [dailyQuestDayKey],
+  );
 
   useEffect(() => {
     if (!projects.length) {
@@ -1301,7 +1569,7 @@ export default function App() {
                 )}
             </div>
           </div>
-          <Quests quests={dailyQuests} artifacts={artifacts} projects={projects} />
+          <Quests quests={todaysDailyQuests} artifacts={artifacts} projects={projects} />
           <QuestlineBoard
             questlines={questlines}
             artifacts={artifacts}
