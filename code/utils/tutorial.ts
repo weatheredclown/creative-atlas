@@ -15,6 +15,7 @@ export const tutorialSteps: TutorialStep[] = [
       "Every great story starts with a project. Give your project a name and a brief description. For our tutorial, we'll use the world of Aethelgard.",
     action: 'Fill in project details',
     target: '#create-project-form',
+    advanceEvent: 'submit',
     prefill: {
       '#project-title': 'Aethelgard',
       '#project-summary': 'A world of magic and adventure.',
@@ -33,6 +34,7 @@ export const tutorialSteps: TutorialStep[] = [
       "A wiki is a great way to organize your world's lore. Give your wiki a title and a short description.",
     action: 'Fill in wiki details',
     target: '#create-artifact-form',
+    advanceEvent: 'submit',
     prefill: {
       '#artifact-title': 'Aethelgard Wiki',
       '#artifact-summary': 'The official wiki for the world of Aethelgard.',
