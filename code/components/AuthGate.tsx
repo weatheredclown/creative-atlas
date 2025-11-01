@@ -170,10 +170,14 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (authLoading || (!isGuestMode && user && dataLoading) || (isGuestMode && dataLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300">
-        <div className="animate-pulse text-center">
-          <CubeIcon className="w-10 h-10 mx-auto text-cyan-400 mb-3" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 px-6 text-slate-300">
+        <div className="flex items-center gap-3 mb-6">
+          <CubeIcon className="w-10 h-10 text-cyan-400" />
+          <h1 className="text-2xl font-bold text-white">Creative Atlas</h1>
+        </div>
+        <div className="animate-pulse text-center space-y-2" role="status" aria-live="polite">
           <p className="text-sm">Loading your creative workspace…</p>
+          <p className="text-xs text-slate-500">This should only take a moment.</p>
         </div>
       </div>
     );
