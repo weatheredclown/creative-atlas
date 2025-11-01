@@ -20,6 +20,15 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData,
     onUpdateArtifactData(artifact.id, { content: e.target.value });
   };
 
+  const handleInsertText = (text: string) => {
+    setContent((prevContent) => {
+      const needsSeparator = prevContent.trim().length > 0;
+      const updatedContent = needsSeparator ? `${prevContent}\n\n${text}` : text;
+      onUpdateArtifactData(artifact.id, { content: updatedContent });
+      return updatedContent;
+    });
+  };
+
   const previewHtml = useMemo(() => simpleMarkdownToHtml(content), [content]);
 
   return (
