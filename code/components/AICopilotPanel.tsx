@@ -1,14 +1,33 @@
 import React, { useState } from 'react';
 import { AIAssistant } from '../types';
 import { SparklesIcon, BookOpenIcon } from './Icons';
+import { generateText } from '../services/generation';
 
 interface AICopilotPanelProps {
   assistants: AIAssistant[];
+  onGenerate: (text: string) => void;
 }
 
-const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants }) => {
+const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate }) => {
   const [activeId, setActiveId] = useState<string>(assistants[0]?.id ?? '');
   const activeAssistant = assistants.find((assistant) => assistant.id === activeId) ?? assistants[0];
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGenerateClick = async () => {
+    if (!activeAssistant) return;
+    setIsLoading(true);
+    try {
+      // Using the first prompt slot as the prompt for now
+      const prompt = activeAssistant.promptSlots[0] || 'Generate something creative.';
+      const generatedText = await generateText(prompt);
+      onGenerate(generatedText);
+    } catch (error) {
+      console.error('Failed to generate text:', error);
+      // Optionally, handle the error in the UI
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-5">
@@ -43,24 +62,36 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants }) => {
         </nav>
 
         {activeAssistant && (
-          <article className="flex-1 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Focus</p>
-              <h4 className="text-lg font-semibold text-slate-100">{activeAssistant.focus}</h4>
-            </div>
-            <p className="text-sm text-slate-300">{activeAssistant.description}</p>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <BookOpenIcon className="w-4 h-4 text-cyan-300" />
-                Prompt Slots
+          <article className="flex-1 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 space-y-4 flex flex-col">
+            <div className="flex-grow">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Focus</p>
+                <h4 className="text-lg font-semibold text-slate-100">{activeAssistant.focus}</h4>
               </div>
-              <ul className="space-y-2 text-sm text-slate-200">
-                {activeAssistant.promptSlots.map((slot) => (
-                  <li key={slot} className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 font-mono text-xs">
-                    {slot}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm text-slate-300 mt-2">{activeAssistant.description}</p>
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <BookOpenIcon className="w-4 h-4 text-cyan-300" />
+                  Prompt Slots
+                </div>
+                <ul className="space-y-2 text-sm text-slate-200">
+                  {activeAssistant.promptSlots.map((slot) => (
+                    <li key={slot} className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 font-mono text-xs">
+                      {slot}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4">
+              <button
+                onClick={handleGenerateClick}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-cyan-600/30 border border-cyan-500/60 text-cyan-200 hover:bg-cyan-600/40 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+              >
+                <SparklesIcon className="w-4 h-4" />
+                {isLoading ? 'Generating...' : 'Generate'}
+              </button>
             </div>
           </article>
         )}
