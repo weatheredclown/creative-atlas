@@ -7,4 +7,4 @@
 Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
 
 ## Acceptance Criteria
-- [ ] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
+- [x] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).

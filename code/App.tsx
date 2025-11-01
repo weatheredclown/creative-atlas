@@ -25,7 +25,7 @@ import {
     WikiData,
     isNarrativeArtifactType,
 } from './types';
-import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon } from './components/Icons';
+import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon, BookOpenIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -44,7 +44,7 @@ import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import TimelineEditor from './components/TimelineEditor';
-import { exportProjectAsStaticSite } from './utils/export';
+import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import { formatStatusLabel } from './utils/status';
@@ -2100,6 +2100,51 @@ export default function App() {
     [selectedProject, dataApiEnabled, getIdToken, triggerDownload, markSelectedProjectActivity],
   );
 
+  const handleChapterBibleExport = useCallback(
+    async (format: 'markdown' | 'pdf') => {
+      if (!selectedProject) {
+        return;
+      }
+
+      if (projectArtifacts.length === 0) {
+        alert('Capture some lore before exporting a chapter bible.');
+        return;
+      }
+
+      try {
+        if (format === 'markdown') {
+          exportChapterBibleMarkdown(selectedProject, projectArtifacts);
+        } else {
+          await exportChapterBiblePdf(selectedProject, projectArtifacts);
+        }
+        markSelectedProjectActivity({ exportedData: true });
+      } catch (error) {
+        console.error('Chapter bible export failed', error);
+        alert('Unable to export the chapter bible right now. Please try again.');
+      }
+    },
+    [selectedProject, projectArtifacts, markSelectedProjectActivity],
+  );
+
+  const handleLoreJsonExport = useCallback(() => {
+    if (!selectedProject) {
+      return;
+    }
+
+    if (projectArtifacts.length === 0) {
+      alert('Capture some lore before exporting a lore bundle.');
+      return;
+    }
+
+    try {
+      exportLoreJson(selectedProject, projectArtifacts);
+      markSelectedProjectActivity({ exportedData: true });
+    } catch (error) {
+      console.error('Lore JSON export failed', error);
+      alert('Unable to export lore JSON right now. Please try again.');
+    }
+  }, [selectedProject, projectArtifacts, markSelectedProjectActivity]);
+
   const handleLoadMoreProjects = useCallback(async () => {
     if (!canLoadMoreProjects) {
       return;
@@ -2342,6 +2387,15 @@ export default function App() {
                         </button>
                         <button onClick={() => { void handleExportArtifacts('tsv'); }} title="Export to TSV" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
                             <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">TSV</span>
+                        </button>
+                        <button onClick={() => { void handleChapterBibleExport('markdown'); }} title="Export chapter bible (Markdown)" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                            <BookOpenIcon className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => { void handleChapterBibleExport('pdf'); }} title="Export chapter bible (PDF)" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                            <span className="flex items-center justify-center w-5 h-5 text-xs font-bold">PDF</span>
+                        </button>
+                        <button onClick={handleLoreJsonExport} title="Export lore JSON for game engines" className="p-2 text-sm font-semibold text-slate-300 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors">
+                            <CubeIcon className="w-5 h-5" />
                         </button>
                         <ViewSwitcher />
                         <button

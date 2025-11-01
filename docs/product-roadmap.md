@@ -15,7 +15,7 @@ The “Organize My Worlds Without Pain” release.
 - [x] Rich text editor with Markdown and AI assist.
 - [x] Relationship graph linking characters ↔ events ↔ worlds.
 - [x] Import pipelines for Markdown and text dumps (chat, drafts).
-- [ ] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
+- [x] Export pipelines for chapter bible PDF/Markdown and lore JSON for game engines (Dustland ACK modules).
 - [x] "Add one fact" button to reduce overwhelm.
 - [x] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
 - [x] "Reveal depth" toggle for simple → detailed fields.
