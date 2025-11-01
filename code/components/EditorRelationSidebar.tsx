@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Artifact } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import { LinkIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon } from './Icons';
+import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
 
 interface RelationOption {
   kind: string;
@@ -39,6 +40,7 @@ const EditorRelationSidebar: React.FC<EditorRelationSidebarProps> = ({
       return acc;
     }, {}),
   );
+  const { showDetailedFields } = useDepthPreferences();
 
   useEffect(() => {
     setDraftSelections((prev) => {
@@ -148,14 +150,15 @@ const EditorRelationSidebar: React.FC<EditorRelationSidebarProps> = ({
                 matches.map(({ relation, index }) => {
                   const target = projectArtifacts.find((candidate) => candidate.id === relation.toId);
                   return (
-                    <div
-                      key={`${relation.kind}-${relation.toId}-${index}`}
-                      className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm text-slate-200"
-                    >
-                      <div>
-                        <p className="font-medium text-cyan-200">{target?.title ?? 'Unknown artifact'}</p>
-                        <p className="text-xs text-slate-400">{target?.type ?? relation.toId}</p>
-                      </div>
+                  <div
+                    key={`${relation.kind}-${relation.toId}-${index}`}
+                    className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm text-slate-200"
+                  >
+                    <div>
+                      <p className="font-medium text-cyan-200">{target?.title ?? 'Unknown artifact'}</p>
+                      <p className="text-xs text-slate-400">{target?.type ?? relation.toId}</p>
+                    </div>
+                    {showDetailedFields && (
                       <button
                         type="button"
                         onClick={() => onRemoveRelation(artifact.id, index)}
@@ -164,48 +167,53 @@ const EditorRelationSidebar: React.FC<EditorRelationSidebarProps> = ({
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-xs text-slate-500 bg-slate-800/40 border border-dashed border-slate-700/60 rounded-md px-3 py-2">
-                  No links yet. Use the quick-add controls below to stitch one in.
-                </p>
-              )}
-            </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-slate-500 bg-slate-800/40 border border-dashed border-slate-700/60 rounded-md px-3 py-2">
+                {showDetailedFields
+                  ? 'No links yet. Use the quick-add controls below to stitch one in.'
+                  : 'No links yet. Reveal depth to begin weaving narrative links.'}
+              </p>
+            )}
+          </div>
 
-            <div className="space-y-2 rounded-md border border-slate-800 bg-slate-900/70 p-3">
-              <div className="relative">
-                <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  value={draft.search}
-                  onChange={(event) => handleSearchChange(option.kind, event.target.value)}
-                  placeholder="Search by title or type"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-md pl-8 pr-3 py-2 text-xs text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                />
+            {showDetailedFields && (
+              <div className="space-y-2 rounded-md border border-slate-800 bg-slate-900/70 p-3">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    value={draft.search}
+                    onChange={(event) => handleSearchChange(option.kind, event.target.value)}
+                    placeholder="Search by title or type"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-md pl-8 pr-3 py-2 text-xs text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                  />
+                </div>
+                <select
+                  value={draft.targetId}
+                  onChange={(event) => handleTargetChange(option.kind, event.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                >
+                  <option value="">{option.placeholder ?? 'Choose an artifact to link'}</option>
+                  {availableTargets.map((candidate) => (
+                    <option key={`${option.kind}-${candidate.id}`} value={candidate.id}>
+                      {candidate.title} ({candidate.type})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleLink(option.kind)}
+                  disabled={!draft.targetId}
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-semibold text-white bg-cyan-600 disabled:bg-slate-700 disabled:text-slate-400 hover:bg-cyan-500 rounded-md transition-colors"
+                >
+                  <PlusIcon className="w-4 h-4" /> Link {label}
+                </button>
               </div>
-              <select
-                value={draft.targetId}
-                onChange={(event) => handleTargetChange(option.kind, event.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-              >
-                <option value="">{option.placeholder ?? 'Choose an artifact to link'}</option>
-                {availableTargets.map((candidate) => (
-                  <option key={`${option.kind}-${candidate.id}`} value={candidate.id}>
-                    {candidate.title} ({candidate.type})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => handleLink(option.kind)}
-                disabled={!draft.targetId}
-                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-semibold text-white bg-cyan-600 disabled:bg-slate-700 disabled:text-slate-400 hover:bg-cyan-500 rounded-md transition-colors"
-              >
-                <PlusIcon className="w-4 h-4" /> Link {label}
-              </button>
-            </div>
+            )}
           </section>
         );
       })}
