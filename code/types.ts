@@ -306,3 +306,37 @@ export interface TutorialStep {
   showNextButton?: boolean;
   advanceEvent?: 'click' | 'submit';
 }
+
+export type NarrativeNeedStatus = 'thriving' | 'steady' | 'cooling' | 'at-risk';
+
+export interface NarrativeNeed {
+  artifactId: string;
+  artifactTitle: string;
+  artifactType: ArtifactType;
+  status: NarrativeNeedStatus;
+  appearances: number;
+  supportLinks: number;
+  summaryLength: number;
+  tagCount: number;
+}
+
+export type ContinuityWarningSeverity = 'info' | 'caution' | 'alert';
+
+export interface ContinuityWarning {
+  id: string;
+  severity: ContinuityWarningSeverity;
+  message: string;
+  recommendation: string;
+  relatedArtifactIds: string[];
+}
+
+export type InspirationCardSuit = 'Character' | 'Setting' | 'Conflict' | 'Lore' | 'Sensory';
+
+export interface InspirationCard {
+  id: string;
+  suit: InspirationCardSuit;
+  title: string;
+  prompt: string;
+  detail: string;
+  tags: string[];
+}

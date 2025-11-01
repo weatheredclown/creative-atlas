@@ -13,6 +13,7 @@ import {
     ProjectTemplate,
     Quest,
     Questline,
+    InspirationCard,
     Relation,
     TaskData,
     TaskState,
@@ -69,6 +70,10 @@ import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
 import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
+import NarrativeHealthPanel from './components/NarrativeHealthPanel';
+import ContinuityMonitor from './components/ContinuityMonitor';
+import InspirationDeck from './components/InspirationDeck';
+import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -912,6 +917,39 @@ const aiAssistants: AIAssistant[] = [
             'trailer_script(projectId, duration)',
         ],
     },
+    {
+        id: 'muse-of-sparks',
+        name: 'Muse of Sparks',
+        description: 'Combines inspiration cards into scene seeds, tone shifts, and sensory palettes on demand.',
+        focus: 'Prompt alchemy & vibe modulation',
+        promptSlots: [
+            'blend_prompts(cardIds, desired_mood)',
+            'sensory_palette(setting, emotion)',
+            'surprise_twist(characterId, constraint)',
+        ],
+    },
+    {
+        id: 'canon-warden',
+        name: 'Canon Warden',
+        description: 'Cross-checks continuity monitor warnings and proposes fixes before contradictions land on the page.',
+        focus: 'Continuity & canon defense',
+        promptSlots: [
+            'continuity_audit(projectId)',
+            'timeline_harmonizer(timelineId)',
+            'character_return_plan(characterId, urgency)',
+        ],
+    },
+    {
+        id: 'arc-archivist',
+        name: 'Arc Archivist',
+        description: 'Tracks character beats across scenes to recommend callbacks and memory sync checkpoints.',
+        focus: 'Arc tracking & memory syncing',
+        promptSlots: [
+            'arc_outline(characterId, beats)',
+            'memory_sync(planId)',
+            'callback_recommendations(sceneId)',
+        ],
+    },
 ];
 
 
@@ -1537,6 +1575,44 @@ export default function App() {
     },
     [selectedProjectId, selectedProject, projectArtifacts, createArtifact, addXp],
   );
+
+  const handleCaptureInspirationCard = useCallback(
+    async (card: InspirationCard) => {
+      if (!selectedProjectId || !selectedProject) {
+        alert('Select a project before capturing inspiration.');
+        return;
+      }
+
+      const suitTag = card.suit.toLowerCase().replace(/\s+/g, '-');
+      const title = `${card.suit} Spark: ${card.title}`;
+      const summary = card.prompt;
+      const content = [
+        `# ${card.title}`,
+        '',
+        card.prompt,
+        '',
+        card.detail,
+        '',
+        `Tags: ${card.tags.map((tag) => `#${tag}`).join(' ')}`,
+      ].join('\n');
+
+      const created = await createArtifact(selectedProjectId, {
+        type: ArtifactType.Wiki,
+        title,
+        summary,
+        status: 'idea',
+        tags: ['inspiration', suitTag, ...card.tags],
+        relations: [],
+        data: { content },
+      });
+
+      if (created) {
+        void addXp(2);
+        setSelectedArtifactId(created.id);
+      }
+    },
+    [selectedProjectId, selectedProject, createArtifact, addXp],
+  );
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
   const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
   const emptyActivity = useMemo(() => createProjectActivity(), []);
@@ -1850,6 +1926,15 @@ export default function App() {
                   onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <NarrativeHealthPanel artifacts={projectArtifacts} />
+                <ContinuityMonitor artifacts={projectArtifacts} />
+              </div>
+              <NarrativePipelineBoard artifacts={projectArtifacts} />
+              <InspirationDeck
+                onCaptureCard={handleCaptureInspirationCard}
+                isCaptureDisabled={!selectedProjectId}
+              />
               <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
