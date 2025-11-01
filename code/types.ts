@@ -82,6 +82,13 @@ export interface CharacterTrait {
 export interface CharacterData {
     bio: string;
     traits: CharacterTrait[];
+    motivation?: string;
+    conflict?: string;
+    secret?: string;
+    narrativeRole?: string;
+    arcStage?: string;
+    voiceNotes?: string;
+    relationships?: string;
 }
 
 export interface WikiData {

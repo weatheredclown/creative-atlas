@@ -3,6 +3,7 @@ import { AIAssistant } from '../types';
 import { MilestoneProgressOverview } from '../utils/milestoneProgress';
 import { SparklesIcon, XMarkIcon } from './Icons';
 import AICopilotPanel from './AICopilotPanel';
+import InspirationDeck from './InspirationDeck';
 import Roadmap from './Roadmap';
 
 interface SecondaryInsightsPanelProps {
@@ -54,6 +55,7 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
         <div className="space-y-6 p-6">
           <AICopilotPanel assistants={assistants} />
           <Roadmap items={milestones} />
+          <InspirationDeck />
         </div>
       </aside>
     </div>

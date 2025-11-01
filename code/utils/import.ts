@@ -29,7 +29,17 @@ const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
         case ArtifactType.Task:
             return { state: TaskState.Todo } as TaskData;
         case ArtifactType.Character:
-            return { bio: '', traits: [] } as CharacterData;
+            return {
+                bio: '',
+                traits: [],
+                motivation: '',
+                conflict: '',
+                secret: '',
+                narrativeRole: '',
+                arcStage: '',
+                voiceNotes: '',
+                relationships: '',
+            } as CharacterData;
         case ArtifactType.Wiki:
             return { content: '' } as WikiData;
         case ArtifactType.Location:
@@ -86,6 +96,13 @@ const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data
                     return {
                         bio: typeof character.bio === 'string' ? character.bio : '',
                         traits: Array.isArray(character.traits) ? character.traits : [],
+                        motivation: typeof character.motivation === 'string' ? character.motivation : '',
+                        conflict: typeof character.conflict === 'string' ? character.conflict : '',
+                        secret: typeof character.secret === 'string' ? character.secret : '',
+                        narrativeRole: typeof character.narrativeRole === 'string' ? character.narrativeRole : '',
+                        arcStage: typeof character.arcStage === 'string' ? character.arcStage : '',
+                        voiceNotes: typeof character.voiceNotes === 'string' ? character.voiceNotes : '',
+                        relationships: typeof character.relationships === 'string' ? character.relationships : '',
                     };
                 }
                 return getDefaultDataForType(type);

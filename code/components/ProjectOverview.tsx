@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
-import { TagIcon, XMarkIcon } from './Icons';
+import { SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectOverviewProps {
@@ -9,6 +9,64 @@ interface ProjectOverviewProps {
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
 }
+
+interface FactPrompt {
+  id: string;
+  category: string;
+  prompt: string;
+  spark: string;
+}
+
+const FACT_PROMPTS: FactPrompt[] = [
+  {
+    id: 'leyline-beacon',
+    category: 'Lore Hook',
+    prompt: 'A dormant leyline beacon beneath the project headquarters pulses once at dusk, hinting that old wards are waking up.',
+    spark: 'Invite the team to investigate magical infrastructure or write a new wiki entry.',
+  },
+  {
+    id: 'clockwork-debt',
+    category: 'Character Beat',
+    prompt: 'One collaborator secretly owes the Clockwork Guild three favors, and the first repayment comes due tonight.',
+    spark: 'Seed a character card or task about the debt collector arriving early.',
+  },
+  {
+    id: 'whisperwood-rumor',
+    category: 'World Detail',
+    prompt: 'Whisperwood birds have stopped singing near the northern ridge, a sure sign that a new rift is bleeding through.',
+    spark: 'Add a location feature or quest about securing the ridge before it fractures.',
+  },
+  {
+    id: 'artifact-glow',
+    category: 'Prop Spotlight',
+    prompt: 'An otherwise mundane artifact glows when placed beside Conlang lexemes that share its root syllable.',
+    spark: 'Link a lexicon entry to the artifact and explore why language activates it.',
+  },
+  {
+    id: 'timeline-glitch',
+    category: 'Continuity Ping',
+    prompt: 'The shared timeline flickers, suggesting someone rewrote an event three days in the future.',
+    spark: 'Log a task to reconcile the conflicting events or create a branching timeline.',
+  },
+  {
+    id: 'faction-overture',
+    category: 'Diplomacy Move',
+    prompt: 'A rival faction sends a peace overture encoded in a children’s rhyme that only veteran players recognize.',
+    spark: 'Draft a message, lore snippet, or quest responding to the coded offer.',
+  },
+  {
+    id: 'streak-charm',
+    category: 'Player Perk',
+    prompt: 'Maintaining a seven-day streak unlocks a charm that doubles XP from relation-building for one session.',
+    spark: 'Update streak copy or add a milestone celebrating consistent collaboration.',
+  },
+  {
+    id: 'map-eclipse',
+    category: 'Visual Cue',
+    prompt: 'An upcoming eclipse will tint the world map in copper light; any location tagged “eclipse-ready” gains bonus visibility.',
+    spark: 'Encourage tagging or preparing assets that benefit from the event.',
+  },
+];
 
 const statusOrder: ProjectStatus[] = [
   ProjectStatus.Idea,
@@ -24,6 +82,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState<string | null>(null);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [factSuggestion, setFactSuggestion] = useState<FactPrompt | null>(null);
+  const [factFeedback, setFactFeedback] = useState<string | null>(null);
+  const [lastFactId, setLastFactId] = useState<string | null>(null);
+  const feedbackTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSummaryDraft(project.summary);
@@ -31,7 +93,15 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     setSummaryError(null);
     setTagInput('');
     setTagError(null);
+    setFactSuggestion(null);
+    setFactFeedback(null);
   }, [project.id, project.summary]);
+
+  useEffect(() => () => {
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+    }
+  }, []);
 
   const tagCount = useMemo(() => project.tags.length, [project.tags]);
 
@@ -90,6 +160,77 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     }
   };
 
+  const resetFeedbackTimer = () => {
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+    }
+    feedbackTimeoutRef.current = window.setTimeout(() => {
+      setFactFeedback(null);
+      feedbackTimeoutRef.current = null;
+    }, 2400);
+  };
+
+  const handleGenerateFact = () => {
+    if (FACT_PROMPTS.length === 0) {
+      return;
+    }
+    let next = FACT_PROMPTS[Math.floor(Math.random() * FACT_PROMPTS.length)];
+    if (FACT_PROMPTS.length > 1 && next.id === lastFactId) {
+      const alternatives = FACT_PROMPTS.filter((prompt) => prompt.id !== lastFactId);
+      next = alternatives[Math.floor(Math.random() * alternatives.length)];
+    }
+    setFactSuggestion(next);
+    setLastFactId(next.id);
+    setFactFeedback(null);
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+  };
+
+  const handleInsertFact = () => {
+    if (!factSuggestion) {
+      return;
+    }
+    setIsEditingSummary(true);
+    setSummaryError(null);
+    setSummaryDraft((previous) => {
+      const trimmed = previous.trim();
+      if (!trimmed) {
+        return factSuggestion.prompt;
+      }
+      if (trimmed.includes(factSuggestion.prompt)) {
+        return previous;
+      }
+      return `${previous.trimEnd()}\n\n${factSuggestion.prompt}`;
+    });
+    setFactFeedback('Added to summary draft');
+    resetFeedbackTimer();
+  };
+
+  const handleCopyFact = async () => {
+    if (!factSuggestion) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(factSuggestion.prompt);
+      setFactFeedback('Copied to clipboard');
+    } catch (error) {
+      console.warn('Unable to copy fact prompt', error);
+      setFactFeedback('Copy failed—select the text and press Ctrl/Cmd + C');
+    }
+    resetFeedbackTimer();
+  };
+
+  const handleDismissFact = () => {
+    setFactSuggestion(null);
+    setFactFeedback(null);
+    if (feedbackTimeoutRef.current) {
+      window.clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+  };
+
   return (
     <>
       <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
@@ -125,18 +266,65 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       </header>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Summary</h3>
-          {!isEditingSummary && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsEditingSummary(true)}
-              className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+              onClick={handleGenerateFact}
+              className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/20"
             >
-              Edit summary
+              <SparklesIcon className="h-4 w-4" /> Add one fact
             </button>
-          )}
+            {!isEditingSummary && (
+              <button
+                type="button"
+                onClick={() => setIsEditingSummary(true)}
+                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+              >
+                Edit summary
+              </button>
+            )}
+          </div>
         </div>
+        {factSuggestion && (
+          <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/70 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">{factSuggestion.category}</p>
+                <p className="text-sm text-slate-200 leading-relaxed">{factSuggestion.prompt}</p>
+                <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissFact}
+                className="text-slate-500 transition hover:text-slate-300"
+                aria-label="Dismiss fact suggestion"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleInsertFact}
+                className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-cyan-500"
+              >
+                Drop into summary
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyFact}
+                className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
+              >
+                Copy prompt
+              </button>
+              {factFeedback && (
+                <span className="text-xs text-slate-400">{factFeedback}</span>
+              )}
+            </div>
+          </div>
+        )}
         {isEditingSummary ? (
           <form className="space-y-3" onSubmit={handleSummarySubmit}>
             <textarea

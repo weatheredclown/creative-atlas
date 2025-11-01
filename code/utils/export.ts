@@ -117,6 +117,31 @@ const generateArtifactMarkdownBody = (artifact: Artifact): string => {
                 });
                 body += '\n';
             }
+            if (charData?.motivation) {
+                body += `## Motivation & Desire\n\n${charData.motivation}\n\n`;
+            }
+            if (charData?.conflict) {
+                body += `## Core Conflict\n\n${charData.conflict}\n\n`;
+            }
+            if (charData?.secret) {
+                body += `## Secrets & Twists\n\n${charData.secret}\n\n`;
+            }
+            if (charData?.narrativeRole || charData?.arcStage || charData?.relationships) {
+                body += '## Narrative Role\n';
+                if (charData.narrativeRole) {
+                    body += `- Role: ${charData.narrativeRole}\n`;
+                }
+                if (charData.arcStage) {
+                    body += `- Arc Stage: ${charData.arcStage}\n`;
+                }
+                if (charData.relationships) {
+                    body += `- Relationships & Allies: ${charData.relationships}\n`;
+                }
+                body += '\n';
+            }
+            if (charData?.voiceNotes) {
+                body += `## Voice & Cadence\n\n${charData.voiceNotes}\n\n`;
+            }
             break;
         }
         case ArtifactType.Conlang: {
@@ -294,7 +319,35 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         charData.traits.forEach(trait => {
             content += `<li class='text-slate-400'><strong class='text-slate-300'>${trait.key}:</strong> ${trait.value}</li>`;
         });
-        content += '</ul></div>';
+        content += '</ul>';
+
+        if (charData.motivation) {
+            content += `<div class='mt-4'><h3 class='font-bold text-slate-200 mb-2'>Motivation &amp; Desire</h3><p class='text-slate-400 whitespace-pre-line leading-relaxed'>${charData.motivation}</p></div>`;
+        }
+        if (charData.conflict) {
+            content += `<div class='mt-4'><h3 class='font-bold text-slate-200 mb-2'>Core Conflict</h3><p class='text-slate-400 whitespace-pre-line leading-relaxed'>${charData.conflict}</p></div>`;
+        }
+        if (charData.secret) {
+            content += `<div class='mt-4'><h3 class='font-bold text-slate-200 mb-2'>Secrets &amp; Twists</h3><p class='text-slate-400 whitespace-pre-line leading-relaxed'>${charData.secret}</p></div>`;
+        }
+        if (charData.narrativeRole || charData.arcStage || charData.relationships) {
+            content += "<div class='mt-4'><h3 class='font-bold text-slate-200 mb-2'>Narrative Role</h3><ul class='list-disc list-inside space-y-1 text-slate-400'>";
+            if (charData.narrativeRole) {
+                content += `<li><strong class='text-slate-300'>Role:</strong> ${charData.narrativeRole}</li>`;
+            }
+            if (charData.arcStage) {
+                content += `<li><strong class='text-slate-300'>Arc Stage:</strong> ${charData.arcStage}</li>`;
+            }
+            if (charData.relationships) {
+                content += `<li><strong class='text-slate-300'>Relationships &amp; Allies:</strong> ${charData.relationships}</li>`;
+            }
+            content += '</ul></div>';
+        }
+        if (charData.voiceNotes) {
+            content += `<div class='mt-4'><h3 class='font-bold text-slate-200 mb-2'>Voice &amp; Cadence</h3><p class='text-slate-400 whitespace-pre-line leading-relaxed'>${charData.voiceNotes}</p></div>`;
+        }
+
+        content += '</div>';
     } else if (artifact.type === ArtifactType.Conlang) {
         const lexemes = artifact.data as ConlangLexeme[];
         if (Array.isArray(lexemes) && lexemes.length > 0) {
