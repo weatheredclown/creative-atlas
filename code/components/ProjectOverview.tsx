@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
 import { TagIcon, XMarkIcon } from './Icons';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectOverviewProps {
   project: Project;
@@ -22,6 +23,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState<string | null>(null);
+  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
 
   useEffect(() => {
     setSummaryDraft(project.summary);
@@ -89,10 +91,11 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   };
 
   return (
-    <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Project Overview</p>
+    <>
+      <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
+        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Project Overview</p>
           <h2 className="text-2xl font-bold text-white mt-1">{project.title}</h2>
           <p className="text-xs text-slate-500 mt-2 font-mono break-all">ID: {project.id}</p>
         </div>
@@ -113,15 +116,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
           </select>
           <button
             type="button"
-            onClick={() => {
-              const confirmed = window.confirm(
-                `Delete project "${project.title}"? This will also remove its artifacts.`,
-              );
-              if (!confirmed) {
-                return;
-              }
-              void onDeleteProject(project.id);
-            }}
+            onClick={() => setIsDeleteConfirmVisible(true)}
             className="px-3 py-2 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
           >
             Delete project
@@ -231,6 +226,17 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
         {tagError && <p className="text-xs text-rose-300">{tagError}</p>}
       </div>
     </section>
+      <ConfirmationModal
+        isOpen={isDeleteConfirmVisible}
+        onClose={() => setIsDeleteConfirmVisible(false)}
+        onConfirm={() => {
+          void onDeleteProject(project.id);
+          setIsDeleteConfirmVisible(false);
+        }}
+        title="Delete Project"
+        message={`Are you sure you want to delete the project "${project.title}"? This action will also remove all of its associated artifacts and cannot be undone.`}
+      />
+    </>
   );
 };
 

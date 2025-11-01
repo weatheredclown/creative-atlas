@@ -278,3 +278,12 @@ export interface UserProfile {
     questlinesClaimed: string[];
     settings: UserSettings;
 }
+
+export interface TutorialStep {
+  title: string;
+  explanation: string;
+  action: string;
+  target: string;
+  prefill?: { [key: string]: string };
+  showNextButton?: boolean;
+}

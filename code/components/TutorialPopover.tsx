@@ -6,9 +6,10 @@ import { useRef } from 'react';
 interface TutorialPopoverProps {
   referenceElement: HTMLElement | null;
   children: React.ReactNode;
+  nextButton?: React.ReactNode;
 }
 
-const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, children }) => {
+const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, children, nextButton }) => {
   const arrowRef = useRef(null);
   const { x, y, strategy, context, middlewareData } = useFloating({
     elements: {
@@ -37,12 +38,13 @@ const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, chi
         left: x ?? 0,
         width: 'max-content',
       }}
-      className="bg-white rounded-lg shadow-lg p-4 z-50"
+      className="z-50 rounded-xl border border-slate-800/80 bg-slate-950/95 px-5 py-4 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur"
     >
       {children}
+      {nextButton}
       <div
         ref={arrowRef}
-        className="absolute bg-white w-4 h-4 transform rotate-45"
+        className="absolute h-3 w-3 rotate-45 border border-slate-800/80 bg-slate-950/95"
         style={{
           left: middlewareData.arrow?.x ?? '',
           top: middlewareData.arrow?.y ?? '',
