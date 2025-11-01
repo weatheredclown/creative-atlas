@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import ReactFlow, { Background, Controls, MiniMap, Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Artifact, ArtifactType } from '../types';
+import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
 
 interface GraphViewProps {
   artifacts: Artifact[];
@@ -10,8 +10,11 @@ interface GraphViewProps {
 }
 
 const nodeColor = (type: ArtifactType): string => {
+  if (isNarrativeArtifactType(type)) {
+    return '#2dd4bf'; // teal-400 for all narrative formats
+  }
+
   switch (type) {
-    case ArtifactType.Story: return '#2dd4bf'; // teal-400
     case ArtifactType.Character: return '#60a5fa'; // blue-400
     case ArtifactType.Location: return '#a78bfa'; // violet-400
     case ArtifactType.Conlang: return '#f472b6'; // pink-400

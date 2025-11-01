@@ -13,6 +13,7 @@ import {
     RepositoryData,
     IssueData,
     ReleaseData,
+    isNarrativeArtifactType,
 } from '../types';
 import JSZip from 'jszip';
 import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
@@ -92,17 +93,18 @@ export function exportArtifactsToTSV(artifacts: Artifact[], projectName: string)
 const generateArtifactMarkdownBody = (artifact: Artifact): string => {
     let body = `# ${artifact.title}\n\n${artifact.summary || ''}\n\n`;
 
-    switch (artifact.type) {
-        case ArtifactType.Story: {
-            const scenes = artifact.data as Scene[];
-            if (Array.isArray(scenes) && scenes.length > 0) {
-                body += '## Scenes\n\n';
-                scenes.forEach((scene, index) => {
-                    body += `### ${index + 1}. ${scene.title}\n${scene.summary || ''}\n\n`;
-                });
-            }
-            break;
+    if (isNarrativeArtifactType(artifact.type)) {
+        const scenes = artifact.data as Scene[];
+        if (Array.isArray(scenes) && scenes.length > 0) {
+            body += '## Scenes\n\n';
+            scenes.forEach((scene, index) => {
+                body += `### ${index + 1}. ${scene.title}\n${scene.summary || ''}\n\n`;
+            });
         }
+        return body;
+    }
+
+    switch (artifact.type) {
         case ArtifactType.Character: {
             const charData = artifact.data as CharacterData;
             if (charData?.bio) {
@@ -274,7 +276,7 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
     content += `<p class='text-slate-400 mb-6'>${artifact.summary}</p>`;
 
     // Render specific data
-    if (artifact.type === ArtifactType.Story) {
+    if (isNarrativeArtifactType(artifact.type)) {
         const scenes = artifact.data as Scene[];
         content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Scenes</h2><div class='grid grid-cols-1 md:grid-cols-2 gap-4'>";
         scenes.forEach(scene => {

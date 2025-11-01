@@ -8,6 +8,7 @@ import {
   TaskData,
   TaskState,
   UserProfile,
+  isNarrativeArtifactType,
 } from '../types';
 
 export type ObjectiveStatus = 'not-started' | 'in-progress' | 'complete';
@@ -104,7 +105,9 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
     }
     case 'rich-editors': {
       const hasConlang = artifacts.some((artifact) => artifact.type === ArtifactType.Conlang);
-      const hasStoryboard = artifacts.some((artifact) => artifact.type === ArtifactType.Story || artifact.type === ArtifactType.Scene);
+      const hasStoryboard = artifacts.some(
+        (artifact) => isNarrativeArtifactType(artifact.type) || artifact.type === ArtifactType.Scene,
+      );
       const sawKanban = activity.viewedKanban;
       const fulfilled = [hasConlang, hasStoryboard, sawKanban].filter(Boolean).length;
       const status: ObjectiveStatus = fulfilled === 0 ? 'not-started' : fulfilled === 3 ? 'complete' : 'in-progress';

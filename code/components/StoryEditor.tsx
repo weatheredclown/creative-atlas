@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Artifact, ArtifactType, Scene } from '../types';
+import { Artifact, ArtifactType, Scene, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 
@@ -12,7 +12,7 @@ const STORY_SUPPORT_TYPES: ArtifactType[] = [
   ArtifactType.Wiki,
 ];
 const STORY_SOURCE_TYPES: ArtifactType[] = [
-  ArtifactType.Story,
+  ...NARRATIVE_ARTIFACT_TYPES,
   ArtifactType.Wiki,
   ArtifactType.Game,
   ArtifactType.Repository,
@@ -56,7 +56,9 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
 
   return (
     <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
-      <h3 className="text-xl font-bold text-teal-400 mb-6">Story Workbench: {artifact.title}</h3>
+      <h3 className="text-xl font-bold text-teal-400 mb-6">
+        Narrative Workbench ({artifact.type}): {artifact.title}
+      </h3>
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

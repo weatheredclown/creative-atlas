@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { Artifact, ArtifactType, CharacterData, CharacterTrait } from '../types';
+import { Artifact, ArtifactType, CharacterData, CharacterTrait, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, UserCircleIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 
 const CHARACTER_APPEARS_IN_TYPES: ArtifactType[] = [
-  ArtifactType.Story,
+  ...NARRATIVE_ARTIFACT_TYPES,
   ArtifactType.Scene,
   ArtifactType.Location,
 ];

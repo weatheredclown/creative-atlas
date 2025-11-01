@@ -13,14 +13,18 @@ import {
     RepositoryData,
     IssueData,
     ReleaseData,
+    isNarrativeArtifactType,
 } from '../types';
 
 const TAB_DELIMITER = '\t';
 
 const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
+    if (isNarrativeArtifactType(type)) {
+        return [];
+    }
+
     switch (type) {
         case ArtifactType.Conlang:
-        case ArtifactType.Story:
             return [];
         case ArtifactType.Task:
             return { state: TaskState.Todo } as TaskData;
@@ -74,8 +78,6 @@ const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data
         switch (type) {
             case ArtifactType.Conlang:
                 return Array.isArray(parsed) ? parsed as ConlangLexeme[] : getDefaultDataForType(type);
-            case ArtifactType.Story:
-                return Array.isArray(parsed) ? parsed as Scene[] : getDefaultDataForType(type);
             case ArtifactType.Task:
                 return (parsed && typeof parsed === 'object') ? parsed as TaskData : getDefaultDataForType(type);
             case ArtifactType.Character: {
@@ -149,6 +151,9 @@ const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data
                 return getDefaultDataForType(type);
             }
             default:
+                if (isNarrativeArtifactType(type)) {
+                    return Array.isArray(parsed) ? parsed as Scene[] : getDefaultDataForType(type);
+                }
                 return parsed ?? {};
         }
     } catch (error) {

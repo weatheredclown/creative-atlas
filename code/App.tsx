@@ -21,6 +21,7 @@ import {
     TimelineData,
     UserProfile,
     WikiData,
+    isNarrativeArtifactType,
 } from './types';
 import { PlusIcon, TableCellsIcon, ShareIcon, ArrowDownTrayIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon } from './components/Icons';
 import Header from './components/Header';
@@ -449,7 +450,7 @@ const templateLibrary: TemplateCategory[] = [
             { id: 'spatch-team', name: 'Team', type: ArtifactType.Faction, description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
             { id: 'spatch-mentor', name: 'Mentor', type: ArtifactType.Character, description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
             { id: 'spatch-rule', name: 'Rule Variant', type: ArtifactType.Wiki, description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
-            { id: 'spatch-match', name: 'Match', type: ArtifactType.Story, description: 'Plan panels, momentum swings, and highlight reels.', tags: ['story'] },
+            { id: 'spatch-match', name: 'Match', type: ArtifactType.WebComic, description: 'Plan panels, momentum swings, and highlight reels.', tags: ['comic'] },
             { id: 'spatch-board', name: 'Panel Board', type: ArtifactType.Timeline, description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
         ],
     },
@@ -464,7 +465,7 @@ const templateLibrary: TemplateCategory[] = [
             { id: 'darv-phonology', name: 'Phonology', type: ArtifactType.Wiki, description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
             { id: 'darv-paradigm', name: 'Paradigm', type: ArtifactType.Wiki, description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
             { id: 'darv-proverb', name: 'Proverb', type: ArtifactType.Wiki, description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
-            { id: 'darv-myth', name: 'Myth', type: ArtifactType.Story, description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
+            { id: 'darv-myth', name: 'Myth', type: ArtifactType.ShortStory, description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
         ],
     },
     {
@@ -474,7 +475,7 @@ const templateLibrary: TemplateCategory[] = [
         recommendedFor: ['Sacred Truth'],
         relatedProjectTemplateIds: ['world-wiki-launchpad'],
         templates: [
-            { id: 'sacred-episode', name: 'Episode', type: ArtifactType.Story, description: 'Structure case-of-the-week arcs with cold opens and cliffhangers.', tags: ['story'] },
+            { id: 'sacred-episode', name: 'Episode', type: ArtifactType.Audiobook, description: 'Script a narrated case-of-the-week with cold opens and cliffhangers.', tags: ['story', 'audio'] },
             { id: 'sacred-case', name: 'Case File', type: ArtifactType.Timeline, description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
             { id: 'sacred-codex', name: 'Monster Codex', type: ArtifactType.Wiki, description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
             { id: 'sacred-cathedral', name: 'Cathedral Asset', type: ArtifactType.Location, description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
@@ -531,7 +532,7 @@ const projectTemplates: ProjectTemplate[] = [
         artifacts: [
             {
                 title: 'Season Roadmap',
-                type: ArtifactType.Story,
+                type: ArtifactType.WebComic,
                 summary: 'Outline upcoming arcs, spotlight issues, and publishing cadence.',
                 status: 'draft',
                 tags: ['roadmap', 'issues'],
@@ -670,12 +671,11 @@ const projectTemplates: ProjectTemplate[] = [
 ];
 
 const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['data'] => {
+    if (type === ArtifactType.Scene || isNarrativeArtifactType(type) || type === ArtifactType.Conlang) {
+        return [];
+    }
+
     switch (type) {
-        case ArtifactType.Conlang:
-            return [];
-        case ArtifactType.Story:
-        case ArtifactType.Scene:
-            return [];
         case ArtifactType.Task:
             return { state: TaskState.Todo } as TaskData;
         case ArtifactType.Character:
@@ -1750,7 +1750,7 @@ export default function App() {
                             addXp={addXp}
                         />
                     )}
-                    {selectedArtifact.type === ArtifactType.Story && (
+                    {isNarrativeArtifactType(selectedArtifact.type) && (
                         <StoryEditor
                             artifact={selectedArtifact}
                             onUpdateArtifactData={(id, scenes) => handleUpdateArtifactData(id, scenes)}
