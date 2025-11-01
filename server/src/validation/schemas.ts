@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const relationsSchema = z
   .string()
+  .default('')
   .transform((val, ctx) => {
     if (!val) return [];
     const relations = val
@@ -21,12 +22,11 @@ const relationsSchema = z
       result.push({ kind: kind.trim(), toId: toId.trim() });
     }
     return result;
-  })
-  .optional()
-  .default([]);
+  });
 
 const jsonSchema = z
   .string()
+  .default('{}')
   .transform((val, ctx) => {
     if (!val) return {};
     try {
@@ -38,21 +38,18 @@ const jsonSchema = z
       });
       return z.NEVER;
     }
-  })
-  .optional()
-  .default({});
+  });
 
 const tagsSchema = z
   .string()
+  .default('')
   .transform((val) => {
     if (!val) return [];
     return val
       .split(';')
       .map((s) => s.trim())
       .filter(Boolean);
-  })
-  .optional()
-  .default([]);
+  });
 
 export const CsvRowSchema = z.object({
   id: z.string().trim().min(1, 'ID is required and cannot be empty.'),
