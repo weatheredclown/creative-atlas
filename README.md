@@ -95,16 +95,16 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
         cp server/.env.example server/.env
         ```
     *   Open `server/.env` and fill in the following values from your GitHub OAuth app:
-        *   `GITHUB_CLIENT_ID`: The "Client ID" of your GitHub OAuth app.
-        *   `GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
+        *   `CA_GITHUB_CLIENT_ID`: The "Client ID" of your GitHub OAuth app.
+        *   `CA_GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
         *   `APP_BASE_URL`: The base URL of your frontend application (e.g., `http://localhost:5173`).
 
 3.  **Configure Deployment Secrets:**
     *   For the GitHub integration to work in the deployed application, you must also configure these variables as secrets in your GitHub repository.
     *   Go to your repository's "Settings" > "Secrets and variables" > "Actions".
     *   Add the following repository secrets:
-        *   `GITHUB_CLIENT_ID`: The Client ID from your OAuth app.
-        *   `GITHUB_CLIENT_SECRET`: The Client Secret from your OAuth app.
+        *   `CA_GITHUB_CLIENT_ID`: The Client ID from your OAuth app.
+        *   `CA_GITHUB_CLIENT_SECRET`: The Client Secret from your OAuth app.
         *   `APP_BASE_URL`: The public URL of your deployed frontend application (e.g., `https://creative-atlas.web.app`).
 
     The GitHub Actions deployment workflow will use these secrets to configure the App Engine environment.
