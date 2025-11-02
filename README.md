@@ -85,9 +85,9 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
     *   Click "New OAuth App".
     *   **Application name:** "Creative Atlas (local)" or similar.
     *   **Homepage URL:** The URL of your frontend application (e.g., `http://localhost:5173`).
-    *   **Authorization callback URL:** This URL must point to your backend's OAuth callback endpoint.
-        *   For **local development**, use `http://localhost:5173/api/github/oauth/callback`. The Vite frontend server will proxy this to your local backend.
-        *   For a **production deployment**, use the public URL of your application, e.g., `https://creative-atlas.web.app/api/github/oauth/callback`. You may need to create a separate GitHub OAuth App for your production environment.
+    *   **Authorization callback URL:** This URL must point to your backend's OAuth callback endpoint (GitHub will reject front-end origins that cannot service the Express callback).
+        *   For **local development**, use `http://localhost:5173/api/github/oauth/callback`. The Vite dev server proxies `/api/*` requests to the Express backend running on port 3000, so the callback still reaches your local API.
+        *   For a **production deployment**, point GitHub to the public URL of your backend—typically the App Engine hostname printed as `defaultHostname` when you run `gcloud app describe` (for this project the default is `https://creative-atlas.uc.r.appspot.com/api/github/oauth/callback`). Create a separate GitHub OAuth App per environment so each callback matches the backend that actually receives it.
 
 2.  **Configure Environment Variables:**
     *   In the `server/` directory, copy the `.env.example` file to a new file named `.env`:
@@ -97,7 +97,7 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
     *   Open `server/.env` and fill in the following values:
         *   `CA_GITHUB_CLIENT_ID`: The "Client ID" of your GitHub OAuth app.
         *   `CA_GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
-        *   `APP_BASE_URL`: The base URL of your frontend application (e.g., `http://localhost:5173`).
+        *   `APP_BASE_URL`: The base URL of your frontend application for local development (e.g., `http://localhost:5173`). When deploying, replace this with the public URL of your backend (for example, the `defaultHostname` reported by `gcloud app describe` such as `https://creative-atlas.uc.r.appspot.com`).
         *   `SESSION_SECRET`: A long, random string used to sign user sessions. Generate one with `openssl rand -hex 32`.
 
 3.  **Configure Deployment Secrets:**
@@ -106,7 +106,7 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
     *   Add the following repository secrets:
         *   `CA_GITHUB_CLIENT_ID`: The Client ID from your OAuth app.
         *   `CA_GITHUB_CLIENT_SECRET`: The Client Secret from your OAuth app.
-        *   `APP_BASE_URL`: The public URL of your deployed frontend application (e.g., `https://creative-atlas.web.app`).
+        *   `APP_BASE_URL`: The public URL of your deployed backend (e.g., `https://creative-atlas.uc.r.appspot.com`).
         *   `SESSION_SECRET`: Match the secret configured for your production deployment.
 
     The GitHub Actions deployment workflow will use these secrets to configure the App Engine environment.
