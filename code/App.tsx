@@ -20,6 +20,7 @@ import {
     type TaskState,
     TemplateCategory,
     TemplateEntry,
+    TemplateArtifactBlueprint,
     TimelineData,
     UserProfile,
     WikiData,
@@ -1756,7 +1757,17 @@ export default function App() {
   }, [selectedProjectId, ensureProjectArtifacts]);
 
   const handleCreateProject = useCallback(
-    async ({ title, summary, tags }: { title: string; summary: string; tags?: string[] }) => {
+    async ({
+      title,
+      summary,
+      tags,
+      artifacts: starterArtifacts,
+    }: {
+      title: string;
+      summary: string;
+      tags?: string[];
+      artifacts?: TemplateArtifactBlueprint[];
+    }) => {
       if (!profile) return;
       const created = await createProject({ title, summary, tags });
       if (!created) {
@@ -1768,8 +1779,38 @@ export default function App() {
       setSelectedArtifactId(null);
       setProjectStatusFilter('ALL');
       setProjectSearchTerm('');
+
+      const normalizedStarters = (starterArtifacts ?? []).filter(
+        (blueprint): blueprint is TemplateArtifactBlueprint =>
+          !!blueprint &&
+          typeof blueprint.title === 'string' &&
+          blueprint.title.trim().length > 0 &&
+          typeof blueprint.summary === 'string' &&
+          blueprint.summary.trim().length > 0,
+      );
+
+      if (normalizedStarters.length > 0) {
+        const drafts = normalizedStarters.map((blueprint) => ({
+          type: blueprint.type,
+          title: blueprint.title,
+          summary: blueprint.summary,
+          status: blueprint.status ?? 'draft',
+          tags: blueprint.tags ?? [],
+          relations: [],
+          data: blueprint.data ?? getDefaultDataForType(blueprint.type, blueprint.title),
+        }));
+
+        const createdArtifacts = await createArtifactsBulk(created.id, drafts);
+        if (createdArtifacts.length > 0) {
+          setInfoModalContent({
+            title: 'Starter artifacts created',
+            message: `We drafted ${createdArtifacts.length} starter artifact${createdArtifacts.length > 1 ? 's' : ''} from your project brief.`,
+          });
+          setSelectedArtifactId(createdArtifacts[0].id);
+        }
+      }
     },
-    [profile, createProject, addXp],
+    [profile, createProject, addXp, createArtifactsBulk],
   );
 
   const handleDeleteProject = useCallback(
