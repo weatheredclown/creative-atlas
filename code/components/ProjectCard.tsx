@@ -51,15 +51,10 @@ const ProjectCard: React.FC<{ project: Project; onSelect: (id: string) => void; 
         </span>
       </div>
       {project.tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {project.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-full bg-slate-800/70 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-300 transition-colors group-hover:bg-slate-700/70"
-            >
-              #{tag}
-            </span>
-          ))}
+        <div className="mt-3">
+          <p className="text-xs text-slate-500">
+            {project.tags.map((tag) => `#${tag}`).join(' ')}
+          </p>
         </div>
       )}
     </div>
