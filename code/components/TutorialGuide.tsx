@@ -5,7 +5,11 @@ import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import Stepper from './Stepper';
 
-const TutorialGuide: React.FC = () => {
+interface TutorialGuideProps {
+  onClose: () => void;
+}
+
+const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
 
@@ -15,9 +19,10 @@ const TutorialGuide: React.FC = () => {
         return previousStep + 1;
       }
 
+      onClose();
       return previousStep;
     });
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
     const step = tutorialSteps[currentStep];
