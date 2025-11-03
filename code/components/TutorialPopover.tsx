@@ -25,8 +25,21 @@ const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, chi
     ],
   });
 
-  if (!referenceElement) {
-    return null;
+  const isPositioned = referenceElement && x != null && y != null;
+
+  if (!isPositioned) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="relative z-10 w-full max-w-md rounded-xl border border-slate-800/80 bg-slate-950/95 p-5 shadow-2xl shadow-cyan-500/10"
+        >
+          {children}
+          {nextButton}
+        </div>
+      </div>
+    );
   }
 
   return (

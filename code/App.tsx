@@ -2367,7 +2367,11 @@ export default function App() {
   return (
     <DepthPreferencesProvider>
       <div className="min-h-screen flex flex-col">
-      {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
+      {isTutorialVisible && (
+        <ErrorBoundary>
+          <TutorialGuide onClose={() => setIsTutorialVisible(false)} />
+        </ErrorBoundary>
+      )}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
