@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
-import { SparklesIcon, TagIcon, XMarkIcon } from './Icons';
+import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectOverviewProps {
@@ -80,18 +80,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const [summaryDraft, setSummaryDraft] = useState(project.summary);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
   const [tagError, setTagError] = useState<string | null>(null);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
   const [factSuggestion, setFactSuggestion] = useState<FactPrompt | null>(null);
   const [factFeedback, setFactFeedback] = useState<string | null>(null);
   const [lastFactId, setLastFactId] = useState<string | null>(null);
   const feedbackTimeoutRef = useRef<number | null>(null);
+  const tagInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setSummaryDraft(project.summary);
     setIsEditingSummary(false);
     setSummaryError(null);
     setTagInput('');
+    setIsAddingTag(false);
     setTagError(null);
     setFactSuggestion(null);
     setFactFeedback(null);
@@ -136,6 +139,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     setIsEditingSummary(false);
   };
 
+  const handleStartAddingTag = () => {
+    setIsAddingTag(true);
+    setTagInput('');
+    setTagError(null);
+    window.setTimeout(() => {
+      tagInputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleCancelAddTag = () => {
+    setIsAddingTag(false);
+    setTagInput('');
+    setTagError(null);
+  };
+
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
     if (!trimmed) {
@@ -152,6 +170,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     onUpdateProject(project.id, { tags: [...project.tags, trimmed] });
     setTagInput('');
     setTagError(null);
+    setIsAddingTag(false);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -164,6 +183,9 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     if (event.key === 'Enter') {
       event.preventDefault();
       handleAddTag();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      handleCancelAddTag();
     }
   };
 
@@ -409,7 +431,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
           Tags
           <span className="text-xs font-normal text-slate-500">({tagCount})</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {project.tags.map((tag) => (
             <span
               key={tag}
@@ -426,33 +448,65 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
               </button>
             </span>
           ))}
-          {project.tags.length === 0 && (
+          {project.tags.length === 0 && !isAddingTag && (
             <span className="text-xs text-slate-500">No tags yet. Add some to aid search and filtering.</span>
           )}
+          {isAddingTag ? (
+            <div className="flex items-center gap-2">
+              <input
+                ref={tagInputRef}
+                type="text"
+                value={tagInput}
+                onChange={(event) => {
+                  setTagInput(event.target.value);
+                  if (tagError) {
+                    setTagError(null);
+                  }
+                }}
+                onKeyDown={handleTagKeyDown}
+                onBlur={() => {
+                  if (!tagInput.trim()) {
+                    handleCancelAddTag();
+                  }
+                }}
+                placeholder="Add a project tag and press Enter"
+                className="bg-slate-900/70 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                aria-label="Add tag"
+              >
+                <PlusIcon className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelAddTag}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800/70 text-slate-300 hover:bg-slate-700/70 transition-colors"
+                aria-label="Cancel adding tag"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartAddingTag}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+              aria-label="Add a new tag"
+            >
+              <PlusIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(event) => {
-              setTagInput(event.target.value);
-              if (tagError) {
-                setTagError(null);
-              }
-            }}
-            onKeyDown={handleTagKeyDown}
-            placeholder="Add a project tag and press Enter"
-            className="flex-1 bg-slate-900/70 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          />
-          <button
-            type="button"
-            onClick={handleAddTag}
-            className="px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
-          >
-            Add tag
-          </button>
-        </div>
-        {tagError && <p className="text-xs text-rose-300">{tagError}</p>}
+        {tagError ? (
+          <p className="text-xs text-rose-300">{tagError}</p>
+        ) : (
+          <p className="text-xs text-slate-500">
+            {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new project tag.'}
+          </p>
+        )}
       </div>
     </section>
       <ConfirmationModal
