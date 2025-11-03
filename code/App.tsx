@@ -46,6 +46,7 @@ import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
+import ProjectHero from './components/ProjectHero';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
@@ -1600,6 +1601,34 @@ export default function App() {
     return projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency);
   }, [projectArtifacts, selectedProjectId]);
   const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
+  const projectHeroStats = useMemo(() => {
+    if (!selectedProject) {
+      return null;
+    }
+
+    const tagSet = new Set<string>();
+    projectArtifacts.forEach((artifact) => {
+      (artifact.tags ?? []).forEach((tag) => {
+        const normalized = tag.trim().toLowerCase();
+        if (normalized.length > 0) {
+          tagSet.add(normalized);
+        }
+      });
+    });
+
+    const narrativePieces = projectArtifacts.filter((artifact) => isNarrativeArtifactType(artifact.type)).length;
+
+    return {
+      totalArtifacts: projectArtifacts.length,
+      completedTasks: getCompletedTaskCount(projectArtifacts),
+      quickFactCount: quickFacts.length,
+      relationCount: getTotalRelations(projectArtifacts),
+      uniqueTagCount: tagSet.size,
+      narrativeCount: narrativePieces,
+      wikiWordCount: getWikiWordCount(projectArtifacts),
+      lexemeCount: getConlangLexemeCount(projectArtifacts),
+    };
+  }, [selectedProject, projectArtifacts, quickFacts]);
   const hasProjectFilters = projectStatusFilter !== 'ALL' || projectSearchTerm.trim() !== '';
   const selectedProjectHiddenBySidebarFilters = Boolean(
     selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
@@ -2507,6 +2536,22 @@ export default function App() {
         <section className="lg:col-span-9 space-y-8">
           {selectedProject ? (
             <>
+              {projectHeroStats ? (
+                <ProjectHero
+                  project={selectedProject}
+                  stats={projectHeroStats}
+                  quickFacts={quickFactPreview}
+                  totalQuickFacts={quickFacts.length}
+                  statusLabel={formatStatusLabel(selectedProject.status)}
+                  onCreateArtifact={() => setIsCreateModalOpen(true)}
+                  onCaptureQuickFact={() => setIsQuickFactModalOpen(true)}
+                  onPublishProject={handlePublish}
+                  onOpenInsights={() => setIsInsightsOpen(true)}
+                  onSelectQuickFact={setSelectedArtifactId}
+                  level={level}
+                  xpProgress={xpProgress}
+                />
+              ) : null}
               <ProjectOverview
                   project={selectedProject}
                   onUpdateProject={handleUpdateProject}
