@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Artifact } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
@@ -39,13 +39,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const [editableSummary, setEditableSummary] = useState(artifact.summary);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const { showDetailedFields } = useDepthPreferences();
+  const tagInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setEditableSummary(artifact.summary);
     setIsEditingSummary(false);
     setTagInput('');
+    setIsAddingTag(false);
     setExpandError(null);
     setRelationTargetId('');
     setRelationKind('RELATES_TO');
@@ -56,8 +59,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
       setShowAddRelation(false);
       setIsEditingSummary(false);
       setShowActions(false);
+      setIsAddingTag(false);
+      setTagInput('');
     }
   }, [showDetailedFields]);
+
+  useEffect(() => {
+    if (isAddingTag) {
+      tagInputRef.current?.focus();
+    }
+  }, [isAddingTag]);
 
   const statusOptions = Array.from(
     new Set([artifact.status, ...BASE_STATUS_OPTIONS].filter((status): status is string => Boolean(status)))
@@ -119,12 +130,17 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     }
     onUpdateArtifact(artifact.id, { tags: [...artifact.tags, newTag] });
     setTagInput('');
+    setIsAddingTag(false);
   };
 
   const handleTagKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       handleAddTag();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsAddingTag(false);
+      setTagInput('');
     }
   };
 
@@ -132,6 +148,15 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     onUpdateArtifact(artifact.id, {
       tags: artifact.tags.filter((tag) => tag !== tagToRemove),
     });
+  };
+
+  const handleStartAddingTag = () => {
+    setIsAddingTag(true);
+  };
+
+  const handleCancelAddTag = () => {
+    setIsAddingTag(false);
+    setTagInput('');
   };
 
   const availableTargets = projectArtifacts.filter((a) => a.id !== artifact.id && !artifact.relations.some((r) => r.toId === a.id));
@@ -246,7 +271,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
 
           <div className="md:col-span-2">
             <label htmlFor="artifact-tags-input" className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Tags</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               {artifact.tags.map((tag) => (
                 <span
                   key={tag}
@@ -264,30 +289,66 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   )}
                 </span>
               ))}
-              {artifact.tags.length === 0 && (
+              {artifact.tags.length === 0 && !isAddingTag && (
                 <span className="text-xs text-slate-500">
-                  {showDetailedFields ? 'No tags yet. Add one below to categorize this artifact.' : 'No tags yet. Reveal depth to start organizing with tags.'}
+                  {showDetailedFields
+                    ? 'No tags yet. Use the + button to add one and categorize this artifact.'
+                    : 'No tags yet. Reveal depth to start organizing with tags.'}
                 </span>
+              )}
+              {showDetailedFields && (
+                <>
+                  {isAddingTag ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={tagInputRef}
+                        id="artifact-tags-input"
+                        type="text"
+                        value={tagInput}
+                        onChange={(event) => setTagInput(event.target.value)}
+                        onKeyDown={handleTagKeyDown}
+                        onBlur={() => {
+                          if (!tagInput.trim()) {
+                            handleCancelAddTag();
+                          }
+                        }}
+                        placeholder="Add tag and press Enter"
+                        className="bg-slate-800 border border-slate-600 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddTag}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                        aria-label="Add tag"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelAddTag}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-700/70 text-slate-300 hover:bg-slate-600/70 transition-colors"
+                        aria-label="Cancel adding tag"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStartAddingTag}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                      aria-label="Add a new tag"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
             {showDetailedFields ? (
-              <div className="flex items-center gap-2">
-                <input
-                  id="artifact-tags-input"
-                  type="text"
-                  value={tagInput}
-                  onChange={(event) => setTagInput(event.target.value)}
-                  onKeyDown={handleTagKeyDown}
-                  placeholder="Add tag and press Enter"
-                  className="flex-grow bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                />
-                <button
-                  onClick={handleAddTag}
-                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
-                >
-                  <PlusIcon className="w-4 h-4" /> Add
-                </button>
-              </div>
+              <p className="text-xs text-slate-500">
+                {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new tag.'}
+              </p>
             ) : (
               <p className="text-xs text-slate-500">Reveal depth to add or edit tags.</p>
             )}
