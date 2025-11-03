@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type } from '@google/genai';
-import type { Artifact, ConlangLexeme } from '../types';
+import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
+import { ArtifactType } from '../types';
 
 const apiKey = import.meta.env.VITE_API_KEY;
 
@@ -45,7 +46,52 @@ interface GeneratedProjectDetails {
   title: string;
   summary: string;
   tags: string[];
+  artifacts: TemplateArtifactBlueprint[];
 }
+
+const GENERATED_ARTIFACT_TYPES: ArtifactType[] = [
+  ArtifactType.Character,
+  ArtifactType.Location,
+  ArtifactType.Faction,
+  ArtifactType.Scene,
+  ArtifactType.Chapter,
+  ArtifactType.Wiki,
+  ArtifactType.Task,
+  ArtifactType.MagicSystem,
+  ArtifactType.Timeline,
+];
+
+const projectArtifactSchema = {
+  type: Type.OBJECT,
+  properties: {
+    title: {
+      type: Type.STRING,
+      description: 'Artifact title. Should highlight a unique element such as a character, location, or lore entry.',
+    },
+    type: {
+      type: Type.STRING,
+      description:
+        `Artifact type. Choose from: ${GENERATED_ARTIFACT_TYPES.map((value) => `'${value}'`).join(', ')}.`,
+    },
+    summary: {
+      type: Type.STRING,
+      description: '1-3 sentence pitch that captures the hook and role of this artifact.',
+    },
+    status: {
+      type: Type.STRING,
+      description: "Optional status label such as 'idea', 'draft', or 'active'.",
+    },
+    tags: {
+      type: Type.ARRAY,
+      description: 'Optional short tags (1-2 words) describing themes or functions.',
+      items: {
+        type: Type.STRING,
+        description: 'Single descriptive tag.',
+      },
+    },
+  },
+  required: ['title', 'type', 'summary'],
+};
 
 const projectBlueprintSchema = {
   type: Type.OBJECT,
@@ -67,6 +113,12 @@ const projectBlueprintSchema = {
         type: Type.STRING,
         description: 'A single descriptive tag (one or two words).',
       },
+    },
+    artifacts: {
+      type: Type.ARRAY,
+      description:
+        '3-6 starter artifacts that would give the creator a head start. Focus on key characters, factions, locations, plot arcs, or lore documents.',
+      items: projectArtifactSchema,
     },
   },
   required: ['title', 'summary'],
@@ -149,6 +201,9 @@ export const generateProjectFromDescription = async (
     - "title": A memorable title (max 60 characters).
     - "summary": A 2-3 sentence summary that captures the tone and focus.
     - "tags": 1-6 short descriptive tags (1-2 words each).
+    - "artifacts": 3-6 starter artifacts. Each should include a title, summary, and type (choose from ${GENERATED_ARTIFACT_TYPES.join(
+        ', ',
+      )}). Mix characters, locations, factions, lore docs, plot beats, or tasks that would jump-start this project.
 
     Keep the tone inspiring but grounded. Tags should be lowercase words or hyphenated phrases.
   `;
@@ -193,10 +248,15 @@ export const generateProjectFromDescription = async (
         )
       : [];
 
+    const artifacts = Array.isArray(parsed.artifacts)
+      ? sanitizeGeneratedArtifacts(parsed.artifacts)
+      : [];
+
     return {
       title,
       summary,
       tags,
+      artifacts,
     };
   } catch (error) {
     console.error('Error generating project blueprint with Gemini:', error);
@@ -207,6 +267,67 @@ export const generateProjectFromDescription = async (
     }
     throw new Error('An unknown error occurred while generating project details.');
   }
+};
+
+const sanitizeGeneratedArtifacts = (artifacts: TemplateArtifactBlueprint[]): TemplateArtifactBlueprint[] => {
+  const seenTitles = new Set<string>();
+  const sanitized: TemplateArtifactBlueprint[] = [];
+
+  for (const item of artifacts) {
+    if (!item || typeof item !== 'object') {
+      continue;
+    }
+
+    const rawTitle = typeof item.title === 'string' ? item.title.trim() : '';
+    const rawSummary = typeof item.summary === 'string' ? item.summary.trim() : '';
+    const rawType = typeof item.type === 'string' ? item.type.trim().toLowerCase() : '';
+    if (!rawTitle || !rawSummary || !rawType) {
+      continue;
+    }
+
+    const type = GENERATED_ARTIFACT_TYPES.find((value) => value.toLowerCase() === rawType);
+    if (!type) {
+      continue;
+    }
+
+    const titleKey = rawTitle.toLowerCase();
+    if (seenTitles.has(titleKey)) {
+      continue;
+    }
+
+    const status = typeof item.status === 'string' ? item.status.trim() : undefined;
+    const tags = Array.isArray(item.tags)
+      ? Array.from(
+          new Set(
+            item.tags
+              .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+              .filter((tag) => tag.length > 0),
+          ),
+        )
+      : [];
+
+    const blueprint: TemplateArtifactBlueprint = {
+      title: rawTitle,
+      summary: rawSummary,
+      type,
+    };
+
+    if (status) {
+      blueprint.status = status;
+    }
+    if (tags.length > 0) {
+      blueprint.tags = tags;
+    }
+
+    sanitized.push(blueprint);
+    seenTitles.add(titleKey);
+
+    if (sanitized.length === 6) {
+      break;
+    }
+  }
+
+  return sanitized;
 };
 
 /**
