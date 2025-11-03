@@ -41,6 +41,37 @@ const lexemeSchema = {
   required: ['lemma', 'pos', 'gloss']
 };
 
+interface GeneratedProjectDetails {
+  title: string;
+  summary: string;
+  tags: string[];
+}
+
+const projectBlueprintSchema = {
+  type: Type.OBJECT,
+  properties: {
+    title: {
+      type: Type.STRING,
+      description:
+        'A concise, compelling project title. Prefer proper nouns and limit to 60 characters.',
+    },
+    summary: {
+      type: Type.STRING,
+      description:
+        'A short project summary (2-3 sentences) highlighting the premise, tone, or core goal.',
+    },
+    tags: {
+      type: Type.ARRAY,
+      description: '1-6 short descriptive tags that help classify the project.',
+      items: {
+        type: Type.STRING,
+        description: 'A single descriptive tag (one or two words).',
+      },
+    },
+  },
+  required: ['title', 'summary'],
+};
+
 /**
  * Implements the "Conlang Smith" AI Copilot.
  * Generates a batch of lexemes for a constructed language based on a theme.
@@ -98,6 +129,83 @@ export const generateLexemes = async (
         throw new Error(`Failed to generate lexemes. The AI model may be unavailable or the request was invalid. Details: ${error.message}`);
     }
     throw new Error('An unknown error occurred while generating lexemes.');
+  }
+};
+
+/**
+ * Implements the "Lore Weaver" AI Copilot.
+ * Expands on a given summary for an artifact.
+ */
+export const generateProjectFromDescription = async (
+  description: string,
+): Promise<GeneratedProjectDetails> => {
+  const prompt = `
+    You are Project Architect, an AI assistant for creative world-builders.
+    Given a detailed description of a creative project, distill it into the structured fields used by Creative Atlas.
+
+    Description: ${description}
+
+    Respond with JSON containing:
+    - "title": A memorable title (max 60 characters).
+    - "summary": A 2-3 sentence summary that captures the tone and focus.
+    - "tags": 1-6 short descriptive tags (1-2 words each).
+
+    Keep the tone inspiring but grounded. Tags should be lowercase words or hyphenated phrases.
+  `;
+
+  try {
+    const response = await getClient().models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: projectBlueprintSchema,
+        temperature: 0.6,
+      },
+    });
+
+    const jsonText = response.text?.trim();
+    if (!jsonText) {
+      throw new Error('AI response was empty.');
+    }
+
+    const parsed = JSON.parse(jsonText) as Partial<GeneratedProjectDetails> | null;
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('AI response is not a valid object.');
+    }
+
+    const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
+    const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+    if (!title || !summary) {
+      throw new Error('AI response is missing required project details.');
+    }
+
+    const tags = Array.isArray(parsed.tags)
+      ? Array.from(
+          new Set(
+            parsed.tags
+              .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+              .filter((tag) => tag.length > 0),
+          ),
+        )
+      : [];
+
+    return {
+      title,
+      summary,
+      tags,
+    };
+  } catch (error) {
+    console.error('Error generating project blueprint with Gemini:', error);
+    if (error instanceof Error) {
+      throw new Error(
+        `Failed to generate project details. The AI model may be unavailable or the request was invalid. Details: ${error.message}`,
+      );
+    }
+    throw new Error('An unknown error occurred while generating project details.');
   }
 };
 

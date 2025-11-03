@@ -53,7 +53,7 @@ interface UserDataContextValue {
   ensureProjectArtifacts: (projectId: string) => Promise<void>;
   canLoadMoreArtifacts: (projectId: string) => boolean;
   loadMoreArtifacts: (projectId: string) => Promise<void>;
-  createProject: (input: { title: string; summary?: string }) => Promise<Project | null>;
+  createProject: (input: { title: string; summary?: string; tags?: string[] }) => Promise<Project | null>;
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<Project | null>;
   deleteProject: (projectId: string) => Promise<boolean>;
   createArtifact: (projectId: string, draft: ArtifactDraft) => Promise<Artifact | null>;
@@ -424,10 +424,18 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const createProject = useCallback(
-    async ({ title, summary }: { title: string; summary?: string }) => {
+    async ({ title, summary, tags }: { title: string; summary?: string; tags?: string[] }) => {
       if (!profile) {
         return null;
       }
+
+      const normalizedTags = Array.from(
+        new Set(
+          (tags ?? [])
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0),
+        ),
+      );
 
       if (isGuestMode || !isDataApiConfigured) {
         const project: Project = {
@@ -436,7 +444,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           title,
           summary: summary ?? '',
           status: ProjectStatus.Active,
-          tags: [],
+          tags: normalizedTags,
         };
         setProjects((current) => [...current, project]);
         setArtifactsByProject((current) => ({ ...current, [project.id]: [] }));
@@ -453,7 +461,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           title,
           summary,
           status: ProjectStatus.Active,
-          tags: [],
+          tags: normalizedTags,
         });
         setProjects((current) => [...current, created]);
         setArtifactsByProject((current) => ({ ...current, [created.id]: [] }));
