@@ -15,8 +15,6 @@ const execAsync = promisify(exec);
 
 const router = Router();
 
-router.use(authenticate);
-
 const GITHUB_CLIENT_ID =
   process.env.CA_GITHUB_CLIENT_ID ?? process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET =
@@ -113,7 +111,7 @@ const respondWithOAuthPage = (
 </html>`);
 };
 
-router.get('/oauth/start', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/oauth/start', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
     const authUrl = createGithubAuthUrl(req);
     if (req.accepts('json')) {
         res.json({ authUrl });
@@ -122,7 +120,7 @@ router.get('/oauth/start', asyncHandler(async (req: AuthenticatedRequest, res) =
     res.redirect(authUrl);
 }));
 
-router.post('/oauth/start', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/oauth/start', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
     const authUrl = createGithubAuthUrl(req);
     res.json({ authUrl });
 }));
@@ -168,7 +166,7 @@ const publishSchema = z.object({
     publishDir: z.string().optional(),
 });
 
-router.post('/publish', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { repoName, publishDir } = publishSchema.parse(req.body);
     const accessToken = req.session.github_access_token;
 
