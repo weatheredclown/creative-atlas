@@ -155,8 +155,8 @@ export const ChevronDownIcon: React.FC<{ className?: string }> = ({ className })
 );
 
 export const TriangleToggleIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12' fill='currentColor' className={className}>
-    <path d='M3 2.5L21 6 3 9.5z' />
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 7' fill='currentColor' className={className}>
+    <path d='M6 7L0 0h12L6 7z' />
   </svg>
 );
 
