@@ -55,8 +55,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/api', workspaceRouter);
 app.use('/api/github', githubRouter);
+app.use('/api', workspaceRouter);
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error in API request', error);
