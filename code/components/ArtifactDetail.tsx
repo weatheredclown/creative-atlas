@@ -9,11 +9,12 @@ import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
 interface ArtifactDetailProps {
   artifact: Artifact;
   projectArtifacts: Artifact[];
-  onUpdateArtifact: (artifactId: string, updates: Partial<Artifact>) => void;
+  onUpdateArtifact: (artifactId:string, updates: Partial<Artifact>) => void;
   onAddRelation: (fromId: string, toId: string, kind: string) => void;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   onDeleteArtifact: (artifactId: string) => Promise<void> | void;
   onDuplicateArtifact: (artifactId: string) => Promise<void> | void;
+  onNewArtifact: (sourceArtifactId: string) => void;
   addXp: (amount: number) => void;
 }
 
@@ -27,6 +28,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   onRemoveRelation,
   onDeleteArtifact,
   onDuplicateArtifact,
+  onNewArtifact,
   addXp,
 }) => {
   const [isExpanding, setIsExpanding] = useState(false);
@@ -174,6 +176,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
                   >
                     <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onNewArtifact(artifact.id);
+                      setShowActions(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                  >
+                    <PlusIcon className="w-4 h-4" /> New Seed
                   </button>
                   <button
                     type="button"

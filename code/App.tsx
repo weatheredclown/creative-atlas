@@ -1288,6 +1288,7 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sourceArtifactId, setSourceArtifactId] = useState<string | null>(null);
   const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -1741,7 +1742,7 @@ export default function App() {
   );
 
   const handleCreateArtifact = useCallback(
-    async ({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
+    async ({ title, type, summary, sourceArtifactId: sourceId }: { title: string; type: ArtifactType; summary: string, sourceArtifactId?: string | null }) => {
       if (!selectedProjectId || !profile) return;
 
       const data: Artifact['data'] = getDefaultDataForType(type, title);
@@ -1757,12 +1758,16 @@ export default function App() {
       });
 
       if (created) {
+        if (sourceId) {
+          handleAddRelation(created.id, sourceId, 'RELATES_TO');
+        }
         void addXp(5);
         setIsCreateModalOpen(false);
+        setSourceArtifactId(null);
         setSelectedArtifactId(created.id);
       }
     },
-    [selectedProjectId, profile, createArtifact, addXp],
+    [selectedProjectId, profile, createArtifact, addXp, handleAddRelation],
   );
 
   const handleSelectTemplate = useCallback(async (template: TemplateEntry) => {
@@ -2727,6 +2732,10 @@ export default function App() {
                       onRemoveRelation={handleRemoveRelation}
                       onDeleteArtifact={handleDeleteArtifact}
                       onDuplicateArtifact={handleDuplicateArtifact}
+                      onNewArtifact={(sourceId) => {
+                        setSourceArtifactId(sourceId);
+                        setIsCreateModalOpen(true);
+                      }}
                       addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
@@ -2899,7 +2908,11 @@ export default function App() {
       >
         <CreateArtifactForm
           onCreate={handleCreateArtifact}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setSourceArtifactId(null);
+          }}
+          sourceArtifactId={sourceArtifactId}
         />
       </Modal>
       <Modal
