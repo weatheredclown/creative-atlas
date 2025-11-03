@@ -8,11 +8,12 @@ const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as Artifact
 );
 
 interface CreateArtifactFormProps {
-  onCreate: (data: { title: string; type: ArtifactType; summary: string }) => void;
+  onCreate: (data: { title: string; type: ArtifactType; summary: string, sourceArtifactId?: string | null }) => void;
   onClose: () => void;
+  sourceArtifactId?: string | null;
 }
 
-const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClose }) => {
+const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClose, sourceArtifactId = null }) => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ArtifactType>(AVAILABLE_TYPES[0] ?? ArtifactType.Story);
   const [summary, setSummary] = useState('');
@@ -24,7 +25,7 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({ onCreate, onClo
       setError('Title is required.');
       return;
     }
-    onCreate({ title, type, summary });
+    onCreate({ title, type, summary, sourceArtifactId });
     onClose();
   };
 

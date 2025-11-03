@@ -41,6 +41,10 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('dev'));
+
+// Trust the first proxy layer (e.g., Google App Engine)
+app.set('trust proxy', 1);
+
 app.use(session({
   secret: sessionSecret ?? 'development-insecure-secret',
   resave: false,
@@ -55,8 +59,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/api', workspaceRouter);
 app.use('/api/github', githubRouter);
+app.use('/api', workspaceRouter);
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error in API request', error);

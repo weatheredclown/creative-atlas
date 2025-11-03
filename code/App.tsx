@@ -44,9 +44,11 @@ import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import TimelineEditor from './components/TimelineEditor';
+import MagicSystemBuilder from './components/MagicSystemBuilder';
 import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
+import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
@@ -76,6 +78,8 @@ import NarrativeHealthPanel from './components/NarrativeHealthPanel';
 import ContinuityMonitor from './components/ContinuityMonitor';
 import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
+import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
+import Zippy from './components/Zippy';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -640,6 +644,7 @@ const projectTemplates: ProjectTemplate[] = [
                 summary: 'Define the rules and consequences of threadweaving.',
                 status: 'draft',
                 tags: ['magic', 'rules'],
+                data: createTamenzutMagicSystemData(),
             },
             {
                 title: 'Threadweaving Rulebook',
@@ -1074,6 +1079,8 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
             return { description: '', features: [] };
         case ArtifactType.Timeline:
             return { events: [] };
+        case ArtifactType.MagicSystem:
+            return createBlankMagicSystemData(title);
         default:
             return {};
     }
@@ -1286,6 +1293,7 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sourceArtifactId, setSourceArtifactId] = useState<string | null>(null);
   const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -1305,9 +1313,11 @@ export default function App() {
   const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
+  const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   
-  const triggerDownload = useCallback((blob: Blob, filename: string) => {
+  const triggerDownload = useCallback((blob: Blob, filename:string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1757,7 +1767,7 @@ export default function App() {
   );
 
   const handleCreateArtifact = useCallback(
-    async ({ title, type, summary }: { title: string; type: ArtifactType; summary: string }) => {
+    async ({ title, type, summary, sourceArtifactId: sourceId }: { title: string; type: ArtifactType; summary: string, sourceArtifactId?: string | null }) => {
       if (!selectedProjectId || !profile) return;
 
       const data: Artifact['data'] = getDefaultDataForType(type, title);
@@ -1773,12 +1783,16 @@ export default function App() {
       });
 
       if (created) {
+        if (sourceId) {
+          handleAddRelation(created.id, sourceId, 'RELATES_TO');
+        }
         void addXp(5);
         setIsCreateModalOpen(false);
+        setSourceArtifactId(null);
         setSelectedArtifactId(created.id);
       }
     },
-    [selectedProjectId, profile, createArtifact, addXp],
+    [selectedProjectId, profile, createArtifact, addXp, handleAddRelation],
   );
 
   const handleSelectTemplate = useCallback(async (template: TemplateEntry) => {
@@ -2366,6 +2380,43 @@ export default function App() {
   const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
   const featuredAssistant = aiAssistants[0];
 
+  const CollapsibleSection: React.FC<{
+    title: string;
+    isCollapsed: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+  }> = ({ title, isCollapsed, onToggle, children }) => (
+    <div className="rounded-lg border border-slate-700/50 bg-slate-800/20">
+      <h2 className="border-b border-slate-700/50 px-4 py-2 text-sm font-semibold text-slate-300">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex w-full items-center justify-between text-left"
+          aria-expanded={!isCollapsed}
+        >
+          <span>{title}</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`h-5 w-5 transform transition-transform ${
+              isCollapsed ? 'rotate-0' : 'rotate-180'
+            }`}
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </h2>
+      <Zippy isOpen={!isCollapsed}>
+        <div className="p-4">{children}</div>
+      </Zippy>
+    </div>
+  );
+
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
         <button onClick={() => handleViewModeChange('table')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'table' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
@@ -2383,7 +2434,11 @@ export default function App() {
   return (
     <DepthPreferencesProvider>
       <div className="min-h-screen flex flex-col">
-      {isTutorialVisible && <ErrorBoundary><TutorialGuide /></ErrorBoundary>}
+      {isTutorialVisible && (
+        <ErrorBoundary>
+          <TutorialGuide onClose={() => setIsTutorialVisible(false)} />
+        </ErrorBoundary>
+      )}
       <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
@@ -2538,7 +2593,24 @@ export default function App() {
                 conversations={projectConversations}
                 onStatusChange={handleMemoryStatusChange}
               />
+              <CollapsibleSection
+                title="Project Insights"
+                isCollapsed={areInsightsCollapsed}
+                onToggle={() => setAreInsightsCollapsed(!areInsightsCollapsed)}
+              >
               <ProjectInsights artifacts={projectArtifacts} />
+              </CollapsibleSection>
+              <CollapsibleSection
+                title="Open Tasks"
+                isCollapsed={areTasksCollapsed}
+                onToggle={() => setAreTasksCollapsed(!areTasksCollapsed)}
+              >
+                <OpenTasksPanel
+                  artifacts={projectArtifacts}
+                  projectTitle={selectedProject.title}
+                  onSelectTask={(taskId) => setSelectedArtifactId(taskId)}
+                />
+              </CollapsibleSection>
               <div>
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
@@ -2577,7 +2649,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setIsQuickFactModalOpen(true)}
-                        className="flex items-center gap-2 rounded-md bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 shadow-lg transition-colors hover:bg-amber-500/30 hover:shadow-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-300/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={!selectedProject}
                         title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
                       >
@@ -2586,7 +2658,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={handlePublish}
-                        className="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-green-500 hover:shadow-green-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
                       >
                         <BuildingStorefrontIcon className="h-5 w-5" />
                         Publish Site
@@ -2595,7 +2667,7 @@ export default function App() {
                         onClick={() => {
                           void handlePublishToGithub();
                         }}
-                        className="flex items-center gap-2 rounded-md bg-gray-700 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-gray-600 hover:shadow-gray-600/50 focus:outline-none focus:ring-2 focus:ring-slate-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
                       >
                         <GitHubIcon className="h-5 w-5" />
                         Publish to GitHub
@@ -2662,27 +2734,29 @@ export default function App() {
                             </button>
                         )}
                         {availableTagFilters.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 w-full border-t border-slate-800/60 pt-2 mt-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</span>
-                                {availableTagFilters.map((tag) => {
-                                    const isActive = activeTagFilters.some((item) => item.toLowerCase() === tag.toLowerCase());
-                                    return (
-                                        <button
-                                            key={tag.toLowerCase()}
-                                            type="button"
-                                            onClick={() => handleToggleTagFilter(tag)}
-                                            aria-pressed={isActive}
-                                            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
-                                                isActive
-                                                    ? 'border-cyan-400/70 bg-cyan-500/20 text-cyan-200 shadow shadow-cyan-500/20'
-                                                    : 'border-slate-700/70 bg-slate-800/60 text-slate-300 hover:border-slate-500 hover:text-slate-100'
-                                            }`}
-                                        >
-                                            #{tag}
-                                        </button>
-                                    );
-                                })}
+                          <div className="flex flex-wrap items-center gap-2 w-full border-t border-slate-800/60 pt-2 mt-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</span>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              {availableTagFilters.map((tag) => {
+                                const isActive = activeTagFilters.some((item) => item.toLowerCase() === tag.toLowerCase());
+                                return (
+                                  <button
+                                    key={tag.toLowerCase()}
+                                    type="button"
+                                    onClick={() => handleToggleTagFilter(tag)}
+                                    aria-pressed={isActive}
+                                    className={`rounded border px-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 ${
+                                      isActive
+                                        ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-200'
+                                        : 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                                    }`}
+                                  >
+                                    {tag}
+                                  </button>
+                                );
+                              })}
                             </div>
+                          </div>
                         )}
                     </div>
                     <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
@@ -2738,6 +2812,10 @@ export default function App() {
                       onRemoveRelation={handleRemoveRelation}
                       onDeleteArtifact={handleDeleteArtifact}
                       onDuplicateArtifact={handleDuplicateArtifact}
+                      onNewArtifact={(sourceId) => {
+                        setSourceArtifactId(sourceId);
+                        setIsCreateModalOpen(true);
+                      }}
                       addXp={addXp}
                     />
                     {selectedArtifact.type === ArtifactType.Conlang && (
@@ -2780,6 +2858,12 @@ export default function App() {
                             projectArtifacts={projectArtifacts}
                             onAddRelation={handleAddRelation}
                             onRemoveRelation={handleRemoveRelation}
+                        />
+                    )}
+                    {selectedArtifact.type === ArtifactType.MagicSystem && (
+                        <MagicSystemBuilder
+                            artifact={selectedArtifact}
+                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Task && (
@@ -2904,7 +2988,11 @@ export default function App() {
       >
         <CreateArtifactForm
           onCreate={handleCreateArtifact}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setSourceArtifactId(null);
+          }}
+          sourceArtifactId={sourceArtifactId}
         />
       </Modal>
       <Modal
