@@ -1756,9 +1756,9 @@ export default function App() {
   }, [selectedProjectId, ensureProjectArtifacts]);
 
   const handleCreateProject = useCallback(
-    async ({ title, summary }: { title: string; summary: string }) => {
+    async ({ title, summary, tags }: { title: string; summary: string; tags?: string[] }) => {
       if (!profile) return;
-      const created = await createProject({ title, summary });
+      const created = await createProject({ title, summary, tags });
       if (!created) {
         return;
       }
