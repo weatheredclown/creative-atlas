@@ -103,6 +103,50 @@ export interface LocationData {
     features: LocationFeature[];
 }
 
+export type MagicStability = 'stable' | 'volatile' | 'forbidden';
+
+export interface MagicSystemPrinciple {
+    id: string;
+    title: string;
+    focus: string;
+    description: string;
+    stability: MagicStability;
+}
+
+export interface MagicSystemSource {
+    id: string;
+    name: string;
+    resonance: string;
+    capacity: string;
+    tells: string;
+}
+
+export interface MagicSystemRitual {
+    id: string;
+    name: string;
+    tier: string;
+    cost: string;
+    effect: string;
+    failure: string;
+}
+
+export interface MagicSystemTaboo {
+    id: string;
+    rule: string;
+    consequence: string;
+    restoration?: string;
+}
+
+export interface MagicSystemData {
+    codexName: string;
+    summary: string;
+    principles: MagicSystemPrinciple[];
+    sources: MagicSystemSource[];
+    rituals: MagicSystemRitual[];
+    taboos: MagicSystemTaboo[];
+    fieldNotes: string[];
+}
+
 export interface RepositoryData {
     url: string;
     stars: number;
@@ -153,6 +197,7 @@ export interface Artifact {
     | IssueData
     | ReleaseData
     | TimelineData
+    | MagicSystemData
     | Record<string, unknown>;
 }
 
