@@ -46,6 +46,7 @@ import TimelineEditor from './components/TimelineEditor';
 import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
+import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
@@ -2513,6 +2514,11 @@ export default function App() {
                   onDeleteProject={handleDeleteProject}
               />
               <ProjectInsights artifacts={projectArtifacts} />
+              <OpenTasksPanel
+                artifacts={projectArtifacts}
+                projectTitle={selectedProject.title}
+                onSelectTask={(taskId) => setSelectedArtifactId(taskId)}
+              />
               <div>
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
