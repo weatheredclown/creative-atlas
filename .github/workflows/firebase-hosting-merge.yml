@@ -93,10 +93,31 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
       - name: Inject secrets into app.yaml
         run: |
-          sed -i "s/CA_GITHUB_CLIENT_ID: .*/CA_GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}/" app.yaml
-          sed -i "s/CA_GITHUB_CLIENT_SECRET: .*/CA_GITHUB_CLIENT_SECRET: ${{ secrets.CA_GITHUB_CLIENT_SECRET }}/" app.yaml
-          sed -i "s/APP_BASE_URL: .*/APP_BASE_URL: ${{ secrets.APP_BASE_URL }}/" app.yaml
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          replacements = {
+              "CA_GITHUB_CLIENT_ID": os.environ["CA_GITHUB_CLIENT_ID"],
+              "CA_GITHUB_CLIENT_SECRET": os.environ["CA_GITHUB_CLIENT_SECRET"],
+              "APP_BASE_URL": os.environ["APP_BASE_URL"],
+          }
+
+          app_yaml = pathlib.Path("app.yaml")
+          contents = app_yaml.read_text()
+
+          for key, value in replacements.items():
+              pattern = rf"^(\s*{key}:\s*).*$"
+              contents = re.sub(pattern, lambda match: f"{match.group(1)}{value}", contents, flags=re.MULTILINE)
+
+          app_yaml.write_text(contents)
+          PY
         working-directory: server
+        env:
+          CA_GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}
+          CA_GITHUB_CLIENT_SECRET: ${{ secrets.CA_GITHUB_CLIENT_SECRET }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
       - name: Deploy to App Engine
         run: gcloud app deploy app.yaml --quiet
         working-directory: server
