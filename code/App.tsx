@@ -1288,6 +1288,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
+  const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
@@ -1682,6 +1683,7 @@ export default function App() {
     setSelectedArtifactId(null);
     setArtifactTypeFilter('ALL');
     setStatusFilter('ALL');
+    setActiveTagFilters([]);
     setSearchTerm('');
   };
 
@@ -2051,7 +2053,45 @@ export default function App() {
     [selectedProjectId, selectedProject, createArtifact, addXp],
   );
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
-  const availableStatuses = useMemo(() => Array.from(new Set(projectArtifacts.map(artifact => artifact.status))).sort(), [projectArtifacts]);
+  const availableStatuses = useMemo(
+    () => Array.from(new Set(projectArtifacts.map((artifact) => artifact.status))).sort(),
+    [projectArtifacts],
+  );
+  const availableTagFilters = useMemo(() => {
+    const seen = new Map<string, string>();
+
+    for (const artifact of projectArtifacts) {
+      for (const rawTag of artifact.tags) {
+        const trimmed = rawTag.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        const key = trimmed.toLowerCase();
+        if (!seen.has(key)) {
+          seen.set(key, trimmed);
+        }
+      }
+    }
+
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [projectArtifacts]);
+  const normalizedActiveTagFilters = useMemo(
+    () => activeTagFilters.map((tag) => tag.toLowerCase()),
+    [activeTagFilters],
+  );
+
+  useEffect(() => {
+    setActiveTagFilters((previous) => {
+      if (previous.length === 0) {
+        return previous;
+      }
+
+      const available = new Set(availableTagFilters.map((tag) => tag.toLowerCase()));
+      const next = previous.filter((tag) => available.has(tag.toLowerCase()));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [availableTagFilters]);
   const emptyActivity = useMemo(() => createProjectActivity(), []);
   const selectedProjectActivity = useMemo(() => {
     if (!selectedProjectId) {
@@ -2107,6 +2147,14 @@ export default function App() {
         return false;
       }
 
+      if (normalizedActiveTagFilters.length > 0) {
+        const artifactTagSet = new Set(artifact.tags.map((tag) => tag.toLowerCase()));
+        const matchesAllTags = normalizedActiveTagFilters.every((tag) => artifactTagSet.has(tag));
+        if (!matchesAllTags) {
+          return false;
+        }
+      }
+
       if (normalizedQuery) {
         const haystack = `${artifact.title} ${artifact.summary} ${artifact.tags.join(' ')}`.toLowerCase();
         if (!haystack.includes(normalizedQuery)) {
@@ -2116,9 +2164,10 @@ export default function App() {
 
       return true;
     });
-  }, [projectArtifacts, artifactTypeFilter, statusFilter, searchTerm]);
+  }, [projectArtifacts, artifactTypeFilter, statusFilter, normalizedActiveTagFilters, searchTerm]);
 
-  const hasActiveFilters = artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '';
+  const hasActiveFilters =
+    artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '' || activeTagFilters.length > 0;
   const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
 
   const handleUpdateProject = useCallback(
@@ -2138,8 +2187,23 @@ export default function App() {
   const handleResetFilters = () => {
     setArtifactTypeFilter('ALL');
     setStatusFilter('ALL');
+    setActiveTagFilters([]);
     setSearchTerm('');
   };
+
+  const handleToggleTagFilter = useCallback((tag: string) => {
+    setActiveTagFilters((previous) => {
+      const normalized = tag.toLowerCase();
+      const isActive = previous.some((item) => item.toLowerCase() === normalized);
+      if (isActive) {
+        return previous.filter((item) => item.toLowerCase() !== normalized);
+      }
+
+      const next = [...previous, tag];
+      next.sort((a, b) => a.localeCompare(b));
+      return next;
+    });
+  }, []);
 
   const handleExportArtifacts = useCallback(
     async (format: 'csv' | 'tsv') => {
@@ -2570,6 +2634,29 @@ export default function App() {
                             >
                                 Clear filters
                             </button>
+                        )}
+                        {availableTagFilters.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 w-full border-t border-slate-800/60 pt-2 mt-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</span>
+                                {availableTagFilters.map((tag) => {
+                                    const isActive = activeTagFilters.some((item) => item.toLowerCase() === tag.toLowerCase());
+                                    return (
+                                        <button
+                                            key={tag.toLowerCase()}
+                                            type="button"
+                                            onClick={() => handleToggleTagFilter(tag)}
+                                            aria-pressed={isActive}
+                                            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+                                                isActive
+                                                    ? 'border-cyan-400/70 bg-cyan-500/20 text-cyan-200 shadow shadow-cyan-500/20'
+                                                    : 'border-slate-700/70 bg-slate-800/60 text-slate-300 hover:border-slate-500 hover:text-slate-100'
+                                            }`}
+                                        >
+                                            #{tag}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                     <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
