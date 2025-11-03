@@ -18,7 +18,6 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
       VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
       VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
-      CA_GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +43,6 @@ jobs:
     needs: build_and_deploy
     runs-on: ubuntu-latest
     env:
-      GCP_PROJECT_ID: creative-atlas
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -79,6 +77,10 @@ jobs:
         env:
           GCP_APP_ENGINE_SERVICE_ACCOUNT: ${{ secrets.GCP_APP_ENGINE_SERVICE_ACCOUNT }}
           FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
+          CA_GITHUB_CLIENT_SECRET: ${{ secrets.CA_GITHUB_CLIENT_SECRET }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}      
+          CA_GITHUB_CLIENT_ID: ${{ secrets.CA_GITHUB_CLIENT_ID }}
+          GCP_PROJECT_ID: creative-atlas      
       - id: auth
         uses: google-github-actions/auth@v2
         with:
