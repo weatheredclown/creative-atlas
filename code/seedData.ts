@@ -1,4 +1,17 @@
-import { Artifact, ArtifactType, ConlangLexeme, LocationData, Project, ProjectStatus, TaskData, TASK_STATE, CharacterData, WikiData, TimelineData } from './types';
+import {
+  Artifact,
+  ArtifactType,
+  ConlangLexeme,
+  LocationData,
+  Project,
+  ProjectStatus,
+  TaskData,
+  TASK_STATE,
+  CharacterData,
+  WikiData,
+  TimelineData,
+} from './types';
+import { createTamenzutMagicSystemData } from './utils/magicSystem';
 
 export interface SeedWorkspace {
   projects: Project[];
@@ -169,6 +182,18 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       tags: ['module', 'adventure'],
       relations: [],
       data: [],
+    },
+    {
+      id: 'art-12',
+      ownerId,
+      projectId: 'proj-1',
+      type: ArtifactType.MagicSystem,
+      title: 'Threadweaving Codex',
+      summary: 'Structure, rituals, and taboos of Tamenzut threadweaving.',
+      status: 'draft',
+      tags: ['magic', 'tamenzut'],
+      relations: [],
+      data: createTamenzutMagicSystemData(),
     },
   ];
 
