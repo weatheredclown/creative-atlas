@@ -106,7 +106,9 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
               aria-controls={preferencesPanelId}
             >
               <TriangleToggleIcon
-                className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-90' : 'rotate-0'}`}
+                className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${
+                  isExpanded ? 'rotate-180' : 'rotate-0'
+                }`}
               />
             </button>
           </div>
