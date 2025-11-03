@@ -24,6 +24,23 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
     });
   }, [onClose]);
 
+  const handleCancelTutorial = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleCancelTutorial);
+
+    return () => {
+      document.removeEventListener('keydown', handleCancelTutorial);
+    };
+  }, [handleCancelTutorial]);
+
   useEffect(() => {
     const step = tutorialSteps[currentStep];
     if (step.target) {
