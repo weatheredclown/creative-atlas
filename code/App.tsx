@@ -43,6 +43,7 @@ import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import TimelineEditor from './components/TimelineEditor';
+import MagicSystemBuilder from './components/MagicSystemBuilder';
 import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
@@ -74,6 +75,7 @@ import NarrativeHealthPanel from './components/NarrativeHealthPanel';
 import ContinuityMonitor from './components/ContinuityMonitor';
 import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
+import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -638,6 +640,7 @@ const projectTemplates: ProjectTemplate[] = [
                 summary: 'Define the rules and consequences of threadweaving.',
                 status: 'draft',
                 tags: ['magic', 'rules'],
+                data: createTamenzutMagicSystemData(),
             },
             {
                 title: 'Threadweaving Rulebook',
@@ -1072,6 +1075,8 @@ const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['da
             return { description: '', features: [] };
         case ArtifactType.Timeline:
             return { events: [] };
+        case ArtifactType.MagicSystem:
+            return createBlankMagicSystemData(title);
         default:
             return {};
     }
@@ -2754,6 +2759,12 @@ export default function App() {
                             projectArtifacts={projectArtifacts}
                             onAddRelation={handleAddRelation}
                             onRemoveRelation={handleRemoveRelation}
+                        />
+                    )}
+                    {selectedArtifact.type === ArtifactType.MagicSystem && (
+                        <MagicSystemBuilder
+                            artifact={selectedArtifact}
+                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
                         />
                     )}
                     {selectedArtifact.type === ArtifactType.Task && (
