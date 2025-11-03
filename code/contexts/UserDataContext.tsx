@@ -6,7 +6,15 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Artifact, Project, ProjectStatus, UserProfile, UserSettings } from '../types';
+import {
+  Artifact,
+  MemorySyncConversation,
+  MemorySyncStatus,
+  Project,
+  ProjectStatus,
+  UserProfile,
+  UserSettings,
+} from '../types';
 import { createSeedWorkspace } from '../seedData';
 import { advanceStreak, formatDateKey } from '../utils/streak';
 import { useAuth } from './AuthContext';
@@ -53,6 +61,12 @@ interface UserDataContextValue {
   updateArtifact: (artifactId: string, updates: Partial<Artifact>) => Promise<Artifact | null>;
   deleteArtifact: (artifactId: string) => Promise<boolean>;
   mergeArtifacts: (projectId: string, artifacts: Artifact[]) => void;
+  memoryConversations: MemorySyncConversation[];
+  updateMemorySuggestionStatus: (
+    conversationId: string,
+    suggestionId: string,
+    status: MemorySyncStatus,
+  ) => void;
   updateProfile: (update: ProfileUpdate) => Promise<void>;
   addXp: (amount: number) => Promise<void>;
 }
@@ -136,6 +150,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [memoryConversations, setMemoryConversations] = useState<MemorySyncConversation[]>([]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -170,6 +185,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setArtifactPageTokens({});
         setProjectPageToken(null);
         setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
+        setMemoryConversations(seed.memoryConversations);
         setLoading(false);
       }
       return () => {
@@ -183,6 +199,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setArtifactPageTokens({});
       setProjectPageToken(undefined);
       setProfile(null);
+      setMemoryConversations([]);
       setLoading(false);
       return () => {
         cancelled = true;
@@ -209,6 +226,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setProjectPageToken(projectData.nextPageToken ?? null);
         setArtifactsByProject({});
         setArtifactPageTokens({});
+        setMemoryConversations([]);
         setError(null);
       } catch (error) {
         reportError(
@@ -223,6 +241,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setArtifactsByProject({});
           setArtifactPageTokens({});
           setProjectPageToken(null);
+          setMemoryConversations([]);
         }
       } finally {
         if (!cancelled) {
@@ -356,6 +375,53 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       [projectId]: current[projectId] ?? null,
     }));
   }, []);
+
+  const updateMemorySuggestionStatus = useCallback(
+    (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
+      setMemoryConversations((previous) =>
+        previous.map((conversation) => {
+          if (conversation.id !== conversationId) {
+            return conversation;
+          }
+
+          let suggestionChanged = false;
+          const suggestions = conversation.suggestions.map((suggestion) => {
+            if (suggestion.id !== suggestionId) {
+              return suggestion;
+            }
+            if (suggestion.status === status) {
+              return suggestion;
+            }
+            suggestionChanged = true;
+            return {
+              ...suggestion,
+              status,
+              updatedAt: new Date().toISOString(),
+            };
+          });
+
+          if (!suggestionChanged) {
+            return conversation;
+          }
+
+          const hasApproved = suggestions.some((item) => item.status === 'approved');
+          const lastSyncedAt =
+            status === 'approved'
+              ? new Date().toISOString()
+              : hasApproved
+              ? conversation.lastSyncedAt
+              : undefined;
+
+          return {
+            ...conversation,
+            suggestions,
+            lastSyncedAt,
+          };
+        }),
+      );
+    },
+    [],
+  );
 
   const createProject = useCallback(
     async ({ title, summary }: { title: string; summary?: string }) => {
@@ -787,6 +853,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updateArtifact,
       deleteArtifact,
       mergeArtifacts,
+      memoryConversations,
+      updateMemorySuggestionStatus,
       updateProfile,
       addXp,
     }),
@@ -810,6 +878,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updateArtifact,
       deleteArtifact,
       mergeArtifacts,
+      memoryConversations,
+      updateMemorySuggestionStatus,
       updateProfile,
       addXp,
     ],

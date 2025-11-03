@@ -20,7 +20,7 @@ The “Organize My Worlds Without Pain” release.
 - [x] World dashboards to add lore, visualize connections, and link crossover projects (Dustland NPC ←→ Sacred Truth vampire cameo).
 - [x] "Reveal depth" toggle for simple → detailed fields.
 - [x] "Narrative need heatmap" that flags characters not seen recently.
-- [ ] Memory sync with Gemini-powered conversations gated by user approval.
+- [x] Memory sync with Gemini-powered conversations gated by user approval.
 
 ### Phase 2 — Gamification & XP Loop
 "Writing and making worlds gives XP. Lorebuilding is a game."

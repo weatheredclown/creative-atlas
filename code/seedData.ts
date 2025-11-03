@@ -10,6 +10,7 @@ import {
   CharacterData,
   WikiData,
   TimelineData,
+  MemorySyncConversation,
 } from './types';
 import { createTamenzutMagicSystemData } from './utils/magicSystem';
 
@@ -17,6 +18,7 @@ export interface SeedWorkspace {
   projects: Project[];
   artifacts: Artifact[];
   xp: number;
+  memoryConversations: MemorySyncConversation[];
 }
 
 export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
@@ -197,10 +199,100 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
     },
   ];
 
+  const memoryConversations: MemorySyncConversation[] = [
+    {
+      id: 'mem-conv-1',
+      projectId: 'proj-1',
+      title: 'Gemini sync — Kaelen and the Dawn Gate incident',
+      summary:
+        'Gemini flagged pivotal beats from the latest Tamenzut session and suggested which artifacts should absorb the memories.',
+      updatedAt: '2024-07-12T15:30:00Z',
+      transcript: [
+        {
+          id: 'mem-conv-1-msg-1',
+          role: 'creator',
+          text: 'Capture the moment Kaelen gives up the silver focus to seal the Dawn Gate. It needs to persist across chapters.',
+          timestamp: '2024-07-12T15:24:00Z',
+        },
+        {
+          id: 'mem-conv-1-msg-2',
+          role: 'gemini',
+          text: 'Logged. Recommending we update Kaelen\'s character sheet and the Darv glossary with the new ritual keyword.',
+          timestamp: '2024-07-12T15:24:40Z',
+        },
+        {
+          id: 'mem-conv-1-msg-3',
+          role: 'creator',
+          text: 'Only sync it if I approve—this is now canon-sensitive.',
+          timestamp: '2024-07-12T15:25:05Z',
+        },
+      ],
+      suggestions: [
+        {
+          id: 'mem-sug-1',
+          statement: 'Add a “Dawn Gate sacrifice” memory beat to Kaelen\'s profile.',
+          rationale: 'Ensures Kaelen\'s future decisions recall the cost of closing the portal.',
+          status: 'pending',
+          createdAt: '2024-07-12T15:30:00Z',
+          artifactId: 'art-2',
+          artifactTitle: 'Kaelen',
+          tags: ['character', 'memory'],
+        },
+        {
+          id: 'mem-sug-2',
+          statement: 'Append the ritual keyword “solenne” to the Darv glossary entry.',
+          rationale: 'Gemini inferred that the chant becomes a recurring trigger for the leyline wards.',
+          status: 'approved',
+          createdAt: '2024-07-12T15:30:00Z',
+          updatedAt: '2024-07-12T15:34:12Z',
+          artifactId: 'art-9',
+          artifactTitle: 'Glossary of Darv Terms',
+          tags: ['language', 'ritual'],
+        },
+      ],
+      lastSyncedAt: '2024-07-12T15:34:12Z',
+    },
+    {
+      id: 'mem-conv-2',
+      projectId: 'proj-4',
+      title: 'Dustland — NPC patrol routes refresh',
+      summary:
+        'Gemini highlighted patrol data for Dustland NPCs so the retro CRT encounter tables stay aligned with the latest playtest.',
+      updatedAt: '2024-06-18T19:12:00Z',
+      transcript: [
+        {
+          id: 'mem-conv-2-msg-1',
+          role: 'gemini',
+          text: 'Detected new chatter about the Rustwatch patrol overlapping with the player hub. Offer to sync?',
+          timestamp: '2024-06-18T19:09:12Z',
+        },
+        {
+          id: 'mem-conv-2-msg-2',
+          role: 'creator',
+          text: 'Log it, but I want to review before it touches the module.',
+          timestamp: '2024-06-18T19:10:01Z',
+        },
+      ],
+      suggestions: [
+        {
+          id: 'mem-sug-3',
+          statement: 'Update “The Sunken City” module with Rustwatch patrol overlap notes.',
+          rationale: 'Keeps encounter pacing consistent when players camp near the hub.',
+          status: 'pending',
+          createdAt: '2024-06-18T19:12:00Z',
+          artifactId: 'art-11',
+          artifactTitle: 'The Sunken City',
+          tags: ['module', 'encounter'],
+        },
+      ],
+    },
+  ];
+
   return {
     projects,
     artifacts,
     xp: 25,
+    memoryConversations,
   };
 };
 

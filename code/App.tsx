@@ -13,6 +13,7 @@ import {
     Quest,
     Questline,
     InspirationCard,
+    MemorySyncStatus,
     Relation,
     TaskData,
     TASK_STATE,
@@ -60,6 +61,7 @@ import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApi
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import MemorySyncPanel from './components/MemorySyncPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
 import TutorialGuide from './components/TutorialGuide';
@@ -1271,6 +1273,8 @@ export default function App() {
     loading,
     error,
     clearError,
+    memoryConversations,
+    updateMemorySuggestionStatus,
     addXp,
     updateProfile,
     ensureProjectArtifacts,
@@ -1344,6 +1348,24 @@ export default function App() {
   const todaysDailyQuests = useMemo(
     () => selectDailyQuestsForDate(dailyQuestDayKey),
     [dailyQuestDayKey],
+  );
+
+  const projectConversations = useMemo(
+    () =>
+      selectedProjectId
+        ? memoryConversations.filter((conversation) => conversation.projectId === selectedProjectId)
+        : [],
+    [memoryConversations, selectedProjectId],
+  );
+
+  const handleMemoryStatusChange = useCallback(
+    (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
+      updateMemorySuggestionStatus(conversationId, suggestionId, status);
+      if (status === 'approved') {
+        void addXp(5);
+      }
+    },
+    [addXp, updateMemorySuggestionStatus],
   );
 
   useEffect(() => {
@@ -2567,12 +2589,16 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
                   onDeleteProject={handleDeleteProject}
               />
+              <MemorySyncPanel
+                conversations={projectConversations}
+                onStatusChange={handleMemoryStatusChange}
+              />
               <CollapsibleSection
                 title="Project Insights"
                 isCollapsed={areInsightsCollapsed}
                 onToggle={() => setAreInsightsCollapsed(!areInsightsCollapsed)}
               >
-                <ProjectInsights artifacts={projectArtifacts} />
+              <ProjectInsights artifacts={projectArtifacts} />
               </CollapsibleSection>
               <CollapsibleSection
                 title="Open Tasks"
