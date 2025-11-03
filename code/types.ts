@@ -344,3 +344,37 @@ export interface InspirationCard {
   detail: string;
   tags: string[];
 }
+
+export type MemorySyncStatus = 'pending' | 'approved' | 'rejected';
+
+export interface MemorySyncSuggestion {
+  id: string;
+  statement: string;
+  rationale: string;
+  status: MemorySyncStatus;
+  createdAt: string;
+  updatedAt?: string;
+  artifactId?: string;
+  artifactTitle?: string;
+  tags?: string[];
+}
+
+export type ConversationRole = 'creator' | 'gemini';
+
+export interface ConversationMessage {
+  id: string;
+  role: ConversationRole;
+  text: string;
+  timestamp: string;
+}
+
+export interface MemorySyncConversation {
+  id: string;
+  projectId: string;
+  title: string;
+  summary: string;
+  updatedAt: string;
+  lastSyncedAt?: string;
+  transcript: ConversationMessage[];
+  suggestions: MemorySyncSuggestion[];
+}
