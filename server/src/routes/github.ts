@@ -32,7 +32,12 @@ const createGithubAuthUrl = (req: AuthenticatedRequest): string => {
   const state = crypto.randomBytes(16).toString('hex');
   req.session.github_oauth_state = state;
 
-  const redirectUri = `${process.env.APP_BASE_URL}/api/github/oauth/callback`;
+  let appBaseUrl = process.env.APP_BASE_URL ?? '';
+  if (appBaseUrl && !appBaseUrl.startsWith('http')) {
+    appBaseUrl = `https://` + appBaseUrl;
+  }
+
+  const redirectUri = `${appBaseUrl}/api/github/oauth/callback`;
   const scope = 'repo,user';
 
   return `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
