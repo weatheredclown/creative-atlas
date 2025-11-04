@@ -45,23 +45,38 @@ const respondWithOAuthPage = (
   res: Response,
   result: { status: 'success' | 'error'; message?: string },
 ) => {
-  const appBaseUrl = process.env.APP_BASE_URL ?? '';
-  let targetOrigin = '*';
-  let fallbackUrl = appBaseUrl || '/';
+  let appBaseUrl = process.env.APP_BASE_URL ?? '';
+  if (appBaseUrl === 'placeholder') {
+    appBaseUrl = '';
+  }
 
-  try {
-    if (appBaseUrl) {
+  if (!appBaseUrl) {
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim());
+    appBaseUrl = allowedOrigins[0] ?? '';
+  }
+
+  let targetOrigin = '*';
+  let fallbackUrl = '/'; // Fallback to root if no base URL can be determined.
+
+  if (appBaseUrl) {
+    try {
       const url = new URL(appBaseUrl);
       targetOrigin = url.origin;
       if (result.status === 'success') {
         url.searchParams.set('github_auth', 'success');
       }
       fallbackUrl = url.toString();
+    } catch (error) {
+      console.warn(
+        'Failed to parse effective APP_BASE_URL for OAuth response',
+        error,
+      );
+      // If the URL is invalid, we can't use it.
+      // We've already set fallbackUrl to '/', so we just log and continue.
+      targetOrigin = '*';
     }
-  } catch (error) {
-    console.warn('Failed to parse APP_BASE_URL for OAuth response', error);
-    targetOrigin = appBaseUrl || '*';
-    fallbackUrl = appBaseUrl || '/';
   }
 
   const payload = JSON.stringify({

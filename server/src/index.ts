@@ -59,6 +59,10 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/', (_req, res) => {
+  res.send('Creative Atlas API is running.');
+});
+
 app.use('/api/github', githubRouter);
 app.use('/api', workspaceRouter);
 
