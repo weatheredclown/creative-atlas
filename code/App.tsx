@@ -2032,7 +2032,7 @@ export default function App() {
       const popup = window.open(
         authUrl,
         'creative-atlas-github-oauth',
-        'width=600,height=700,noopener,noreferrer',
+        'width=600,height=700',
       );
 
       if (!popup) {
