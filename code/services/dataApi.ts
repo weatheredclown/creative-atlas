@@ -383,6 +383,24 @@ export interface GitHubOAuthStartResponse {
   authUrl: string;
 }
 
+export interface GitHubRepo {
+  fullName: string;
+  name: string;
+}
+
+export const getGitHubRepos = async (token: string | null): Promise<GitHubRepo[]> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/github/repos`, {
+    method: 'GET',
+    ...(await withAuth(token)),
+  });
+
+  return parseJson<GitHubRepo[]>(response);
+};
+
 export const startGitHubOAuth = async (
   token: string | null,
 ): Promise<GitHubOAuthStartResponse> => {
