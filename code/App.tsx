@@ -20,6 +20,7 @@ import {
     type TaskState,
     TemplateCategory,
     TemplateEntry,
+    TemplateArtifactBlueprint,
     TimelineData,
     UserProfile,
     WikiData,
@@ -93,6 +94,8 @@ import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import Zippy from './components/Zippy';
+import WorldSimulationPanel from './components/WorldSimulationPanel';
+import CharacterArcTracker from './components/CharacterArcTracker';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -1192,6 +1195,34 @@ const milestoneRoadmap: Milestone[] = [
             },
         ],
     },
+    {
+        id: 'm5',
+        title: 'M5 — World Simulation Layer',
+        timeline: 'Weeks 17–20',
+        focus: 'Codify physics, chart era drift, and map faction memory.',
+        objectives: [
+            {
+                id: 'm5-magic-constraints',
+                description: 'Magic system codex with constraint annotations',
+                metric: 'magic-systems',
+            },
+            {
+                id: 'm5-world-age',
+                description: 'World age progression and continuity span heatmap',
+                metric: 'world-age',
+            },
+            {
+                id: 'm5-faction-conflicts',
+                description: 'Faction tension grid with rivalries and alliances logged',
+                metric: 'faction-conflicts',
+            },
+            {
+                id: 'm5-npc-memory',
+                description: 'NPC memory map linking cast appearances across artifacts',
+                metric: 'npc-memory',
+            },
+        ],
+    },
 ];
 
 const aiAssistants: AIAssistant[] = [
@@ -1417,20 +1448,33 @@ export default function App() {
         return;
       }
 
-      const data = event.data;
-      if (!data || typeof data !== 'object') {
+      let payload: unknown = event.data;
+
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload);
+        } catch (error) {
+          console.warn('Received non-JSON GitHub OAuth message', error);
+          return;
+        }
+      }
+
+      if (!payload || typeof payload !== 'object') {
         return;
       }
 
-      const payload = data as { type?: unknown; status?: unknown; message?: unknown };
-      if (payload.type !== 'github-oauth') {
+      const messagePayload = payload as { type?: unknown; status?: unknown; message?: unknown };
+      if (messagePayload.type !== 'github-oauth') {
         return;
       }
 
-      if (payload.status === 'success') {
+      if (messagePayload.status === 'success') {
         setIsPublishModalOpen(true);
-      } else if (payload.status === 'error') {
-        const message = typeof payload.message === 'string' ? payload.message : 'GitHub authorization failed.';
+      } else if (messagePayload.status === 'error') {
+        const message =
+          typeof messagePayload.message === 'string'
+            ? messagePayload.message
+            : 'GitHub authorization failed.';
         alert(message);
       }
     };
@@ -1768,7 +1812,17 @@ export default function App() {
   }, [selectedProjectId, ensureProjectArtifacts]);
 
   const handleCreateProject = useCallback(
-    async ({ title, summary, tags }: { title: string; summary: string; tags?: string[] }) => {
+    async ({
+      title,
+      summary,
+      tags,
+      artifacts: starterArtifacts,
+    }: {
+      title: string;
+      summary: string;
+      tags?: string[];
+      artifacts?: TemplateArtifactBlueprint[];
+    }) => {
       if (!profile) return;
       const created = await createProject({ title, summary, tags });
       if (!created) {
@@ -1780,8 +1834,38 @@ export default function App() {
       setSelectedArtifactId(null);
       setProjectStatusFilter('ALL');
       setProjectSearchTerm('');
+
+      const normalizedStarters = (starterArtifacts ?? []).filter(
+        (blueprint): blueprint is TemplateArtifactBlueprint =>
+          !!blueprint &&
+          typeof blueprint.title === 'string' &&
+          blueprint.title.trim().length > 0 &&
+          typeof blueprint.summary === 'string' &&
+          blueprint.summary.trim().length > 0,
+      );
+
+      if (normalizedStarters.length > 0) {
+        const drafts = normalizedStarters.map((blueprint) => ({
+          type: blueprint.type,
+          title: blueprint.title,
+          summary: blueprint.summary,
+          status: blueprint.status ?? 'draft',
+          tags: blueprint.tags ?? [],
+          relations: [],
+          data: blueprint.data ?? getDefaultDataForType(blueprint.type, blueprint.title),
+        }));
+
+        const createdArtifacts = await createArtifactsBulk(created.id, drafts);
+        if (createdArtifacts.length > 0) {
+          setInfoModalContent({
+            title: 'Starter artifacts created',
+            message: `We drafted ${createdArtifacts.length} starter artifact${createdArtifacts.length > 1 ? 's' : ''} from your project brief.`,
+          });
+          setSelectedArtifactId(createdArtifacts[0].id);
+        }
+      }
     },
-    [profile, createProject, addXp],
+    [profile, createProject, addXp, createArtifactsBulk],
   );
 
   const handleDeleteProject = useCallback(
@@ -2003,7 +2087,7 @@ export default function App() {
       const popup = window.open(
         authUrl,
         'creative-atlas-github-oauth',
-        'width=600,height=700,noopener,noreferrer',
+        'width=600,height=700',
       );
 
       if (!popup) {
@@ -2937,11 +3021,18 @@ export default function App() {
                     )}
                 </div>
               )}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <NarrativeHealthPanel artifacts={projectArtifacts} />
                 <ContinuityMonitor artifacts={projectArtifacts} />
+                <WorldSimulationPanel
+                  artifacts={projectArtifacts}
+                  allArtifacts={artifacts}
+                  projectTitle={selectedProject.title}
+                  onSelectArtifact={setSelectedArtifactId}
+                />
               </div>
               <NarrativePipelineBoard artifacts={projectArtifacts} />
+              <CharacterArcTracker artifacts={projectArtifacts} />
               <InspirationDeck
                 onCaptureCard={handleCaptureInspirationCard}
                 isCaptureDisabled={!selectedProjectId}

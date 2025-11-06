@@ -45,23 +45,38 @@ const respondWithOAuthPage = (
   res: Response,
   result: { status: 'success' | 'error'; message?: string },
 ) => {
-  const appBaseUrl = process.env.APP_BASE_URL ?? '';
-  let targetOrigin = '*';
-  let fallbackUrl = appBaseUrl || '/';
+  let appBaseUrl = process.env.APP_BASE_URL ?? '';
+  if (appBaseUrl === 'placeholder') {
+    appBaseUrl = '';
+  }
 
-  try {
-    if (appBaseUrl) {
+  if (!appBaseUrl) {
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim());
+    appBaseUrl = allowedOrigins[0] ?? '';
+  }
+
+  let targetOrigin = '*';
+  let fallbackUrl = '/'; // Fallback to root if no base URL can be determined.
+
+  if (appBaseUrl) {
+    try {
       const url = new URL(appBaseUrl);
       targetOrigin = url.origin;
       if (result.status === 'success') {
         url.searchParams.set('github_auth', 'success');
       }
       fallbackUrl = url.toString();
+    } catch (error) {
+      console.warn(
+        'Failed to parse effective APP_BASE_URL for OAuth response',
+        error,
+      );
+      // If the URL is invalid, we can't use it.
+      // We've already set fallbackUrl to '/', so we just log and continue.
+      targetOrigin = '*';
     }
-  } catch (error) {
-    console.warn('Failed to parse APP_BASE_URL for OAuth response', error);
-    targetOrigin = appBaseUrl || '*';
-    fallbackUrl = appBaseUrl || '/';
   }
 
   const payload = JSON.stringify({
@@ -206,32 +221,66 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
 
         const distPath = path.resolve('code', 'dist');
 
-        const files = await fs.readdir(distPath, { withFileTypes: true });
+        const sanitizePublishDir = (dir: string | undefined): string | undefined => {
+            if (!dir) {
+                return undefined;
+            }
+            const trimmed = dir.trim().replace(/^\/+|\/+$/g, '');
+            return trimmed.length > 0 ? trimmed : undefined;
+        };
+
+        const normalizedPublishDir = sanitizePublishDir(publishDir);
+
+        const collectFiles = async (
+            directory: string,
+            relativeRoot = '',
+        ): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
+            const entries = await fs.readdir(directory, { withFileTypes: true });
+            const allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
+
+            for (const entry of entries) {
+                const absolutePath = path.join(directory, entry.name);
+                const relativePath = relativeRoot
+                    ? path.posix.join(relativeRoot, entry.name)
+                    : entry.name;
+
+                if (entry.isDirectory()) {
+                    const nested = await collectFiles(absolutePath, relativePath);
+                    allFiles.push(...nested);
+                } else if (entry.isFile()) {
+                    allFiles.push({ relativePath, absolutePath });
+                }
+            }
+
+            return allFiles;
+        };
+
+        const files = await collectFiles(distPath);
         const fileBlobs = [];
 
         for (const file of files) {
-            if (file.isFile()) {
-                const content = await fs.readFile(path.join(distPath, file.name), 'base64');
-                const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${accessToken}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                    },
-                    body: JSON.stringify({
-                        content,
-                        encoding: 'base64',
-                    }),
-                });
-                const blobData = await blobResponse.json();
-                const filePath = publishDir ? path.join(publishDir, file.name) : file.name;
-                fileBlobs.push({
-                    path: filePath,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: blobData.sha,
-                });
-            }
+            const content = await fs.readFile(file.absolutePath, 'base64');
+            const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${accessToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                },
+                body: JSON.stringify({
+                    content,
+                    encoding: 'base64',
+                }),
+            });
+            const blobData = await blobResponse.json();
+            const relativePath = normalizedPublishDir
+                ? path.posix.join(normalizedPublishDir, file.relativePath)
+                : file.relativePath;
+            fileBlobs.push({
+                path: relativePath,
+                mode: '100644',
+                type: 'blob',
+                sha: blobData.sha,
+            });
         }
 
         const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
@@ -270,6 +319,25 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
                 sha: commitData.sha,
             }),
         });
+
+        const enablePagesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${accessToken}`,
+                'Accept': 'application/vnd.github+json',
+            },
+            body: JSON.stringify({
+                source: {
+                    branch: 'gh-pages',
+                    path: '/',
+                },
+            }),
+        });
+
+        if (!enablePagesResponse.ok) {
+            const errorText = await enablePagesResponse.text();
+            console.error('Error enabling GitHub Pages:', errorText);
+        }
 
         console.log('Successfully published to GitHub Pages!');
     });

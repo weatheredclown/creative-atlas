@@ -300,6 +300,10 @@ export type MilestoneMetric =
     | 'static-site'
     | 'release-notes'
     | 'search-filters'
+    | 'magic-systems'
+    | 'world-age'
+    | 'faction-conflicts'
+    | 'npc-memory'
     | 'plugin-api'
     | 'theming-offline';
 

@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { generateProjectFromDescription } from '../services/geminiService';
 import { IntelligenceLogo } from './Icons';
+import type { TemplateArtifactBlueprint } from '../types';
 
 interface CreateProjectFormProps {
-  onCreate: (data: { title: string; summary: string; tags?: string[] }) => void;
+  onCreate: (data: { title: string; summary: string; tags?: string[]; artifacts?: TemplateArtifactBlueprint[] }) => void;
   onClose: () => void;
 }
 
@@ -35,6 +36,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
   const [generationMessage, setGenerationMessage] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState('');
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [starterArtifacts, setStarterArtifacts] = useState<TemplateArtifactBlueprint[]>([]);
 
   const handleTemplateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const templateId = event.target.value;
@@ -44,11 +46,13 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
       setSummary(template.summary);
       setSuggestedTags([]);
       setGenerationMessage(null);
+      setStarterArtifacts([]);
     } else {
       setTitle('');
       setSummary('');
       setSuggestedTags([]);
       setGenerationMessage(null);
+      setStarterArtifacts([]);
     }
   };
 
@@ -67,7 +71,8 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
       setTitle(generated.title);
       setSummary(generated.summary);
       setSuggestedTags(generated.tags);
-      setGenerationMessage('We used your description to prefill the project details. Review and edit before creating.');
+      setStarterArtifacts(generated.artifacts);
+      setGenerationMessage('We used your description to prefill the project details and draft starter artifacts. Review and edit before creating.');
       setError('');
     } catch (err) {
       console.error(err);
@@ -76,6 +81,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
           ? err.message
           : 'We could not generate project details. Please try again later.',
       );
+      setStarterArtifacts([]);
     } finally {
       setIsGenerating(false);
     }
@@ -85,13 +91,21 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
     setSuggestedTags((current) => current.filter((item) => item.toLowerCase() !== tag.toLowerCase()));
   };
 
+  const handleRemoveStarterArtifact = (index: number) => {
+    setStarterArtifacts((current) => current.filter((_, idx) => idx !== index));
+  };
+
+  const handleClearStarterArtifacts = () => {
+    setStarterArtifacts([]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required.');
       return;
     }
-    onCreate({ title: title.trim(), summary: summary.trim(), tags: suggestedTags });
+    onCreate({ title: title.trim(), summary: summary.trim(), tags: suggestedTags, artifacts: starterArtifacts });
     onClose();
   };
 
@@ -152,6 +166,58 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
           </p>
         )}
       </div>
+
+      {starterArtifacts.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-emerald-500/20 bg-slate-800/30 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Draft starter artifacts</p>
+              <p className="text-xs text-slate-400">We&apos;ll create these artifacts when the project is created. Remove any that don&apos;t fit your world.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearStarterArtifacts}
+              className="text-xs font-semibold text-emerald-300 hover:text-emerald-100 transition"
+            >
+              Clear all
+            </button>
+          </div>
+          <ul className="space-y-3">
+            {starterArtifacts.map((artifact, index) => (
+              <li key={`${artifact.title}-${artifact.type}-${index}`} className="rounded-md border border-emerald-500/20 bg-slate-900/50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-slate-100">
+                      {artifact.title}
+                      <span className="ml-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-200">
+                        {artifact.type}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-400">{artifact.summary}</p>
+                    {artifact.tags && artifact.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {artifact.tags.map((tag) => (
+                          <span key={tag} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-200">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStarterArtifact(index)}
+                    className="text-xs font-semibold text-emerald-200 hover:text-emerald-50 transition"
+                    aria-label={`Remove starter artifact ${artifact.title}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div>
         <label htmlFor="project-template" className="block text-sm font-medium text-slate-300 mb-1">

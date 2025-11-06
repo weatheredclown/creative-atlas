@@ -10,6 +10,13 @@ import {
   UserProfile,
   isNarrativeArtifactType,
 } from '../types';
+import {
+  summarizeMagicConstraints,
+  summarizeWorldAge,
+  summarizeFactionNetwork,
+  summarizeNpcMemory,
+  formatSpanYears,
+} from './worldSimulation';
 
 export type ObjectiveStatus = 'not-started' | 'in-progress' | 'complete';
 
@@ -170,6 +177,82 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
         };
       }
       return { status: 'not-started', detail: 'Try the search bar or filters to surface artifacts faster.' };
+    }
+    case 'magic-systems': {
+      const summary = summarizeMagicConstraints(artifacts);
+      if (summary.codexCount === 0) {
+        return { status: 'not-started', detail: 'No magic codices captured yet.' };
+      }
+      const constraintCount =
+        summary.volatilePrinciples.length + summary.forbiddenPrinciples.length + summary.taboos.length;
+      if (summary.annotatedCodexCount > 0 && constraintCount > 0) {
+        return {
+          status: 'complete',
+          detail: `${summary.annotatedCodexCount} codex annotated with ${constraintCount} constraints.`,
+        };
+      }
+      return {
+        status: 'in-progress',
+        detail: 'Codex seeded—document volatile principles, taboos, or forbidden laws to finish.',
+      };
+    }
+    case 'world-age': {
+      const summary = summarizeWorldAge(artifacts);
+      if (summary.timelineCount === 0) {
+        return { status: 'not-started', detail: 'No timeline beats logged yet.' };
+      }
+      const span = summary.spanYears ?? 0;
+      const eventCount = summary.totalEvents;
+      if (Math.abs(span) >= 100 && eventCount >= 5) {
+        return {
+          status: 'complete',
+          detail: `${eventCount} dated events across ${formatSpanYears(summary)}.`,
+        };
+      }
+      return {
+        status: 'in-progress',
+        detail: `${eventCount} dated events logged—expand across more eras to complete.`,
+      };
+    }
+    case 'faction-conflicts': {
+      const summary = summarizeFactionNetwork(artifacts);
+      if (summary.factionCount === 0) {
+        return { status: 'not-started', detail: 'No factions recorded yet.' };
+      }
+      if (summary.factionsWithLinks >= 2 && summary.crossFactionLinks > 0) {
+        return {
+          status: 'complete',
+          detail: `${summary.factionsWithLinks} factions linked with ${summary.crossFactionLinks} rival tie${
+            summary.crossFactionLinks === 1 ? '' : 's'
+          }.`,
+        };
+      }
+      if (summary.factionsWithLinks > 0) {
+        return {
+          status: 'in-progress',
+          detail: `${summary.factionsWithLinks} factions linked—add rival or alliance relations to finish.`,
+        };
+      }
+      return {
+        status: 'in-progress',
+        detail: 'Factions seeded—add relationships to map tension.',
+      };
+    }
+    case 'npc-memory': {
+      const summary = summarizeNpcMemory(artifacts);
+      if (summary.totalNpcCount === 0) {
+        return { status: 'not-started', detail: 'No characters or factions available for memory tracking.' };
+      }
+      if (summary.anchoredCount >= 2 || summary.crossWorldActors > 0) {
+        return {
+          status: 'complete',
+          detail: `${summary.anchoredCount} anchored actors · ${summary.crossWorldActors} cross-world bridges.`,
+        };
+      }
+      return {
+        status: 'in-progress',
+        detail: 'Link characters or factions to more artifacts to anchor their memories.',
+      };
     }
     case 'plugin-api':
     case 'theming-offline':
