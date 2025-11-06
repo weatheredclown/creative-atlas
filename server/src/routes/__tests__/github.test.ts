@@ -38,10 +38,7 @@ import githubRouter from '../github.js';
 
 const { execMock, readdirMock, readFileMock } = mocks;
 
-const fetchMock = vi.fn<
-  Parameters<typeof fetch>,
-  ReturnType<typeof fetch>
->();
+const fetchMock = vi.fn<typeof fetch>();
 
 const createApp = () => {
   const app = express();
