@@ -64,7 +64,6 @@ import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBib
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
-import ProjectSettingsPanel from './components/ProjectSettingsPanel';
 import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
@@ -1370,8 +1369,6 @@ export default function App() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
-  const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
-  const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
 
   const handleOpenPublishModal = useCallback(() => {
@@ -2770,16 +2767,14 @@ export default function App() {
                   ) : null}
                   {currentProjectVisibility.projectOverview && (
                     <ProjectOverview
-                        project={selectedProject}
-                        onUpdateProject={handleUpdateProject}
-                        onDeleteProject={handleDeleteProject}
+                      project={selectedProject}
+                      onUpdateProject={handleUpdateProject}
+                      onDeleteProject={handleDeleteProject}
+                      visibilitySettings={currentProjectVisibility}
+                      onToggleVisibility={handleToggleComponentVisibility}
+                      onResetVisibility={handleResetComponentVisibility}
                     />
                   )}
-                  <ProjectSettingsPanel
-                    settings={currentProjectVisibility}
-                    onToggle={handleToggleComponentVisibility}
-                    onReset={handleResetComponentVisibility}
-                  />
                   {currentProjectVisibility.artifactExplorer && (
                     <section className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg shadow-slate-950/20">
                       <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

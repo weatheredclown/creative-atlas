@@ -9,17 +9,22 @@ interface ProjectSettingsPanelProps {
   settings: ProjectVisibilitySettings;
   onToggle: (component: ProjectComponentKey, isVisible: boolean) => void;
   onReset: () => void;
+  className?: string;
 }
 
-const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({ settings, onToggle, onReset }) => {
+const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({ settings, onToggle, onReset, className }) => {
   const componentGroups = useMemo(() => getProjectComponentGroups(), []);
   const isDefaultConfiguration = useMemo(
     () => PROJECT_COMPONENT_KEYS.every((key) => settings[key] === DEFAULT_PROJECT_VISIBILITY[key]),
     [settings],
   );
 
+  const containerClassName = `rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 space-y-6 shadow-lg shadow-slate-950/20 ${
+    className ?? ''
+  }`;
+
   return (
-    <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 space-y-6 shadow-lg shadow-slate-950/20">
+    <section className={containerClassName}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <h3 className="text-lg font-semibold text-slate-100">Project surface settings</h3>
