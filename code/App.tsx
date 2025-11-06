@@ -83,6 +83,7 @@ import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import Zippy from './components/Zippy';
 import WorldSimulationPanel from './components/WorldSimulationPanel';
+import CharacterArcTracker from './components/CharacterArcTracker';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -3015,9 +3016,11 @@ export default function App() {
                   artifacts={projectArtifacts}
                   allArtifacts={artifacts}
                   projectTitle={selectedProject.title}
+                  onSelectArtifact={setSelectedArtifactId}
                 />
               </div>
               <NarrativePipelineBoard artifacts={projectArtifacts} />
+              <CharacterArcTracker artifacts={projectArtifacts} />
               <InspirationDeck
                 onCaptureCard={handleCaptureInspirationCard}
                 isCaptureDisabled={!selectedProjectId}
