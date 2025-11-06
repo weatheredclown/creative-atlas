@@ -1406,20 +1406,33 @@ export default function App() {
         return;
       }
 
-      const data = event.data;
-      if (!data || typeof data !== 'object') {
+      let payload: unknown = event.data;
+
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload);
+        } catch (error) {
+          console.warn('Received non-JSON GitHub OAuth message', error);
+          return;
+        }
+      }
+
+      if (!payload || typeof payload !== 'object') {
         return;
       }
 
-      const payload = data as { type?: unknown; status?: unknown; message?: unknown };
-      if (payload.type !== 'github-oauth') {
+      const messagePayload = payload as { type?: unknown; status?: unknown; message?: unknown };
+      if (messagePayload.type !== 'github-oauth') {
         return;
       }
 
-      if (payload.status === 'success') {
+      if (messagePayload.status === 'success') {
         setIsPublishModalOpen(true);
-      } else if (payload.status === 'error') {
-        const message = typeof payload.message === 'string' ? payload.message : 'GitHub authorization failed.';
+      } else if (messagePayload.status === 'error') {
+        const message =
+          typeof messagePayload.message === 'string'
+            ? messagePayload.message
+            : 'GitHub authorization failed.';
         alert(message);
       }
     };
