@@ -9,6 +9,13 @@ This document provides instructions for agents working on the Creative Atlas cod
 *   The backend is a Node.js Express application written in TypeScript.
 *   When introducing new environment variables or externally configured secrets, document how to provision them in the README and update `.github/workflows/firebase-hosting-merge.yml` so the CI environment stays in sync.
 
+## Automation Initiative Tracking
+
+*   Use `docs/automation-initiative-roadmap.md` to coordinate multi-session progress. Every new work session must start by reviewing this roadmap and end by updating it.
+*   Keep the roadmap focused on immediate, actionable tasks. When you complete a bullet, delete it from the file so the document eventually empties out as the initiative finishes.
+*   If work is re-scoped or blocked, adjust or split the relevant bullet so the next agent inherits a clear, execution-ready next step. Link to supporting docs (designs, research) when available.
+*   Mention in your summary which roadmap bullets you touched so reviewers can trace progress back to the shared plan.
+
 ## Frontend
 
 ### Components
