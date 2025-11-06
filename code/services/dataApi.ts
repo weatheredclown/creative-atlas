@@ -1,4 +1,10 @@
-import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types';
+import type {
+  Artifact,
+  ConlangLexeme,
+  Project,
+  StaticSiteFile,
+  UserProfile,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_DATA_API_BASE_URL?.replace(/\/$/, '') ?? '';
 
@@ -361,6 +367,7 @@ export const publishToGitHub = async (
   token: string | null,
   repoName: string,
   publishDir: string,
+  siteFiles: StaticSiteFile[],
 ): Promise<PublishToGitHubResponse> => {
   if (!isDataApiConfigured) {
     throw new Error('Data API is not configured.');
@@ -368,7 +375,7 @@ export const publishToGitHub = async (
 
   return sendJson<PublishToGitHubResponse>(token, '/api/github/publish', {
     method: 'POST',
-    body: { repoName, publishDir },
+    body: { repoName, publishDir, siteFiles },
   });
 };
 

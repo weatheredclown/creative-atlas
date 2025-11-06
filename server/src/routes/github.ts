@@ -3,14 +3,9 @@ import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { addJob } from '../utils/queue.js';
-
-const execAsync = promisify(exec);
 
 const router = Router();
 
@@ -219,41 +214,27 @@ const sanitizePublishDir = (dir: string | undefined): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const collectFiles = async (
-  directory: string,
-  relativeRoot = '',
-): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
-  const entries = await fs.readdir(directory, { withFileTypes: true });
-  let allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
+const sanitizeSiteFilePath = (filePath: string): string => {
+  const normalized = filePath.replace(/\\+/g, '/').replace(/^\/+/, '').trim();
 
-  for (const entry of entries) {
-    const absolutePath = path.join(directory, entry.name);
-    const relativePath = relativeRoot ? path.posix.join(relativeRoot, entry.name) : entry.name;
-
-    if (entry.isDirectory()) {
-      allFiles = allFiles.concat(await collectFiles(absolutePath, relativePath));
-    } else {
-      allFiles.push({ relativePath, absolutePath });
-    }
+  if (!normalized) {
+    throw new Error('Site files must include a valid path.');
   }
 
-  return allFiles;
-};
+  const segments = normalized.split('/').filter((segment) => segment.length > 0);
 
-const buildProject = async () => {
-  try {
-    await execAsync('npm run build', { cwd: 'code' });
-  } catch (error) {
-    throw new Error(
-      `Unable to build the Creative Atlas frontend. ${(error as Error).message ?? error}`,
-    );
+  if (segments.some((segment) => segment === '..')) {
+    throw new Error(`Invalid site file path: ${filePath}`);
   }
+
+  return segments.join('/');
 };
 
 interface PublishJobOptions {
   accessToken: string;
   repoName: string;
   publishDir?: string;
+  siteFiles: Array<{ path: string; contents: string }>;
 }
 
 interface PublishJobResult {
@@ -266,12 +247,18 @@ const runPublishJob = async ({
   accessToken,
   repoName,
   publishDir,
+  siteFiles,
 }: PublishJobOptions): Promise<PublishJobResult> => {
   const normalizedPublishDir = sanitizePublishDir(publishDir);
+  const targetDirectory = normalizedPublishDir ?? 'pages';
   const defaultHeaders = {
     Authorization: `token ${accessToken}`,
     Accept: 'application/vnd.github+json',
   } as const;
+
+  if (!siteFiles.length) {
+    throw new Error('No site files provided for publication.');
+  }
 
   const isNewRepo = !repoName.includes('/');
   let owner: string;
@@ -347,18 +334,23 @@ const runPublishJob = async ({
     [owner, repo] = repoName.split('/', 2);
   }
 
-  await buildProject();
-
-  const distPath = path.resolve('code', 'dist');
-  const files = await collectFiles(distPath);
-
-  if (files.length === 0) {
-    throw new Error('No build artifacts found. Ensure `npm run build` produces a dist/ directory.');
-  }
+  const normalizedFiles = Array.from(
+    new Map(
+      siteFiles.map((file) => {
+        const sanitizedPath = sanitizeSiteFilePath(file.path);
+        const relativePath = targetDirectory
+          ? path.posix.join(targetDirectory, sanitizedPath)
+          : sanitizedPath;
+        return [relativePath, file.contents] as const;
+      }),
+    ).entries(),
+  ).map(([relativePath, contents]) => ({
+    relativePath,
+    base64Content: Buffer.from(contents, 'utf8').toString('base64'),
+  }));
 
   const fileBlobs = await Promise.all(
-    files.map(async (file) => {
-      const content = await fs.readFile(file.absolutePath, 'base64');
+    normalizedFiles.map(async (file) => {
       const blobResponse = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/blobs`,
         {
@@ -367,7 +359,7 @@ const runPublishJob = async ({
             ...defaultHeaders,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ content, encoding: 'base64' }),
+          body: JSON.stringify({ content: file.base64Content, encoding: 'base64' }),
         },
       );
 
@@ -376,11 +368,7 @@ const runPublishJob = async ({
         `Failed to upload ${file.relativePath} to GitHub`,
       );
 
-      const relativePath = normalizedPublishDir
-        ? path.posix.join(normalizedPublishDir, file.relativePath)
-        : file.relativePath;
-
-      return { path: relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
+      return { path: file.relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
     }),
   );
 
@@ -478,7 +466,7 @@ const runPublishJob = async ({
     await ensureGithubSuccess(createRefResponse, 'Failed to create gh-pages reference');
   }
 
-  const pagesSourcePath = normalizedPublishDir ? `/${normalizedPublishDir}` : '/';
+  const pagesSourcePath = targetDirectory ? `/${targetDirectory}` : '/';
   const enablePagesResponse = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/pages`,
     {
@@ -597,10 +585,18 @@ router.get('/repos', authenticate, asyncHandler(async (req: AuthenticatedRequest
 const publishSchema = z.object({
     repoName: z.string().min(1),
     publishDir: z.string().optional(),
+    siteFiles: z
+      .array(
+        z.object({
+          path: z.string().min(1),
+          contents: z.string(),
+        }),
+      )
+      .min(1, 'Provide at least one file to publish.'),
 });
 
 router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { repoName, publishDir } = publishSchema.parse(req.body);
+  const { repoName, publishDir, siteFiles } = publishSchema.parse(req.body);
   const accessToken = req.session.github_access_token;
 
   if (!accessToken) {
@@ -609,7 +605,7 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
 
   try {
     const result = await addJob(() =>
-      runPublishJob({ accessToken, repoName, publishDir }),
+      runPublishJob({ accessToken, repoName, publishDir, siteFiles }),
     );
     res.json(result);
   } catch (error) {

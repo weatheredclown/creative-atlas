@@ -8,35 +8,13 @@ vi.hoisted(() => {
   process.env.CA_GITHUB_CLIENT_SECRET = process.env.CA_GITHUB_CLIENT_SECRET ?? 'test-client-secret';
 });
 
-const mocks = vi.hoisted(() => ({
-  execMock: vi.fn(),
-  readdirMock: vi.fn(),
-  readFileMock: vi.fn(),
-}));
-
 vi.mock('../../firebaseAdmin.js', () => ({
   auth: {
     verifyIdToken: vi.fn(async () => ({ uid: 'test-user' })),
   },
 }));
-
-vi.mock('child_process', () => ({
-  exec: mocks.execMock,
-}));
-
-vi.mock('fs/promises', () => ({
-  default: {
-    readdir: mocks.readdirMock,
-    readFile: mocks.readFileMock,
-  },
-  readdir: mocks.readdirMock,
-  readFile: mocks.readFileMock,
-}));
-
 // The router import must come after the mocks so they are applied to its dependencies.
 import githubRouter from '../github.js';
-
-const { execMock, readdirMock, readFileMock } = mocks;
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -61,24 +39,6 @@ const createApp = () => {
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
-  execMock.mockReset();
-  readdirMock.mockReset();
-  readFileMock.mockReset();
-
-  execMock.mockImplementation((command: string, optionsOrCallback: unknown, maybeCallback?: unknown) => {
-    const callback =
-      typeof optionsOrCallback === 'function'
-        ? optionsOrCallback
-        : (maybeCallback as ((error: unknown, stdout?: string, stderr?: string) => void) | undefined);
-    callback?.(null, '', '');
-    return undefined;
-  });
-
-  readdirMock.mockResolvedValue([
-    { name: 'index.html', isDirectory: () => false } as unknown,
-  ]);
-
-  readFileMock.mockResolvedValue('PGgxPkhlbGxvPC9oMT4=');
 });
 
 afterEach(() => {
@@ -142,6 +102,10 @@ describe('GitHub routes', () => {
   describe('POST /api/github/publish', () => {
     it('falls back to an existing repository when creation returns 422 and completes the publish flow', async () => {
       const app = createApp();
+      const siteFiles = [
+        { path: 'index.html', contents: '<html>Index</html>' },
+        { path: 'artifacts/story.html', contents: '<html>Story</html>' },
+      ];
 
       fetchMock
         .mockResolvedValueOnce(
@@ -164,7 +128,10 @@ describe('GitHub routes', () => {
           jsonResponse({ login: 'test-user' }),
         )
         .mockResolvedValueOnce(
-          jsonResponse({ sha: 'blob-sha' }, { status: 201 }),
+          jsonResponse({ sha: 'blob-index' }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ sha: 'blob-story' }, { status: 201 }),
         )
         .mockResolvedValueOnce(
           new Response('', { status: 404 }),
@@ -185,14 +152,8 @@ describe('GitHub routes', () => {
       const response = await request(app)
         .post('/api/github/publish')
         .set('Authorization', 'Bearer fake-token')
-        .send({ repoName: 'demo-site', publishDir: '' })
+        .send({ repoName: 'demo-site', publishDir: '', siteFiles })
         .expect(200);
-
-      expect(execMock).toHaveBeenCalledWith(
-        'npm run build',
-        expect.objectContaining({ cwd: 'code' }),
-        expect.any(Function),
-      );
 
       expect(response.body).toEqual({
         message: 'Published test-user/demo-site from the gh-pages branch.',
@@ -200,11 +161,29 @@ describe('GitHub routes', () => {
         pagesUrl: 'https://test-user.github.io/demo-site',
       });
 
-      expect(fetchMock).toHaveBeenCalledTimes(8);
+      expect(fetchMock).toHaveBeenCalledTimes(9);
+
+      const treeCall = fetchMock.mock.calls.find((call) =>
+        typeof call[0] === 'string' && call[0].endsWith('/git/trees'),
+      );
+      expect(treeCall).toBeDefined();
+      const treePayload = JSON.parse(treeCall?.[1]?.body as string);
+      expect(treePayload).toEqual({
+        tree: [
+          { path: 'pages/index.html', mode: '100644', type: 'blob', sha: 'blob-index' },
+          {
+            path: 'pages/artifacts/story.html',
+            mode: '100644',
+            type: 'blob',
+            sha: 'blob-story',
+          },
+        ],
+      });
     });
 
     it('surfaces GitHub publication failures with details', async () => {
       const app = createApp();
+      const siteFiles = [{ path: 'index.html', contents: '<html>Index</html>' }];
 
       fetchMock
         .mockResolvedValueOnce(
@@ -217,7 +196,7 @@ describe('GitHub routes', () => {
           ),
         )
         .mockResolvedValueOnce(
-          jsonResponse({ sha: 'blob-sha' }, { status: 201 }),
+          jsonResponse({ sha: 'blob-index' }, { status: 201 }),
         )
         .mockResolvedValueOnce(
           new Response('', { status: 404 }),
@@ -229,7 +208,7 @@ describe('GitHub routes', () => {
       const response = await request(app)
         .post('/api/github/publish')
         .set('Authorization', 'Bearer fake-token')
-        .send({ repoName: 'demo-site', publishDir: '' })
+        .send({ repoName: 'demo-site', publishDir: '', siteFiles })
         .expect(502);
 
       expect(response.body.error).toContain('Failed to create Git tree for publication');

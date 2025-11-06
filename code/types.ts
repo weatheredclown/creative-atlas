@@ -15,6 +15,11 @@ export interface Project {
   tags: string[];
 }
 
+export interface StaticSiteFile {
+  path: string;
+  contents: string;
+}
+
 export enum ArtifactType {
   Story = 'Story',
   Novel = 'Novel',
