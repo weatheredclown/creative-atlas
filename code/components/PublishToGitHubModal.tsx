@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { GitHubIcon } from './Icons';
 
@@ -9,13 +9,52 @@ interface PublishToGitHubModalProps {
     isPublishing: boolean;
 }
 
+interface GitHubRepo {
+    fullName: string;
+    name: string;
+}
+
 const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({ isOpen, onClose, onPublish, isPublishing }) => {
     const [repoName, setRepoName] = useState('');
     const [publishDir, setPublishDir] = useState('');
+    const [repos, setRepos] = useState<GitHubRepo[]>([]);
+    const [selectedRepo, setSelectedRepo] = useState('');
+    const [showNewRepoInput, setShowNewRepoInput] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetch('/api/github/repos')
+                .then(res => res.json())
+                .then(data => {
+                    setRepos(data);
+                    if (data.length > 0) {
+                        setSelectedRepo(data[0].fullName);
+                    } else {
+                        setShowNewRepoInput(true);
+                    }
+                })
+                .catch(err => {
+                    console.error("Error fetching repos", err)
+                    setShowNewRepoInput(true);
+                });
+        }
+    }, [isOpen]);
+
+    const handleRepoSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === 'new') {
+            setShowNewRepoInput(true);
+            setSelectedRepo('new');
+        } else {
+            setShowNewRepoInput(false);
+            setSelectedRepo(value);
+        }
+    };
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        await onPublish(repoName, publishDir);
+        const repoToPublish = showNewRepoInput ? repoName : selectedRepo;
+        await onPublish(repoToPublish, publishDir);
     };
 
     return (
@@ -27,16 +66,31 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({ isOpen, onC
                         <h2 className="text-lg font-semibold">Publish Project to GitHub</h2>
                     </div>
                     <p className="text-sm text-slate-400 mb-4">
-                        Enter the name for your new GitHub repository. The project will be published as a GitHub Pages site.
+                        Choose a GitHub repository to publish your project to as a GitHub Pages site.
                     </p>
-                    <input
-                        type="text"
-                        value={repoName}
-                        onChange={(e) => setRepoName(e.target.value)}
-                        placeholder="e.g., my-awesome-project"
+
+                    <select
+                        value={selectedRepo}
+                        onChange={handleRepoSelection}
                         className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        required
-                    />
+                    >
+                        {repos.map(repo => (
+                            <option key={repo.fullName} value={repo.fullName}>{repo.name}</option>
+                        ))}
+                        <option value="new">Create a new repository</option>
+                    </select>
+
+                    {showNewRepoInput && (
+                        <input
+                            type="text"
+                            value={repoName}
+                            onChange={(e) => setRepoName(e.target.value)}
+                            placeholder="e.g., my-awesome-project"
+                            className="mt-2 w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            required
+                        />
+                    )}
+
                     <label htmlFor="publish-dir" className="text-sm text-slate-400 mt-4 block">Publish Directory (optional)</label>
                     <input
                         id="publish-dir"
