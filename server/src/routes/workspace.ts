@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
-import type { DocumentSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore';
+import type { DocumentSnapshot, QueryDocumentSnapshot, Timestamp, WriteResult } from 'firebase-admin/firestore';
 import { firestore } from '../firebaseAdmin.js';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
@@ -21,6 +21,40 @@ import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types.js'
 const router = Router();
 
 router.use(authenticate);
+
+const MAX_BATCH_SIZE = 400;
+
+const commitInBatches = async (docs: QueryDocumentSnapshot[]): Promise<void> => {
+  if (docs.length === 0) {
+    return;
+  }
+
+  let batch = firestore.batch();
+  let operations = 0;
+  const commits: Promise<WriteResult[]>[] = [];
+
+  docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    operations += 1;
+
+    if (operations >= MAX_BATCH_SIZE) {
+      commits.push(batch.commit());
+      batch = firestore.batch();
+      operations = 0;
+    }
+  });
+
+  if (operations > 0) {
+    commits.push(batch.commit());
+  }
+
+  await Promise.all(commits);
+};
+
+const deleteOwnedDocuments = async (collection: string, ownerId: string): Promise<void> => {
+  const snapshot = await firestore.collection(collection).where('ownerId', '==', ownerId).get();
+  await commitInBatches(snapshot.docs);
+};
 
 const defaultSettings = {
   theme: 'system' as const,
@@ -804,6 +838,21 @@ router.post('/lexicon/import/markdown', asyncHandler(async (req: AuthenticatedRe
   const { content } = bodySchema.parse(req.body);
   const lexemes = parseConlangLexemesFromMarkdown(content);
   res.json({ lexemes });
+}));
+
+router.delete('/account', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid } = req.user!;
+
+  await deleteOwnedDocuments('artifacts', uid);
+  await deleteOwnedDocuments('projects', uid);
+
+  const userRef = firestore.collection('users').doc(uid);
+  const userSnap = await userRef.get();
+  if (userSnap.exists) {
+    await userRef.delete();
+  }
+
+  res.status(204).send();
 }));
 
 router.post('/lexicon/export', asyncHandler(async (req: AuthenticatedRequest, res) => {

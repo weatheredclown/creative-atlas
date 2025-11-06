@@ -23,6 +23,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
   getIdToken: () => Promise<string | null>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -116,6 +117,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  const deleteAccount = useCallback(async () => {
+    if (isGuestMode) {
+      return Promise.resolve();
+    }
+
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('No authenticated user is available to delete.');
+    }
+
+    await currentUser.delete();
+  }, [isGuestMode]);
+
   const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
@@ -126,7 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithGoogle: signInWithGoogleProvider,
     updateDisplayName,
     getIdToken,
-  }), [user, loading, isGuestMode, signUp, signIn, signOutUser, signInWithGoogleProvider, updateDisplayName, getIdToken]);
+    deleteAccount,
+  }), [user, loading, isGuestMode, signUp, signIn, signOutUser, signInWithGoogleProvider, updateDisplayName, getIdToken, deleteAccount]);
 
   return (
     <AuthContext.Provider value={value}>

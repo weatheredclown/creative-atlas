@@ -191,6 +191,22 @@ export const deleteArtifactViaApi = async (token: string | null, artifactId: str
   }
 };
 
+export const deleteAccountViaApi = async (token: string | null): Promise<void> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/account`, {
+    method: 'DELETE',
+    ...(await withAuth(token)),
+  });
+
+  if (!response.ok && response.status !== 204) {
+    const message = await response.text();
+    throw new Error(message || 'Failed to delete account.');
+  }
+};
+
 export const importArtifactsViaApi = async (
   token: string | null,
   projectId: string,

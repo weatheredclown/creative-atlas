@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ThemePreference, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { TriangleToggleIcon } from './Icons';
+import AccountDeletionPanel from './AccountDeletionPanel';
 
 interface UserProfileCardProps {
   profile: UserProfile;
@@ -225,6 +226,8 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
               <span className="text-slate-200 font-semibold">{profile.questlinesClaimed.length}</span>
             </span>
           </div>
+
+          <AccountDeletionPanel />
         </div>
       </div>
     </section>
