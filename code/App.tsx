@@ -82,6 +82,7 @@ import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import Zippy from './components/Zippy';
+import WorldSimulationPanel from './components/WorldSimulationPanel';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -1178,6 +1179,34 @@ const milestoneRoadmap: Milestone[] = [
                 id: 'm4-theming-offline',
                 description: 'Theming, keyboard palette, offline cache (light)',
                 metric: 'theming-offline',
+            },
+        ],
+    },
+    {
+        id: 'm5',
+        title: 'M5 — World Simulation Layer',
+        timeline: 'Weeks 17–20',
+        focus: 'Codify physics, chart era drift, and map faction memory.',
+        objectives: [
+            {
+                id: 'm5-magic-constraints',
+                description: 'Magic system codex with constraint annotations',
+                metric: 'magic-systems',
+            },
+            {
+                id: 'm5-world-age',
+                description: 'World age progression and continuity span heatmap',
+                metric: 'world-age',
+            },
+            {
+                id: 'm5-faction-conflicts',
+                description: 'Faction tension grid with rivalries and alliances logged',
+                metric: 'faction-conflicts',
+            },
+            {
+                id: 'm5-npc-memory',
+                description: 'NPC memory map linking cast appearances across artifacts',
+                metric: 'npc-memory',
             },
         ],
     },
@@ -2979,9 +3008,14 @@ export default function App() {
                     )}
                 </div>
               )}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <NarrativeHealthPanel artifacts={projectArtifacts} />
                 <ContinuityMonitor artifacts={projectArtifacts} />
+                <WorldSimulationPanel
+                  artifacts={projectArtifacts}
+                  allArtifacts={artifacts}
+                  projectTitle={selectedProject.title}
+                />
               </div>
               <NarrativePipelineBoard artifacts={projectArtifacts} />
               <InspirationDeck

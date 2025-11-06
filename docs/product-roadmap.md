@@ -35,12 +35,12 @@ The “Organize My Worlds Without Pain” release.
 "World memory and logic enforcement."
 - [x] Time and continuity tracking across worlds.
 - [x] Lore validator to prevent contradictions against canon.
-- [ ] Magic system structure builder (Tamenzut rules encoded).
-- [ ] Physics/metaphysics constraint annotations.
-- [ ] "World age" progression that evolves lore events.
-- [ ] Factions and conflicts system for PIT, Dustland, and the 4X project.
+- [x] Magic system structure builder (Tamenzut rules encoded).
+- [x] Physics/metaphysics constraint annotations.
+- [x] "World age" progression that evolves lore events.
+- [x] Factions and conflicts system for PIT, Dustland, and the 4X project.
 - [ ] Simulated history heatmap and "What changed this century?" views.
-- [ ] NPC memory map linking Dustland, Sacred Truth, Spatch, and beyond.
+- [x] NPC memory map linking Dustland, Sacred Truth, Spatch, and beyond.
 
 ### Phase 4 — Narrative & Game Pipelines
 Stories become game worlds, and game worlds fuel story arcs.
