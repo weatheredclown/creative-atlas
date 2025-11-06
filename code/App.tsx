@@ -73,7 +73,14 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
-import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured, startGitHubOAuth } from './services/dataApi';
+import {
+  dataApiBaseUrl,
+  downloadProjectExport,
+  importArtifactsViaApi,
+  isDataApiConfigured,
+  startGitHubOAuth,
+  getGitHubRepos,
+} from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import AICopilotPanel from './components/AICopilotPanel';
@@ -2148,23 +2155,33 @@ export default function App() {
         throw new Error('Unable to authenticate the GitHub authorization request.');
       }
 
-      const { authUrl } = await startGitHubOAuth(token);
-      const popup = window.open(
-        authUrl,
-        'creative-atlas-github-oauth',
-        'width=600,height=700',
-      );
-
-      if (!popup) {
-        window.location.href = authUrl;
-      }
+      // Check for an active session first. If this fails, the catch block will
+      // initiate the OAuth flow.
+      await getGitHubRepos(token);
+      handleOpenPublishModal();
     } catch (error) {
-      console.error('Failed to initiate GitHub authorization', error);
-      alert(
-        `Unable to start GitHub authorization. ${
-          error instanceof Error ? error.message : 'Please try again.'
-        }`,
-      );
+      // The most likely failure is an expired or missing token.
+      // Re-initiate the OAuth flow.
+      try {
+        const token = await getIdToken();
+        const { authUrl } = await startGitHubOAuth(token);
+        const popup = window.open(
+          authUrl,
+          'creative-atlas-github-oauth',
+          'width=600,height=700',
+        );
+
+        if (!popup) {
+          window.location.href = authUrl;
+        }
+      } catch (oauthError) {
+        console.error('Failed to initiate GitHub authorization', oauthError);
+        alert(
+          `Unable to start GitHub authorization. ${
+            oauthError instanceof Error ? oauthError.message : 'Please try again.'
+          }`,
+        );
+      }
     }
   };
 
