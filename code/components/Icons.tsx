@@ -7,6 +7,20 @@ export const SparklesIcon: React.FC<{ className?: string }> = ({ className }) =>
   </svg>
 );
 
+export const IntelligenceLogo: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' className={className}>
+    <circle cx='12' cy='12' r='11' fill='currentColor' opacity='0.18' />
+    <path
+      d='M9.12 6.5a1 1 0 00-.94.66l-2.96 8.5a1 1 0 00.94 1.34h1.54a1 1 0 00.95-.68l.44-1.38h2.38l.44 1.38a1 1 0 00.95.68h1.54a1 1 0 00.94-1.34l-2.96-8.5a1 1 0 00-.94-.66H9.12zm-.2 6.15l.94-2.95.94 2.95H8.92z'
+      fill='currentColor'
+    />
+    <path
+      d='M15.25 6.5c-.55 0-1 .45-1 1v8.1c0 .55.45 1 1 1h1.35c.55 0 1-.45 1-1V7.5c0-.55-.45-1-1-1H15.25zm0 10.2c-.55 0-1 .45-1 1v.8c0 .55.45 1 1 1h1.35c.55 0 1-.45 1-1v-.8c0-.55-.45-1-1-1H15.25z'
+      fill='currentColor'
+    />
+  </svg>
+);
+
 export const BookOpenIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
     <path d='M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z' />

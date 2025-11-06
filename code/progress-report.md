@@ -35,7 +35,7 @@ Development has reached a state of feature completeness for the primary mileston
 
 - **Multimodal & Creator-Centric:** **Implemented**.
   - The data model and UI support various artifact types, from text (Wiki) and structured data (Character, Location) to lists (Story, Conlang).
-  - AI copilots ('Lore Weaver', 'Conlang Smith') are integrated directly into the editing experience to accelerate creative work.
+- Atlas Intelligence guides ('Lore Weaver', 'Conlang Smith') are integrated directly into the editing experience to accelerate creative work.
 
 ### 2. Core Domain Model & Data Shapes
 
@@ -63,7 +63,7 @@ Development has reached a state of feature completeness for the primary mileston
 - **Quests:** **Implemented**. A 'Daily Quests' component tracks short-term goals.
 - **Achievements:** **Implemented**. An `Achievements` component tracks long-term goals.
 
-### 5. AI Copilots (Integrations)
+### 5. Atlas Intelligence (Integrations)
 
 - **AI Provider Abstraction:** **Implemented** via `services/geminiService.ts`.
 - **Lore Weaver:** **Implemented** in the `ArtifactDetail` view.

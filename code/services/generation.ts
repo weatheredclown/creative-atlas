@@ -25,7 +25,7 @@ const buildFallbackResponse = (prompt: string): string => {
   const cleaned = prompt.replace(/\s+/g, ' ').trim();
 
   if (!cleaned) {
-    return 'The copilot needs a prompt to riff on. Try sharing a short description or a few evocative keywords!';
+    return 'Atlas Intelligence needs a prompt to riff on. Try sharing a short description or a few evocative keywords!';
   }
 
   const words = cleaned
@@ -46,7 +46,7 @@ const buildFallbackResponse = (prompt: string): string => {
   const cadence = cadenceHints[Math.floor(cleaned.length % cadenceHints.length)];
 
   return [
-    `✨ **Creative Atlas Copilot** riffs on your prompt: _${headline}_`,
+    `✨ **Atlas Intelligence** riffs on your prompt: _${headline}_`,
     '— A snapshot to anchor the beat: sketch how this idea manifests right now and which artifact should hold it.',
     `— Push it forward: ${cadence}`,
     '— Next experiment: jot down a related artifact you could prototype in the next session.',
@@ -57,7 +57,7 @@ export async function generateText(prompt: string): Promise<string> {
   const trimmedPrompt = prompt.trim();
 
   if (!trimmedPrompt) {
-    throw new Error('Provide a prompt before calling the copilot.');
+    throw new Error('Provide a prompt before calling Atlas Intelligence.');
   }
 
   const client = getClient();

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Artifact, ConlangLexeme } from '../types';
 import { generateLexemes } from '../services/geminiService';
-import { SparklesIcon, Spinner } from './Icons';
+import { IntelligenceLogo, Spinner } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 import {
   exportLexiconViaApi,
@@ -390,9 +390,9 @@ const ConlangLexiconEditor: React.FC<ConlangLexiconEditorProps> = ({ artifact, c
       <h3 className="text-xl font-bold text-cyan-400 mb-4">Lexicon: {artifact.title}</h3>
 
       <div className="bg-slate-900/70 p-4 rounded-lg mb-6 border border-slate-700">
-        <h4 className="font-semibold text-slate-200 mb-3">
-          <SparklesIcon className="w-6 h-6 inline-block mr-2 text-violet-400" />
-          AI Copilot: Conlang Smith
+        <h4 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
+          <IntelligenceLogo className="w-6 h-6 text-violet-400" />
+          Atlas Intelligence: Conlang Smith
         </h4>
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="w-full sm:w-auto flex-grow">

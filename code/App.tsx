@@ -25,7 +25,19 @@ import {
     WikiData,
     isNarrativeArtifactType,
 } from './types';
-import { PlusIcon, TableCellsIcon, ShareIcon, ViewColumnsIcon, ArrowUpTrayIcon, BuildingStorefrontIcon, FolderPlusIcon, SparklesIcon, GitHubIcon, CubeIcon } from './components/Icons';
+import {
+    PlusIcon,
+    TableCellsIcon,
+    ShareIcon,
+    ViewColumnsIcon,
+    ArrowUpTrayIcon,
+    BuildingStorefrontIcon,
+    FolderPlusIcon,
+    SparklesIcon,
+    GitHubIcon,
+    CubeIcon,
+    IntelligenceLogo,
+} from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateArtifactForm from './components/CreateArtifactForm';
@@ -2978,11 +2990,11 @@ export default function App() {
                     <header className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3">
                             <div className="rounded-xl bg-pink-500/10 border border-pink-500/40 p-2">
-                                <SparklesIcon className="w-5 h-5 text-pink-300" />
+                                <IntelligenceLogo className="w-5 h-5 text-pink-300" />
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-100">Creator Insights Hub</h3>
-                                <p className="text-sm text-slate-400">Visit the secondary panel when you&apos;re ready for copilots and roadmap lore.</p>
+                                <p className="text-sm text-slate-400">Visit the secondary panel when you&apos;re ready for Atlas Intelligence and roadmap lore.</p>
                             </div>
                         </div>
                         <button
@@ -2990,14 +3002,17 @@ export default function App() {
                             onClick={() => setIsInsightsOpen(true)}
                             className="flex items-center gap-2 rounded-md border border-pink-500/40 bg-pink-500/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:border-pink-400 hover:bg-pink-500/30 transition-colors"
                         >
-                            <SparklesIcon className="w-4 h-4" />
+                            <IntelligenceLogo className="w-4 h-4" />
                             Open insights
                         </button>
                     </header>
                     <div className="space-y-3 text-sm text-slate-300">
                         {featuredAssistant && (
                             <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-pink-300/80">Featured copilot</p>
+                                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-pink-300/80">
+                                    <IntelligenceLogo className="w-4 h-4" />
+                                    Atlas Intelligence spotlight
+                                </p>
                                 <p className="text-base font-semibold text-slate-100">{featuredAssistant.name}</p>
                                 <p className="text-xs text-slate-400">{featuredAssistant.focus}</p>
                             </div>
