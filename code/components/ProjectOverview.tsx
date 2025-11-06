@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Project, ProjectStatus } from '../types';
+import { Project, ProjectComponentKey, ProjectStatus, ProjectVisibilitySettings } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
-import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
+import { Cog6ToothIcon, PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
+import ProjectSettingsPanel from './ProjectSettingsPanel';
 
 interface ProjectOverviewProps {
   project: Project;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
+  visibilitySettings: ProjectVisibilitySettings;
+  onToggleVisibility: (component: ProjectComponentKey, isVisible: boolean) => void;
+  onResetVisibility: () => void;
 }
 
 interface FactPrompt {
@@ -75,8 +79,17 @@ const statusOrder: ProjectStatus[] = [
   ProjectStatus.Archived,
 ];
 
-const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProject, onDeleteProject }) => {
-  const [isEditingSummary, setIsEditingSummary] = useState(false);
+const ProjectOverview: React.FC<ProjectOverviewProps> = ({
+  project,
+  onUpdateProject,
+  onDeleteProject,
+  visibilitySettings,
+  onToggleVisibility,
+  onResetVisibility,
+}) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(project.title);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [summaryDraft, setSummaryDraft] = useState(project.summary);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
@@ -88,10 +101,14 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
   const [lastFactId, setLastFactId] = useState<string | null>(null);
   const feedbackTimeoutRef = useRef<number | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);
+  const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    setTitleDraft(project.title);
     setSummaryDraft(project.summary);
-    setIsEditingSummary(false);
+    setIsSettingsOpen(false);
+    setTitleError(null);
     setSummaryError(null);
     setTagInput('');
     setIsAddingTag(false);
@@ -103,7 +120,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       window.clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = null;
     }
-  }, [project.id, project.summary]);
+  }, [project.id, project.summary, project.title]);
 
   useEffect(() => {
     return () => {
@@ -113,6 +130,41 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     };
   }, []);
 
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      setTitleDraft(project.title);
+      setSummaryDraft(project.summary);
+      setTitleError(null);
+      setSummaryError(null);
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        settingsPanelRef.current?.contains(target) ||
+        settingsButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setIsSettingsOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSettingsOpen, project.summary, project.title]);
+
   const tagCount = useMemo(() => project.tags.length, [project.tags]);
 
   const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -121,22 +173,45 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
     onUpdateProject(project.id, { status: nextStatus });
   };
 
-  const handleSummarySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveProjectDetails = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmed = summaryDraft.trim();
-    if (!trimmed) {
+    const trimmedTitle = titleDraft.trim();
+    const trimmedSummary = summaryDraft.trim();
+
+    let hasError = false;
+    if (!trimmedTitle) {
+      setTitleError('Project name cannot be empty.');
+      hasError = true;
+    }
+    if (!trimmedSummary) {
       setSummaryError('Summary cannot be empty.');
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
-    onUpdateProject(project.id, { summary: trimmed });
-    setSummaryError(null);
-    setIsEditingSummary(false);
+
+    const updates: Partial<Project> = {};
+    if (trimmedTitle !== project.title) {
+      updates.title = trimmedTitle;
+    }
+    if (trimmedSummary !== project.summary) {
+      updates.summary = trimmedSummary;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      onUpdateProject(project.id, updates);
+    }
+
+    setIsSettingsOpen(false);
   };
 
-  const handleCancelSummary = () => {
+  const handleResetProjectDetails = () => {
+    setTitleDraft(project.title);
     setSummaryDraft(project.summary);
+    setTitleError(null);
     setSummaryError(null);
-    setIsEditingSummary(false);
   };
 
   const handleStartAddingTag = () => {
@@ -230,7 +305,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       return;
     }
 
-    setIsEditingSummary(true);
+    setIsSettingsOpen(true);
     setSummaryError(null);
     setSummaryDraft((previous) => {
       const trimmed = previous.trim();
@@ -282,9 +357,101 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Project Overview</p>
-          <h2 className="text-2xl font-bold text-white mt-1">{project.title}</h2>
-          <p className="text-xs text-slate-500 mt-2 font-mono break-all">ID: {project.id}</p>
-        </div>
+            <div className="mt-1 flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white">{project.title}</h2>
+              <div className="relative">
+                <button
+                  type="button"
+                  ref={settingsButtonRef}
+                  onClick={() => setIsSettingsOpen((current) => !current)}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-600/60 bg-slate-800/70 p-1 text-slate-300 transition hover:border-cyan-400/60 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                  aria-expanded={isSettingsOpen}
+                  aria-haspopup="true"
+                >
+                  <Cog6ToothIcon className="h-5 w-5" />
+                  <span className="sr-only">Open project details and surface settings</span>
+                </button>
+                {isSettingsOpen ? (
+                  <div
+                    ref={settingsPanelRef}
+                    className="absolute right-0 top-full z-30 mt-3 w-screen max-w-3xl"
+                  >
+                    <div className="space-y-6 rounded-2xl border border-slate-700/70 bg-slate-950/95 p-6 shadow-2xl shadow-slate-900/60 backdrop-blur">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-slate-100">Project details</h3>
+                        <form className="space-y-4" onSubmit={handleSaveProjectDetails}>
+                          <div className="space-y-1.5">
+                            <label htmlFor="project-title-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              Project name
+                            </label>
+                            <input
+                              id="project-title-input"
+                              value={titleDraft}
+                              onChange={(event) => {
+                                setTitleDraft(event.target.value);
+                                if (titleError) {
+                                  setTitleError(null);
+                                }
+                              }}
+                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                            {titleError ? <p className="text-xs text-rose-300">{titleError}</p> : null}
+                          </div>
+                          <div className="space-y-1.5">
+                            <label htmlFor="project-summary-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              Summary
+                            </label>
+                            <textarea
+                              id="project-summary-input"
+                              value={summaryDraft}
+                              onChange={(event) => {
+                                setSummaryDraft(event.target.value);
+                                if (summaryError) {
+                                  setSummaryError(null);
+                                }
+                              }}
+                              rows={3}
+                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                            {summaryError ? <p className="text-xs text-rose-300">{summaryError}</p> : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-cyan-500"
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResetProjectDetails}
+                              className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
+                            >
+                              Reset form
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsSettingsOpen(false)}
+                              className="inline-flex items-center gap-2 rounded-md border border-slate-700/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:text-white"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                      <ProjectSettingsPanel
+                        settings={visibilitySettings}
+                        onToggle={onToggleVisibility}
+                        onReset={onResetVisibility}
+                        className="border-slate-800/70 bg-slate-900/80"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 font-mono break-all">ID: {project.id}</p>
+          </div>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
           <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${getStatusClasses(project.status)}`}>
             {formatStatusLabel(project.status)}
@@ -311,53 +478,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, onUpdateProj
       </header>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Summary</h3>
-          {!isEditingSummary && (
-            <button
-              type="button"
-              onClick={() => setIsEditingSummary(true)}
-              className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
-            >
-              Edit summary
-            </button>
-          )}
-        </div>
-        {isEditingSummary ? (
-          <form className="space-y-3" onSubmit={handleSummarySubmit}>
-            <textarea
-              value={summaryDraft}
-              onChange={(event) => {
-                setSummaryDraft(event.target.value);
-                if (summaryError) {
-                  setSummaryError(null);
-                }
-              }}
-              rows={3}
-              className="w-full bg-slate-900/70 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            />
-            {summaryError && <p className="text-xs text-rose-300">{summaryError}</p>}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
-              >
-                Save summary
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelSummary}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <p className="text-sm text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg px-4 py-3">
-            {project.summary || 'No summary yet. Add one to give collaborators context.'}
-          </p>
-        )}
+        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Summary</h3>
+        <p className="text-sm text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg px-4 py-3">
+          {project.summary || 'No summary yet. Add one to give collaborators context.'}
+        </p>
       </div>
 
       <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">

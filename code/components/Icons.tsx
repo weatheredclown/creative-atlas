@@ -7,6 +7,16 @@ export const SparklesIcon: React.FC<{ className?: string }> = ({ className }) =>
   </svg>
 );
 
+export const Cog6ToothIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className={className}>
+    <path
+      fillRule='evenodd'
+      d='M11.983 2.164a1 1 0 011.034 0l1.615 1.047a1 1 0 00.93.064l1.915-.764a1 1 0 011.246.55l.764 1.915a1 1 0 00.064.93l1.047 1.615a1 1 0 010 1.034l-1.047 1.615a1 1 0 00-.064.93l.764 1.915a1 1 0 01-.55 1.246l-1.915.764a1 1 0 00-.93.064l-1.615 1.047a1 1 0 01-1.034 0l-1.615-1.047a1 1 0 00-.93-.064l-1.915.764a1 1 0 01-1.246-.55l-.764-1.915a1 1 0 00-.064-.93L6.312 9.565a1 1 0 010-1.034l1.047-1.615a1 1 0 00.064-.93l-.764-1.915a1 1 0 01.55-1.246l1.915-.764a1 1 0 00.93-.064l1.615-1.047zM12 15a3 3 0 100-6 3 3 0 000 6z'
+      clipRule='evenodd'
+    />
+  </svg>
+);
+
 export const IntelligenceLogo: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' className={className}>
     <circle cx='12' cy='12' r='11' fill='currentColor' opacity='0.18' />
