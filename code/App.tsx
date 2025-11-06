@@ -485,7 +485,7 @@ const selectDailyQuestsForDate = (dateKey: string, count = DAILY_QUESTS_PER_DAY)
 };
 
 const achievements: Achievement[] = [
-    { id: 'ach-1', title: 'World Builder', description: 'Create your first project.', isUnlocked: (_, projects) => projects.length > 2 },
+    { id: 'ach-1', title: 'World Builder', description: 'Create your first project.', isUnlocked: (_, projects) => projects.length >= 1 },
     { id: 'ach-2', title: 'Polyglot', description: 'Create a Conlang artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Conlang) },
     { id: 'ach-3', title: 'Cartographer', description: 'Create a Location artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Location) },
     { id: 'ach-4', title: 'Connector', description: 'Link 3 artifacts together.', isUnlocked: (artifacts) => artifacts.reduce((acc, a) => acc + a.relations.length, 0) >= 3 },
@@ -1368,7 +1368,28 @@ export default function App() {
   const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
+  const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+
+  const handleOpenPublishModal = useCallback(() => {
+    setPublishError(null);
+    setPublishSuccess(null);
+    setIsPublishModalOpen(true);
+  }, []);
+
+  const handleClosePublishModal = useCallback(() => {
+    setIsPublishModalOpen(false);
+    setPublishError(null);
+    setPublishSuccess(null);
+  }, []);
+
+  const handleResetPublishStatus = useCallback(() => {
+    setPublishError(null);
+    setPublishSuccess(null);
+  }, []);
   
   const triggerDownload = useCallback((blob: Blob, filename:string) => {
     const url = URL.createObjectURL(blob);
@@ -1440,11 +1461,11 @@ export default function App() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('github_auth') === 'success') {
-      setIsPublishModalOpen(true);
+      handleOpenPublishModal();
       // Clean up the URL
       window.history.replaceState({}, document.title, "/");
     }
-  }, []);
+  }, [handleOpenPublishModal]);
 
   useEffect(() => {
     let apiOrigin: string | null = null;
@@ -1482,7 +1503,7 @@ export default function App() {
       }
 
       if (messagePayload.status === 'success') {
-        setIsPublishModalOpen(true);
+        handleOpenPublishModal();
       } else if (messagePayload.status === 'error') {
         const message =
           typeof messagePayload.message === 'string'
@@ -1496,7 +1517,7 @@ export default function App() {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, []);
+  }, [handleOpenPublishModal]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -2152,14 +2173,21 @@ export default function App() {
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
     setIsPublishing(true);
+    setPublishError(null);
+    setPublishSuccess(null);
     try {
       const token = await getIdToken();
-      const result = await publishToGitHub(token, repoName, publishDir);
-      console.log('Publish result:', result);
-      alert(`Publishing process started for ${repoName}. You will be notified upon completion.`);
-      setIsPublishModalOpen(false);
+      const trimmedPublishDir = publishDir.trim();
+      const result = await publishToGitHub(token, repoName, trimmedPublishDir);
+      const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
+      setPublishSuccess(successMessage);
     } catch (err) {
-      alert(`Error creating repository: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'An unexpected error occurred while publishing to GitHub.';
+      setPublishError(message);
+      throw new Error(message);
     } finally {
       setIsPublishing(false);
     }
@@ -3244,9 +3272,12 @@ export default function App() {
       )}
       <PublishToGitHubModal
         isOpen={isPublishModalOpen}
-        onClose={() => setIsPublishModalOpen(false)}
+        onClose={handleClosePublishModal}
         onPublish={handlePublishToGithubRepo}
         isPublishing={isPublishing}
+        errorMessage={publishError}
+        successMessage={publishSuccess}
+        onResetStatus={handleResetPublishStatus}
       />
       </div>
     </DepthPreferencesProvider>

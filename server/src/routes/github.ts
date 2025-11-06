@@ -1,5 +1,4 @@
 import { Router, type Response } from 'express';
-import { firestore } from '../firebaseAdmin.js';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { z } from 'zod';
@@ -126,6 +125,388 @@ const respondWithOAuthPage = (
 </html>`);
 };
 
+const parseJsonSafely = (payload: string): unknown => {
+  if (!payload) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return undefined;
+  }
+};
+
+const formatGithubError = (status: number, payload: string): string => {
+  const parsed = parseJsonSafely(payload);
+  if (parsed && typeof parsed === 'object') {
+    const candidate = parsed as { message?: unknown; errors?: unknown };
+    const baseMessage = typeof candidate.message === 'string' ? candidate.message : '';
+
+    let detailed = '';
+    if (Array.isArray(candidate.errors)) {
+      detailed = candidate.errors
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object') {
+            return '';
+          }
+          const errorEntry = entry as {
+            resource?: unknown;
+            field?: unknown;
+            code?: unknown;
+            message?: unknown;
+          };
+          const parts = [errorEntry.resource, errorEntry.field, errorEntry.code, errorEntry.message]
+            .map((part) => (typeof part === 'string' ? part : ''))
+            .filter((part) => part.length > 0);
+          return parts.join(' ');
+        })
+        .filter((part) => part.length > 0)
+        .join('; ');
+    }
+
+    const combined = [baseMessage, detailed].filter((part) => part.length > 0).join(' | ');
+    if (combined) {
+      return `${combined} (status ${status})`;
+    }
+  }
+
+  if (payload) {
+    return `${payload} (status ${status})`;
+  }
+
+  return `status ${status}`;
+};
+
+const ensureGithubSuccess = async (
+  response: globalThis.Response,
+  context: string,
+): Promise<void> => {
+  if (response.ok) {
+    return;
+  }
+
+  const text = await response.text();
+  throw new Error(`${context}: ${formatGithubError(response.status, text)}`);
+};
+
+const readGithubJson = async <T>(
+  response: globalThis.Response,
+  context: string,
+): Promise<T> => {
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`${context}: ${formatGithubError(response.status, text)}`);
+  }
+
+  if (!text) {
+    throw new Error(`${context}: GitHub returned an empty response.`);
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(`${context}: Unable to parse GitHub response as JSON.`);
+  }
+};
+
+const sanitizePublishDir = (dir: string | undefined): string | undefined => {
+  if (!dir) {
+    return undefined;
+  }
+
+  const trimmed = dir.trim().replace(/^\/+|\/+$/g, '');
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const collectFiles = async (
+  directory: string,
+  relativeRoot = '',
+): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  let allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
+
+  for (const entry of entries) {
+    const absolutePath = path.join(directory, entry.name);
+    const relativePath = relativeRoot ? path.posix.join(relativeRoot, entry.name) : entry.name;
+
+    if (entry.isDirectory()) {
+      allFiles = allFiles.concat(await collectFiles(absolutePath, relativePath));
+    } else {
+      allFiles.push({ relativePath, absolutePath });
+    }
+  }
+
+  return allFiles;
+};
+
+const buildProject = async () => {
+  try {
+    await execAsync('npm run build', { cwd: 'code' });
+  } catch (error) {
+    throw new Error(
+      `Unable to build the Creative Atlas frontend. ${(error as Error).message ?? error}`,
+    );
+  }
+};
+
+interface PublishJobOptions {
+  accessToken: string;
+  repoName: string;
+  publishDir?: string;
+}
+
+interface PublishJobResult {
+  message: string;
+  repository: string;
+  pagesUrl: string;
+}
+
+const runPublishJob = async ({
+  accessToken,
+  repoName,
+  publishDir,
+}: PublishJobOptions): Promise<PublishJobResult> => {
+  const normalizedPublishDir = sanitizePublishDir(publishDir);
+  const defaultHeaders = {
+    Authorization: `token ${accessToken}`,
+    Accept: 'application/vnd.github+json',
+  } as const;
+
+  const isNewRepo = !repoName.includes('/');
+  let owner: string;
+  let repo: string;
+
+  if (isNewRepo) {
+    const createResponse = await fetch('https://api.github.com/user/repos', {
+      method: 'POST',
+      headers: {
+        ...defaultHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: repoName,
+        private: false,
+      }),
+    });
+
+    if (createResponse.status === 422) {
+      const errorPayload = await createResponse.text();
+      const parsedError = parseJsonSafely(errorPayload);
+      const canFallback = (() => {
+        if (parsedError && typeof parsedError === 'object') {
+          const candidate = parsedError as { message?: unknown; errors?: unknown };
+          const baseMessage =
+            typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
+          if (baseMessage.includes('already exists')) {
+            return true;
+          }
+
+          if (Array.isArray(candidate.errors)) {
+            return candidate.errors.some((entry) => {
+              if (!entry || typeof entry !== 'object') {
+                return false;
+              }
+              const errorEntry = entry as { message?: unknown; code?: unknown };
+              const message =
+                typeof errorEntry.message === 'string'
+                  ? errorEntry.message.toLowerCase()
+                  : '';
+              const code =
+                typeof errorEntry.code === 'string' ? errorEntry.code.toLowerCase() : '';
+              return message.includes('already exists') || code === 'already_exists';
+            });
+          }
+        }
+
+        return false;
+      })();
+
+      if (!canFallback) {
+        throw new Error(`Failed to create repository: ${formatGithubError(422, errorPayload)}`);
+      }
+
+      const currentUserResponse = await fetch('https://api.github.com/user', {
+        headers: defaultHeaders,
+      });
+      const currentUser = await readGithubJson<{ login: string }>(
+        currentUserResponse,
+        'Failed to resolve GitHub account for existing repository',
+      );
+      owner = currentUser.login;
+      repo = repoName;
+    } else {
+      const createdRepository = await readGithubJson<{
+        owner: { login: string };
+        name: string;
+      }>(createResponse, 'Failed to create repository');
+      owner = createdRepository.owner.login;
+      repo = createdRepository.name;
+    }
+  } else {
+    [owner, repo] = repoName.split('/', 2);
+  }
+
+  await buildProject();
+
+  const distPath = path.resolve('code', 'dist');
+  const files = await collectFiles(distPath);
+
+  if (files.length === 0) {
+    throw new Error('No build artifacts found. Ensure `npm run build` produces a dist/ directory.');
+  }
+
+  const fileBlobs = await Promise.all(
+    files.map(async (file) => {
+      const content = await fs.readFile(file.absolutePath, 'base64');
+      const blobResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/blobs`,
+        {
+          method: 'POST',
+          headers: {
+            ...defaultHeaders,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content, encoding: 'base64' }),
+        },
+      );
+
+      const blobData = await readGithubJson<{ sha: string }>(
+        blobResponse,
+        `Failed to upload ${file.relativePath} to GitHub`,
+      );
+
+      const relativePath = normalizedPublishDir
+        ? path.posix.join(normalizedPublishDir, file.relativePath)
+        : file.relativePath;
+
+      return { path: relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
+    }),
+  );
+
+  let parentCommitSha: string | undefined;
+  const refResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/gh-pages`,
+    {
+      headers: defaultHeaders,
+    },
+  );
+
+  if (refResponse.ok) {
+    const refData = await readGithubJson<{ object: { sha: string } }>(
+      refResponse,
+      'Failed to read gh-pages reference',
+    );
+    parentCommitSha = refData.object.sha;
+  } else if (refResponse.status !== 404) {
+    await ensureGithubSuccess(refResponse, 'Unable to inspect gh-pages reference');
+  }
+
+  const treeResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/trees`,
+    {
+      method: 'POST',
+      headers: {
+        ...defaultHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tree: fileBlobs,
+      }),
+    },
+  );
+  const treeData = await readGithubJson<{ sha: string }>(
+    treeResponse,
+    'Failed to create Git tree for publication',
+  );
+
+  const commitPayload: { message: string; tree: string; parents?: string[] } = {
+    message: 'Publish to GitHub Pages',
+    tree: treeData.sha,
+  };
+
+  if (parentCommitSha) {
+    commitPayload.parents = [parentCommitSha];
+  }
+
+  const commitResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/commits`,
+    {
+      method: 'POST',
+      headers: {
+        ...defaultHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commitPayload),
+    },
+  );
+  const commitData = await readGithubJson<{ sha: string }>(
+    commitResponse,
+    'Failed to create publication commit',
+  );
+
+  const refPayload = {
+    sha: commitData.sha,
+    force: false,
+  };
+
+  if (parentCommitSha) {
+    const updateRefResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/gh-pages`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...defaultHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(refPayload),
+      },
+    );
+    await ensureGithubSuccess(updateRefResponse, 'Failed to update gh-pages reference');
+  } else {
+    const createRefResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/refs`,
+      {
+        method: 'POST',
+        headers: {
+          ...defaultHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'refs/heads/gh-pages', ...refPayload }),
+      },
+    );
+    await ensureGithubSuccess(createRefResponse, 'Failed to create gh-pages reference');
+  }
+
+  const pagesSourcePath = normalizedPublishDir ? `/${normalizedPublishDir}` : '/';
+  const enablePagesResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pages`,
+    {
+      method: 'PUT',
+      headers: {
+        ...defaultHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source: { branch: 'gh-pages', path: pagesSourcePath },
+      }),
+    },
+  );
+
+  if (!enablePagesResponse.ok && enablePagesResponse.status !== 409) {
+    await ensureGithubSuccess(enablePagesResponse, 'Failed to enable GitHub Pages');
+  }
+
+  const repository = `${owner}/${repo}`;
+  const pagesUrl = `https://${owner}.github.io/${repo}`;
+
+  return {
+    message: `Published ${repository} from the gh-pages branch.`,
+    repository,
+    pagesUrl,
+  };
+};
+
 router.get('/oauth/start', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
     const authUrl = createGithubAuthUrl(req);
     if (req.accepts('json')) {
@@ -177,32 +558,40 @@ router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res
 }));
 
 router.get('/repos', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const accessToken = req.session.github_access_token;
+  const accessToken = req.session.github_access_token;
 
-    if (!accessToken) {
-        return res.status(401).json({ error: 'GitHub access token not found in session.' });
-    }
+  if (!accessToken) {
+    return res.status(401).json({ error: 'GitHub access token not found in session.' });
+  }
 
-    const response = await fetch('https://api.github.com/user/repos?type=owner&sort=pushed&per_page=100', {
+  try {
+    const response = await fetch(
+      'https://api.github.com/user/repos?type=owner&sort=pushed&per_page=100',
+      {
         headers: {
-            'Authorization': `token ${accessToken}`,
-            'Accept': 'application/vnd.github.v3+json',
+          Authorization: `token ${accessToken}`,
+          Accept: 'application/vnd.github+json',
         },
-    });
+      },
+    );
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error fetching repositories:', errorData.message);
-        return res.status(response.status).json({ error: 'Failed to fetch repositories from GitHub.' });
-    }
+    const repos = await readGithubJson<
+      Array<{ full_name: string; name: string }>
+    >(response, 'Unable to load repositories from GitHub');
 
-    const repos = await response.json();
-    const repoData = repos.map((repo: any) => ({
-        fullName: repo.full_name,
-        name: repo.name,
+    const repoData = repos.map((repo) => ({
+      fullName: repo.full_name,
+      name: repo.name,
     }));
 
     res.json(repoData);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Unexpected error while loading GitHub repositories.';
+    res.status(502).json({ error: message });
+  }
 }));
 
 const publishSchema = z.object({
@@ -211,160 +600,26 @@ const publishSchema = z.object({
 });
 
 router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const { repoName, publishDir } = publishSchema.parse(req.body);
-    const accessToken = req.session.github_access_token;
+  const { repoName, publishDir } = publishSchema.parse(req.body);
+  const accessToken = req.session.github_access_token;
 
-    if (!accessToken) {
-        return res.status(401).json({ error: 'GitHub access token not found in session.' });
-    }
+  if (!accessToken) {
+    return res.status(401).json({ error: 'GitHub access token not found in session.' });
+  }
 
-    addJob(async () => {
-        const isNewRepo = !repoName.includes('/');
-        let owner: string;
-        let repo: string;
-
-        if (isNewRepo) {
-            const response = await fetch('https://api.github.com/user/repos', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${accessToken}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                },
-                body: JSON.stringify({
-                    name: repoName,
-                    private: false,
-                }),
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                console.error('Error creating repository:', data.message);
-                return;
-            }
-            owner = data.owner.login;
-            repo = data.name;
-        } else {
-            [owner, repo] = repoName.split('/');
-        }
-
-        try {
-            await execAsync('npm run build', { cwd: 'code' });
-        } catch (error) {
-            console.error('Error building project:', error);
-            return;
-        }
-
-        const distPath = path.resolve('code', 'dist');
-
-        const sanitizePublishDir = (dir: string | undefined): string | undefined => {
-            if (!dir) return undefined;
-            const trimmed = dir.trim().replace(/^\/+|\/+$/g, '');
-            return trimmed.length > 0 ? trimmed : undefined;
-        };
-
-        const normalizedPublishDir = sanitizePublishDir(publishDir);
-
-        const collectFiles = async (directory: string, relativeRoot = ''): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
-            const entries = await fs.readdir(directory, { withFileTypes: true });
-            let allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
-            for (const entry of entries) {
-                const absolutePath = path.join(directory, entry.name);
-                const relativePath = relativeRoot ? path.posix.join(relativeRoot, entry.name) : entry.name;
-                if (entry.isDirectory()) {
-                    allFiles = allFiles.concat(await collectFiles(absolutePath, relativePath));
-                } else {
-                    allFiles.push({ relativePath, absolutePath });
-                }
-            }
-            return allFiles;
-        };
-
-        const files = await collectFiles(distPath);
-        const fileBlobs = await Promise.all(files.map(async (file) => {
-            const content = await fs.readFile(file.absolutePath, 'base64');
-            const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${accessToken}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                },
-                body: JSON.stringify({ content, encoding: 'base64' }),
-            });
-            const blobData = await blobResponse.json();
-            const relativePath = normalizedPublishDir ? path.posix.join(normalizedPublishDir, file.relativePath) : file.relativePath;
-            return { path: relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
-        }));
-
-        let parentCommitSha: string | undefined;
-        try {
-            const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/gh-pages`, {
-                headers: { 'Authorization': `token ${accessToken}` },
-            });
-            if (refResponse.ok) {
-                const refData = await refResponse.json();
-                parentCommitSha = refData.object.sha;
-            }
-        } catch (error) {
-            console.log('gh-pages branch does not exist yet. Creating it.');
-        }
-
-        const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
-            method: 'POST',
-            headers: { 'Authorization': `token ${accessToken}` },
-            body: JSON.stringify({ tree: fileBlobs }),
-        });
-        const treeData = await treeResponse.json();
-
-        const commitPayload: { message: string; tree: string; parents?: string[] } = {
-            message: 'Publish to GitHub Pages',
-            tree: treeData.sha,
-        };
-        if (parentCommitSha) {
-            commitPayload.parents = [parentCommitSha];
-        }
-
-        const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
-            method: 'POST',
-            headers: { 'Authorization': `token ${accessToken}` },
-            body: JSON.stringify(commitPayload),
-        });
-        const commitData = await commitResponse.json();
-
-        const refPayload = { sha: commitData.sha };
-        if (parentCommitSha) {
-            await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/gh-pages`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `token ${accessToken}` },
-                body: JSON.stringify(refPayload),
-            });
-        } else {
-            await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-                method: 'POST',
-                headers: { 'Authorization': `token ${accessToken}` },
-                body: JSON.stringify({ ref: 'refs/heads/gh-pages', ...refPayload }),
-            });
-        }
-
-        const pagesSourcePath = normalizedPublishDir ? `/${normalizedPublishDir}` : '/';
-        const enablePagesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${accessToken}`,
-                'Accept': 'application/vnd.github+json',
-            },
-            body: JSON.stringify({
-                source: { branch: 'gh-pages', path: pagesSourcePath },
-            }),
-        });
-
-        if (!enablePagesResponse.ok) {
-            const errorText = await enablePagesResponse.text();
-            console.error('Error enabling GitHub Pages:', errorText);
-        }
-
-        console.log('Successfully published to GitHub Pages!');
-    });
-
-    res.json({ message: 'Publishing process started.' });
+  try {
+    const result = await addJob(() =>
+      runPublishJob({ accessToken, repoName, publishDir }),
+    );
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to publish project to GitHub', error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'An unknown error occurred while publishing to GitHub.';
+    res.status(502).json({ error: message });
+  }
 }));
 
 export default router;
