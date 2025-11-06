@@ -353,6 +353,8 @@ export const exchangeCodeForToken = async (
 
 export interface PublishToGitHubResponse {
   message: string;
+  repository: string;
+  pagesUrl: string;
 }
 
 export const publishToGitHub = async (
