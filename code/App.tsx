@@ -60,7 +60,7 @@ import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import TimelineEditor from './components/TimelineEditor';
 import MagicSystemBuilder from './components/MagicSystemBuilder';
-import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
+import { buildStaticSiteFiles, exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
@@ -87,7 +87,7 @@ import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
-import { publishToGitHub } from './services/dataApi';
+import { publishToGitHub, type PublishToGitHubRequest } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
 import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
@@ -1370,8 +1370,6 @@ export default function App() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
-  const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
-  const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
 
   const handleOpenPublishModal = useCallback(() => {
@@ -2172,22 +2170,46 @@ export default function App() {
   };
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
+    if (!selectedProject || projectArtifacts.length === 0) {
+      const message = 'Select a project with artifacts before publishing to GitHub.';
+      setPublishError(message);
+      return Promise.reject(new Error(message));
+    }
+
     setIsPublishing(true);
     setPublishError(null);
     setPublishSuccess(null);
+
     try {
+      const files = buildStaticSiteFiles(selectedProject, projectArtifacts);
+      if (files.length === 0) {
+        throw new Error('No publishable files were generated for this project.');
+      }
+
       const token = await getIdToken();
       const trimmedPublishDir = publishDir.trim();
-      const result = await publishToGitHub(token, repoName, trimmedPublishDir);
+      const publishPayload: PublishToGitHubRequest = {
+        repoName,
+        publishDir: trimmedPublishDir.length > 0 ? trimmedPublishDir : undefined,
+        projectTitle:
+          selectedProject.title.trim().length > 0
+            ? selectedProject.title.trim()
+            : 'Creative Atlas World',
+        files,
+      };
+
+      const result = await publishToGitHub(token, publishPayload);
       const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
       setPublishSuccess(successMessage);
+      markSelectedProjectActivity({ publishedSite: true });
+      void addXp(25);
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
           : 'An unexpected error occurred while publishing to GitHub.';
       setPublishError(message);
-      throw new Error(message);
+      return Promise.reject(new Error(message));
     } finally {
       setIsPublishing(false);
     }

@@ -1,12 +1,12 @@
 type Job<T> = () => Promise<T>;
 
-interface QueueItem<T> {
-  job: Job<T>;
-  resolve: (value: T) => void;
+interface QueueItem {
+  job: () => Promise<unknown>;
+  resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
 }
 
-const queue: QueueItem<unknown>[] = [];
+const queue: QueueItem[] = [];
 let isProcessing = false;
 
 const processQueue = async (): Promise<void> => {
@@ -35,7 +35,13 @@ const processQueue = async (): Promise<void> => {
 
 export const addJob = <T>(job: Job<T>): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
-    queue.push({ job, resolve, reject });
+    queue.push({
+      job: async () => job(),
+      resolve: (value: unknown) => {
+        resolve(value as T);
+      },
+      reject,
+    });
     void processQueue();
   });
 };

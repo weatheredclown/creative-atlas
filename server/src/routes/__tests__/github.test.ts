@@ -8,40 +8,16 @@ vi.hoisted(() => {
   process.env.CA_GITHUB_CLIENT_SECRET = process.env.CA_GITHUB_CLIENT_SECRET ?? 'test-client-secret';
 });
 
-const mocks = vi.hoisted(() => ({
-  execMock: vi.fn(),
-  readdirMock: vi.fn(),
-  readFileMock: vi.fn(),
-}));
-
 vi.mock('../../firebaseAdmin.js', () => ({
   auth: {
     verifyIdToken: vi.fn(async () => ({ uid: 'test-user' })),
   },
 }));
 
-vi.mock('child_process', () => ({
-  exec: mocks.execMock,
-}));
-
-vi.mock('fs/promises', () => ({
-  default: {
-    readdir: mocks.readdirMock,
-    readFile: mocks.readFileMock,
-  },
-  readdir: mocks.readdirMock,
-  readFile: mocks.readFileMock,
-}));
-
 // The router import must come after the mocks so they are applied to its dependencies.
 import githubRouter from '../github.js';
 
-const { execMock, readdirMock, readFileMock } = mocks;
-
-const fetchMock = vi.fn<
-  Parameters<typeof fetch>,
-  ReturnType<typeof fetch>
->();
+const fetchMock = vi.fn<typeof fetch>();
 
 const createApp = () => {
   const app = express();
@@ -64,24 +40,6 @@ const createApp = () => {
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
-  execMock.mockReset();
-  readdirMock.mockReset();
-  readFileMock.mockReset();
-
-  execMock.mockImplementation((command: string, optionsOrCallback: unknown, maybeCallback?: unknown) => {
-    const callback =
-      typeof optionsOrCallback === 'function'
-        ? optionsOrCallback
-        : (maybeCallback as ((error: unknown, stdout?: string, stderr?: string) => void) | undefined);
-    callback?.(null, '', '');
-    return undefined;
-  });
-
-  readdirMock.mockResolvedValue([
-    { name: 'index.html', isDirectory: () => false } as unknown,
-  ]);
-
-  readFileMock.mockResolvedValue('PGgxPkhlbGxvPC9oMT4=');
 });
 
 afterEach(() => {
@@ -145,6 +103,9 @@ describe('GitHub routes', () => {
   describe('POST /api/github/publish', () => {
     it('falls back to an existing repository when creation returns 422 and completes the publish flow', async () => {
       const app = createApp();
+      const siteFiles = [
+        { path: 'index.html', content: '<h1>Demo World</h1>' },
+      ];
 
       fetchMock
         .mockResolvedValueOnce(
@@ -163,51 +124,58 @@ describe('GitHub routes', () => {
             { status: 422 },
           ),
         )
-        .mockResolvedValueOnce(
-          jsonResponse({ login: 'test-user' }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({ sha: 'blob-sha' }, { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          new Response('', { status: 404 }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({ sha: 'tree-sha' }, { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({ sha: 'commit-sha' }, { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({}, { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({ message: 'already enabled' }, { status: 409 }),
-        );
+        .mockResolvedValueOnce(jsonResponse({ login: 'test-user' }))
+        .mockResolvedValueOnce(jsonResponse({ sha: 'blob-sha' }, { status: 201 }))
+        .mockResolvedValueOnce(new Response('', { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ sha: 'tree-sha' }, { status: 201 }))
+        .mockResolvedValueOnce(jsonResponse({ sha: 'commit-sha' }, { status: 201 }))
+        .mockResolvedValueOnce(jsonResponse({}, { status: 201 }))
+        .mockResolvedValueOnce(jsonResponse({ message: 'already enabled' }, { status: 409 }));
 
       const response = await request(app)
         .post('/api/github/publish')
         .set('Authorization', 'Bearer fake-token')
-        .send({ repoName: 'demo-site', publishDir: '' })
+        .send({
+          repoName: 'demo-site',
+          publishDir: '',
+          projectTitle: 'Demo World',
+          files: siteFiles,
+        })
         .expect(200);
 
-      expect(execMock).toHaveBeenCalledWith(
-        'npm run build',
-        expect.objectContaining({ cwd: 'code' }),
-        expect.any(Function),
-      );
-
       expect(response.body).toEqual({
-        message: 'Published test-user/demo-site from the gh-pages branch.',
+        message: 'Published Demo World to test-user/demo-site on the gh-pages branch.',
         repository: 'test-user/demo-site',
         pagesUrl: 'https://test-user.github.io/demo-site',
       });
+
+      const blobCall = fetchMock.mock.calls[2];
+      expect(blobCall?.[0]).toBe(
+        'https://api.github.com/repos/test-user/demo-site/git/blobs',
+      );
+      const blobBody = JSON.parse(((blobCall?.[1] as RequestInit)?.body ?? '{}') as string);
+      expect(blobBody).toEqual({
+        content: Buffer.from(siteFiles[0].content, 'utf8').toString('base64'),
+        encoding: 'base64',
+      });
+
+      const enablePagesCall = fetchMock.mock.calls[7];
+      expect(enablePagesCall?.[0]).toBe(
+        'https://api.github.com/repos/test-user/demo-site/pages',
+      );
+      const enablePagesBody = JSON.parse(
+        ((enablePagesCall?.[1] as RequestInit)?.body ?? '{}') as string,
+      );
+      expect(enablePagesBody).toEqual({ source: { branch: 'gh-pages', path: '/' } });
 
       expect(fetchMock).toHaveBeenCalledTimes(8);
     });
 
     it('surfaces GitHub publication failures with details', async () => {
       const app = createApp();
+      const siteFiles = [
+        { path: 'index.html', content: '<h1>Demo World</h1>' },
+      ];
 
       fetchMock
         .mockResolvedValueOnce(
@@ -219,20 +187,19 @@ describe('GitHub routes', () => {
             { status: 201 },
           ),
         )
-        .mockResolvedValueOnce(
-          jsonResponse({ sha: 'blob-sha' }, { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          new Response('', { status: 404 }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({ message: 'tree failure' }, { status: 500 }),
-        );
+        .mockResolvedValueOnce(jsonResponse({ sha: 'blob-sha' }, { status: 201 }))
+        .mockResolvedValueOnce(new Response('', { status: 404 }))
+        .mockResolvedValueOnce(jsonResponse({ message: 'tree failure' }, { status: 500 }));
 
       const response = await request(app)
         .post('/api/github/publish')
         .set('Authorization', 'Bearer fake-token')
-        .send({ repoName: 'demo-site', publishDir: '' })
+        .send({
+          repoName: 'demo-site',
+          publishDir: '',
+          projectTitle: 'Demo World',
+          files: siteFiles,
+        })
         .expect(502);
 
       expect(response.body.error).toContain('Failed to create Git tree for publication');

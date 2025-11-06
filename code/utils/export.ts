@@ -1370,13 +1370,16 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
     return content;
 };
 
-export async function exportProjectAsStaticSite(project: Project, artifacts: Artifact[]) {
-    const zip = new JSZip();
-    const projectSlug = project.title.replace(/\s+/g, '_').toLowerCase();
+export type StaticSiteFile = {
+    path: string;
+    content: string;
+};
 
-    // Create main index.html
+export const buildStaticSiteFiles = (project: Project, artifacts: Artifact[]): StaticSiteFile[] => {
+    const files: StaticSiteFile[] = [];
+
     let indexContent = `<h1 class='text-4xl font-bold text-white mb-2'>${project.title}</h1>`;
-    indexContent += `<p class='text-lg text-slate-400 mb-8'>${project.summary}</p>`;
+    indexContent += `<p class='text-lg text-slate-400 mb-8'>${project.summary ?? ''}</p>`;
     indexContent += "<h2 class='text-2xl font-bold text-white mb-4'>Artifacts</h2><div class='grid grid-cols-1 md:grid-cols-3 gap-4'>";
     artifacts.forEach(artifact => {
         const filename = `artifacts/${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.html`;
@@ -1386,19 +1389,33 @@ export async function exportProjectAsStaticSite(project: Project, artifacts: Art
         </a>`;
     });
     indexContent += '</div>';
-    zip.file('index.html', createHtmlShell(project.title, indexContent));
 
-    // Create individual artifact pages
-    const artifactsFolder = zip.folder('artifacts');
-    if (artifactsFolder) {
-        artifacts.forEach(artifact => {
-            const filename = `${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.html`;
-            const artifactHtml = generateArtifactContent(artifact, artifacts);
-            artifactsFolder.file(filename, createHtmlShell(`${artifact.title} | ${project.title}`, artifactHtml));
+    files.push({ path: 'index.html', content: createHtmlShell(project.title, indexContent) });
+
+    artifacts.forEach(artifact => {
+        const filename = `${artifact.type}_${artifact.title.replace(/\s+/g, '_').toLowerCase()}.html`;
+        const artifactHtml = generateArtifactContent(artifact, artifacts);
+        files.push({
+            path: `artifacts/${filename}`,
+            content: createHtmlShell(`${artifact.title} | ${project.title}`, artifactHtml),
         });
-    }
+    });
 
-    // Generate and download zip
+    return files;
+};
+
+export async function exportProjectAsStaticSite(project: Project, artifacts: Artifact[]) {
+    const files = buildStaticSiteFiles(project, artifacts);
+    const zip = new JSZip();
+
+    files.forEach(file => {
+        zip.file(file.path, file.content);
+    });
+
+    const projectSlug = project.title.trim().length > 0
+        ? project.title.replace(/\s+/g, '_').toLowerCase()
+        : 'creative_atlas_project';
+
     const content = await zip.generateAsync({ type: 'blob' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);

@@ -12,7 +12,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
 - Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
 - Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
-- Automate publish pipeline: convert the “Publish Site” action into a backend export that builds static bundles, deploys to durable storage, and exposes job status (GitHub error reporting & build orchestration hardened).
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.

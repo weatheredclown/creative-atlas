@@ -3,14 +3,9 @@ import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { addJob } from '../utils/queue.js';
-
-const execAsync = promisify(exec);
 
 const router = Router();
 
@@ -219,41 +214,17 @@ const sanitizePublishDir = (dir: string | undefined): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const collectFiles = async (
-  directory: string,
-  relativeRoot = '',
-): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
-  const entries = await fs.readdir(directory, { withFileTypes: true });
-  let allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
-
-  for (const entry of entries) {
-    const absolutePath = path.join(directory, entry.name);
-    const relativePath = relativeRoot ? path.posix.join(relativeRoot, entry.name) : entry.name;
-
-    if (entry.isDirectory()) {
-      allFiles = allFiles.concat(await collectFiles(absolutePath, relativePath));
-    } else {
-      allFiles.push({ relativePath, absolutePath });
-    }
-  }
-
-  return allFiles;
-};
-
-const buildProject = async () => {
-  try {
-    await execAsync('npm run build', { cwd: 'code' });
-  } catch (error) {
-    throw new Error(
-      `Unable to build the Creative Atlas frontend. ${(error as Error).message ?? error}`,
-    );
-  }
-};
+interface PublishJobFile {
+  path: string;
+  content: string;
+}
 
 interface PublishJobOptions {
   accessToken: string;
   repoName: string;
   publishDir?: string;
+  projectTitle: string;
+  files: PublishJobFile[];
 }
 
 interface PublishJobResult {
@@ -262,16 +233,38 @@ interface PublishJobResult {
   pagesUrl: string;
 }
 
+const sanitizeFilePath = (filePath: string): string => {
+  const trimmed = filePath.trim();
+  if (!trimmed) {
+    throw new Error('Each published file must include a path.');
+  }
+
+  const withoutLeadingSlash = trimmed.replace(/^\/+/, '').replace(/\\/g, '/');
+  const normalized = path.posix.normalize(withoutLeadingSlash);
+
+  if (!normalized || normalized === '.' || normalized.split('/').some((segment) => segment === '..')) {
+    throw new Error(`Invalid file path: ${filePath}`);
+  }
+
+  return normalized;
+};
+
 const runPublishJob = async ({
   accessToken,
   repoName,
   publishDir,
+  projectTitle,
+  files,
 }: PublishJobOptions): Promise<PublishJobResult> => {
   const normalizedPublishDir = sanitizePublishDir(publishDir);
   const defaultHeaders = {
     Authorization: `token ${accessToken}`,
     Accept: 'application/vnd.github+json',
   } as const;
+
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error('No site files were provided for publication.');
+  }
 
   const isNewRepo = !repoName.includes('/');
   let owner: string;
@@ -347,18 +340,20 @@ const runPublishJob = async ({
     [owner, repo] = repoName.split('/', 2);
   }
 
-  await buildProject();
-
-  const distPath = path.resolve('code', 'dist');
-  const files = await collectFiles(distPath);
-
-  if (files.length === 0) {
-    throw new Error('No build artifacts found. Ensure `npm run build` produces a dist/ directory.');
-  }
-
+  const seenPaths = new Set<string>();
   const fileBlobs = await Promise.all(
     files.map(async (file) => {
-      const content = await fs.readFile(file.absolutePath, 'base64');
+      const sanitizedPath = sanitizeFilePath(file.path);
+      const relativePath = normalizedPublishDir
+        ? path.posix.join(normalizedPublishDir, sanitizedPath)
+        : sanitizedPath;
+
+      if (seenPaths.has(relativePath)) {
+        throw new Error(`Duplicate file detected for path ${relativePath}.`);
+      }
+      seenPaths.add(relativePath);
+
+      const base64Content = Buffer.from(file.content ?? '', 'utf8').toString('base64');
       const blobResponse = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/blobs`,
         {
@@ -367,18 +362,14 @@ const runPublishJob = async ({
             ...defaultHeaders,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ content, encoding: 'base64' }),
+          body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
         },
       );
 
       const blobData = await readGithubJson<{ sha: string }>(
         blobResponse,
-        `Failed to upload ${file.relativePath} to GitHub`,
+        `Failed to upload ${sanitizedPath} to GitHub`,
       );
-
-      const relativePath = normalizedPublishDir
-        ? path.posix.join(normalizedPublishDir, file.relativePath)
-        : file.relativePath;
 
       return { path: relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
     }),
@@ -420,8 +411,12 @@ const runPublishJob = async ({
     'Failed to create Git tree for publication',
   );
 
+  const safeProjectTitle = projectTitle.trim().length > 0
+    ? projectTitle.trim()
+    : 'Creative Atlas Project';
+
   const commitPayload: { message: string; tree: string; parents?: string[] } = {
-    message: 'Publish to GitHub Pages',
+    message: `Publish ${safeProjectTitle} static site`,
     tree: treeData.sha,
   };
 
@@ -501,7 +496,7 @@ const runPublishJob = async ({
   const pagesUrl = `https://${owner}.github.io/${repo}`;
 
   return {
-    message: `Published ${repository} from the gh-pages branch.`,
+    message: `Published ${safeProjectTitle} to ${repository} on the gh-pages branch.`,
     repository,
     pagesUrl,
   };
@@ -594,13 +589,20 @@ router.get('/repos', authenticate, asyncHandler(async (req: AuthenticatedRequest
   }
 }));
 
+const publishFileSchema = z.object({
+  path: z.string().min(1, 'Each file must include a path.'),
+  content: z.string(),
+});
+
 const publishSchema = z.object({
-    repoName: z.string().min(1),
-    publishDir: z.string().optional(),
+  repoName: z.string().min(1),
+  publishDir: z.string().optional(),
+  projectTitle: z.string().min(1),
+  files: z.array(publishFileSchema).min(1),
 });
 
 router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { repoName, publishDir } = publishSchema.parse(req.body);
+  const { repoName, publishDir, projectTitle, files } = publishSchema.parse(req.body);
   const accessToken = req.session.github_access_token;
 
   if (!accessToken) {
@@ -609,7 +611,7 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
 
   try {
     const result = await addJob(() =>
-      runPublishJob({ accessToken, repoName, publishDir }),
+      runPublishJob({ accessToken, repoName, publishDir, projectTitle, files }),
     );
     res.json(result);
   } catch (error) {
