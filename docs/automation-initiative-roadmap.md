@@ -12,7 +12,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
 - Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
 - Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
-- Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow.
+- Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (UI now surfaces GitHub authorization feedback; wire up backend status endpoints next.)
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.

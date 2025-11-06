@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Modal from './Modal';
 import { GitHubIcon } from './Icons';
 
+export type GitHubAuthStatus = 'idle' | 'authorizing' | 'authorized' | 'error';
+
 interface PublishToGitHubModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -10,6 +12,8 @@ interface PublishToGitHubModalProps {
   errorMessage?: string | null;
   successMessage?: string | null;
   onResetStatus: () => void;
+  authStatus: GitHubAuthStatus;
+  statusMessage?: string | null;
 }
 
 interface GitHubRepo {
@@ -28,6 +32,8 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
   errorMessage,
   successMessage,
   onResetStatus,
+  authStatus,
+  statusMessage,
 }) => {
   const [repoName, setRepoName] = useState('');
   const [publishDir, setPublishDir] = useState('');
@@ -48,6 +54,21 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
       setIsLoadingRepos(false);
       setRepoFetchError(null);
       setFormError(null);
+      return;
+    }
+
+    if (authStatus !== 'authorized') {
+      setIsLoadingRepos(false);
+      setRepoFetchError(null);
+      setFormError(null);
+      setRepos([]);
+      setSelectedRepo('');
+      setShowNewRepoInput(false);
+    }
+  }, [authStatus, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || authStatus !== 'authorized') {
       return;
     }
 
@@ -129,7 +150,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, onResetStatus]);
+  }, [authStatus, isOpen, onResetStatus]);
 
   const handleRepoSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -186,7 +207,13 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
   const disableSubmit =
     isPublishing ||
     isLoadingRepos ||
+    authStatus !== 'authorized' ||
     (showNewRepoInput ? repoName.trim().length === 0 : selectedRepo.length === 0);
+
+  const statusVariantClasses =
+    authStatus === 'error'
+      ? 'border-red-500/40 bg-red-500/10 text-red-200'
+      : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Publish to GitHub">
@@ -204,7 +231,12 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
             value={showNewRepoInput ? 'new' : selectedRepo}
             onChange={handleRepoSelection}
             className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60"
-            disabled={isLoadingRepos || isPublishing || repos.length === 0}
+            disabled={
+              isLoadingRepos ||
+              isPublishing ||
+              repos.length === 0 ||
+              authStatus !== 'authorized'
+            }
           >
             {repos.map((repo) => (
               <option key={repo.fullName} value={repo.fullName}>
@@ -221,7 +253,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
               onChange={handleRepoNameChange}
               placeholder="e.g., my-awesome-project"
               className="mt-2 w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60"
-              disabled={isPublishing}
+              disabled={isPublishing || authStatus !== 'authorized'}
               required
             />
           )}
@@ -237,8 +269,14 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
             onChange={handlePublishDirChange}
             placeholder="e.g., pages"
             className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60"
-            disabled={isPublishing}
+            disabled={isPublishing || authStatus !== 'authorized'}
           />
+
+          {statusMessage && (
+            <div className={`mt-3 rounded-md border px-3 py-2 text-sm ${statusVariantClasses}`}>
+              {statusMessage}
+            </div>
+          )}
 
           {isLoadingRepos && (
             <p className="mt-3 text-sm text-slate-400">Loading repositories…</p>

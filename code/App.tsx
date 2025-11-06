@@ -91,7 +91,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
-import PublishToGitHubModal from './components/PublishToGitHubModal';
+import PublishToGitHubModal, { GitHubAuthStatus } from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
@@ -1375,18 +1375,27 @@ export default function App() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [githubAuthStatus, setGithubAuthStatus] = useState<GitHubAuthStatus>('idle');
+  const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
 
-  const handleOpenPublishModal = useCallback(() => {
-    setPublishError(null);
-    setPublishSuccess(null);
-    setIsPublishModalOpen(true);
-  }, []);
+  const handleOpenPublishModal = useCallback(
+    (status: GitHubAuthStatus = 'authorized', message: string | null = null) => {
+      setPublishError(null);
+      setPublishSuccess(null);
+      setGithubAuthStatus(status);
+      setGithubAuthMessage(message);
+      setIsPublishModalOpen(true);
+    },
+    [],
+  );
 
   const handleClosePublishModal = useCallback(() => {
     setIsPublishModalOpen(false);
     setPublishError(null);
     setPublishSuccess(null);
+    setGithubAuthStatus('idle');
+    setGithubAuthMessage(null);
   }, []);
 
   const handleResetPublishStatus = useCallback(() => {
@@ -1464,7 +1473,10 @@ export default function App() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('github_auth') === 'success') {
-      handleOpenPublishModal();
+      handleOpenPublishModal(
+        'authorized',
+        'GitHub authorization complete. Select a repository to publish your site.',
+      );
       // Clean up the URL
       window.history.replaceState({}, document.title, "/");
     }
@@ -1506,12 +1518,16 @@ export default function App() {
       }
 
       if (messagePayload.status === 'success') {
-        handleOpenPublishModal();
+        handleOpenPublishModal(
+          'authorized',
+          'GitHub authorization complete. Select a repository to publish your site.',
+        );
       } else if (messagePayload.status === 'error') {
         const message =
           typeof messagePayload.message === 'string'
             ? messagePayload.message
             : 'GitHub authorization failed.';
+        handleOpenPublishModal('error', message);
         alert(message);
       }
     };
@@ -2144,9 +2160,16 @@ export default function App() {
 
   const handlePublishToGithub = async () => {
     if (!isDataApiConfigured || !dataApiBaseUrl) {
-      alert('Publishing to GitHub is unavailable because the data API is not configured.');
+      const message = 'Publishing to GitHub is unavailable because the data API is not configured.';
+      handleOpenPublishModal('error', message);
+      alert(message);
       return;
     }
+
+    handleOpenPublishModal(
+      'authorizing',
+      'Authorizing with GitHub. Complete the pop-up window to continue.',
+    );
 
     try {
       const token = await getIdToken();
@@ -2166,11 +2189,13 @@ export default function App() {
       }
     } catch (error) {
       console.error('Failed to initiate GitHub authorization', error);
-      alert(
-        `Unable to start GitHub authorization. ${
-          error instanceof Error ? error.message : 'Please try again.'
-        }`,
-      );
+      const message = `Unable to start GitHub authorization. ${
+        error instanceof Error ? error.message : 'Please try again.'
+      }`;
+      setGithubAuthStatus('error');
+      setGithubAuthMessage(message);
+      setIsPublishModalOpen(true);
+      alert(message);
     }
   };
 
@@ -3301,6 +3326,8 @@ export default function App() {
         errorMessage={publishError}
         successMessage={publishSuccess}
         onResetStatus={handleResetPublishStatus}
+        authStatus={githubAuthStatus}
+        statusMessage={githubAuthMessage}
       />
       </div>
     </DepthPreferencesProvider>
