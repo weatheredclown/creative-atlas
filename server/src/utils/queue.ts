@@ -1,27 +1,41 @@
-type Job = () => Promise<void>;
+type Job<T> = () => Promise<T>;
 
-const queue: Job[] = [];
+interface QueueItem<T> {
+  job: Job<T>;
+  resolve: (value: T) => void;
+  reject: (error: unknown) => void;
+}
+
+const queue: QueueItem<unknown>[] = [];
 let isProcessing = false;
 
-const processQueue = async () => {
-    if (isProcessing) return;
-    isProcessing = true;
+const processQueue = async (): Promise<void> => {
+  if (isProcessing) {
+    return;
+  }
 
-    while (queue.length > 0) {
-        const job = queue.shift();
-        if (job) {
-            try {
-                await job();
-            } catch (error) {
-                console.error('Error processing job:', error);
-            }
-        }
+  isProcessing = true;
+
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (!next) {
+      continue;
     }
 
-    isProcessing = false;
+    try {
+      const result = await next.job();
+      next.resolve(result);
+    } catch (error) {
+      next.reject(error);
+    }
+  }
+
+  isProcessing = false;
 };
 
-export const addJob = (job: Job) => {
-    queue.push(job);
+export const addJob = <T>(job: Job<T>): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    queue.push({ job, resolve, reject });
     void processQueue();
+  });
 };
