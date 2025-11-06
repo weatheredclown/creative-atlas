@@ -20,6 +20,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
+- Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
 
 ## Segment C — Tutorial & Education Experience
 - Build interactive stepper tutorials covering world creation, project linking, publishing, and analytics, based on `docs/stepper-tutorial-design.md`.
