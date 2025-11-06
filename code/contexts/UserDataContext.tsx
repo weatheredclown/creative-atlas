@@ -78,6 +78,26 @@ const UserDataContext = createContext<UserDataContextValue | undefined>(undefine
 const defaultSettings: UserSettings = {
   theme: 'system',
   aiTipsEnabled: true,
+  components: {
+    milestoneTrackerVisible: false,
+    questsVisible: true,
+    achievementsVisible: true,
+    questlinesVisible: true,
+    projectInsightsVisible: true,
+    openTasksVisible: true,
+    memorySyncVisible: true,
+    narrativeHealthVisible: true,
+    continuityMonitorVisible: true,
+    worldSimulationVisible: true,
+    narrativePipelineVisible: true,
+    characterArcTrackerVisible: true,
+    inspirationDeckVisible: true,
+    githubImportVisible: true,
+    quickFactsVisible: true,
+    templatePickerVisible: true,
+    releaseNotesVisible: true,
+    creatorInsightsVisible: true,
+  },
 };
 
 const createDefaultProfile = (
@@ -756,9 +776,17 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         nextQuestlines = update.questlinesClaimed
           ? Array.from(new Set([...current.questlinesClaimed, ...update.questlinesClaimed]))
           : current.questlinesClaimed;
-        nextSettings = update.settings
-          ? { ...current.settings, ...update.settings }
-          : current.settings;
+        nextSettings = current.settings;
+        if (update.settings) {
+          nextSettings = {
+            ...nextSettings,
+            ...update.settings,
+            components: {
+              ...nextSettings.components,
+              ...update.settings.components,
+            },
+          };
+        }
         return {
           ...current,
           ...update,
