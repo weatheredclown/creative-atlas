@@ -41,6 +41,7 @@ import ConlangLexiconEditor from './components/ConlangLexiconEditor';
 import StoryEditor from './components/StoryEditor';
 import KanbanBoard from './components/KanbanBoard';
 import CharacterEditor from './components/CharacterEditor';
+import CharacterArcTracker from './components/CharacterArcTracker';
 import WikiEditor from './components/WikiEditor';
 import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
@@ -2984,6 +2985,7 @@ export default function App() {
                 <ContinuityMonitor artifacts={projectArtifacts} />
               </div>
               <NarrativePipelineBoard artifacts={projectArtifacts} />
+              <CharacterArcTracker artifacts={projectArtifacts} />
               <InspirationDeck
                 onCaptureCard={handleCaptureInspirationCard}
                 isCaptureDisabled={!selectedProjectId}
