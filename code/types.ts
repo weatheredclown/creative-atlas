@@ -350,6 +350,33 @@ export interface UserProfile {
     settings: UserSettings;
 }
 
+export const PROJECT_COMPONENT_KEYS = [
+  'projectHero',
+  'projectOverview',
+  'quickFactsPanel',
+  'projectInsights',
+  'aiCopilot',
+  'narrativeHealth',
+  'continuityMonitor',
+  'worldSimulation',
+  'inspirationDeck',
+  'memorySync',
+  'openTasks',
+  'narrativePipeline',
+  'characterArcTracker',
+  'milestoneTracker',
+  'artifactExplorer',
+  'githubImport',
+  'templates',
+  'releaseWorkflows',
+] as const;
+
+export type ProjectComponentKey = typeof PROJECT_COMPONENT_KEYS[number];
+
+export type ProjectFeatureGroup = 'summary' | 'analytics' | 'tracking' | 'distribution';
+
+export type ProjectVisibilitySettings = Record<ProjectComponentKey, boolean>;
+
 export interface TutorialStep {
   title: string;
   explanation: string;

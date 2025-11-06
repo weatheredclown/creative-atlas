@@ -1,6 +1,6 @@
 import React from 'react';
 import { Artifact, Project } from '../types';
-import { PlusIcon, SparklesIcon, ArrowUpTrayIcon, BuildingStorefrontIcon } from './Icons';
+import { PlusIcon, SparklesIcon, BuildingStorefrontIcon } from './Icons';
 
 const formatNumber = (value: number): string =>
   new Intl.NumberFormat('en-US', { notation: value > 9999 ? 'compact' : 'standard' }).format(value);
@@ -25,7 +25,6 @@ interface ProjectHeroProps {
   onCreateArtifact: () => void;
   onCaptureQuickFact: () => void;
   onPublishProject: () => void;
-  onOpenInsights: () => void;
   onSelectQuickFact: (id: string) => void;
   level: number;
   xpProgress: number;
@@ -77,7 +76,6 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   onCreateArtifact,
   onCaptureQuickFact,
   onPublishProject,
-  onOpenInsights,
   onSelectQuickFact,
   level,
   xpProgress,
@@ -143,14 +141,6 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             >
               <BuildingStorefrontIcon className="h-4 w-4" />
               Publish atlas
-            </button>
-            <button
-              type="button"
-              onClick={onOpenInsights}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-600/60 bg-slate-900/60 px-4 py-2 text-sm font-semibold text-slate-200 transition-all hover:-translate-y-0.5 hover:border-cyan-300/40 hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-slate-500/50"
-            >
-              <ArrowUpTrayIcon className="h-4 w-4" />
-              Open insights
             </button>
           </div>
 

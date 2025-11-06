@@ -18,6 +18,8 @@ import {
     TaskData,
     TASK_STATE,
     type TaskState,
+    type ProjectComponentKey,
+    type ProjectVisibilitySettings,
     TemplateCategory,
     TemplateEntry,
     TemplateArtifactBlueprint,
@@ -62,6 +64,7 @@ import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBib
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
+import ProjectSettingsPanel from './components/ProjectSettingsPanel';
 import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
@@ -74,7 +77,7 @@ import { useAuth } from './contexts/AuthContext';
 import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured, startGitHubOAuth } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
-import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import AICopilotPanel from './components/AICopilotPanel';
 import MemorySyncPanel from './components/MemorySyncPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
@@ -93,9 +96,15 @@ import ContinuityMonitor from './components/ContinuityMonitor';
 import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
-import Zippy from './components/Zippy';
 import WorldSimulationPanel from './components/WorldSimulationPanel';
 import CharacterArcTracker from './components/CharacterArcTracker';
+import {
+  PROJECT_FEATURE_GROUPS,
+  createDefaultVisibility,
+  ensureVisibilityDefaults,
+  loadProjectVisibility,
+  persistProjectVisibility,
+} from './utils/projectVisibility';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -1350,8 +1359,10 @@ export default function App() {
   const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
   const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
+  const [projectVisibilityMap, setProjectVisibilityMap] = useState<Record<string, ProjectVisibilitySettings>>(
+    () => loadProjectVisibility(),
+  );
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const [isTutorialVisible, setIsTutorialVisible] = useState(true);
   const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
@@ -1407,6 +1418,10 @@ export default function App() {
       window.clearTimeout(timeout);
     };
   }, [dailyQuestDayKey]);
+
+  useEffect(() => {
+    persistProjectVisibility(projectVisibilityMap);
+  }, [projectVisibilityMap]);
 
   const todaysDailyQuests = useMemo(
     () => selectDailyQuestsForDate(dailyQuestDayKey),
@@ -1740,6 +1755,40 @@ export default function App() {
   const selectedProjectHiddenBySidebarFilters = Boolean(
     selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId),
   );
+
+  const currentProjectVisibility = useMemo(() => {
+    if (!selectedProjectId) {
+      return createDefaultVisibility();
+    }
+
+    return ensureVisibilityDefaults(projectVisibilityMap[selectedProjectId]);
+  }, [selectedProjectId, projectVisibilityMap]);
+
+  const handleToggleComponentVisibility = useCallback(
+    (component: ProjectComponentKey, isVisible: boolean) => {
+      if (!selectedProjectId) {
+        return;
+      }
+
+      setProjectVisibilityMap((previous) => {
+        const existing = ensureVisibilityDefaults(previous[selectedProjectId]);
+        const updated: ProjectVisibilitySettings = { ...existing, [component]: isVisible };
+        return { ...previous, [selectedProjectId]: updated };
+      });
+    },
+    [selectedProjectId],
+  );
+
+  const handleResetComponentVisibility = useCallback(() => {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    setProjectVisibilityMap((previous) => ({
+      ...previous,
+      [selectedProjectId]: createDefaultVisibility(),
+    }));
+  }, [selectedProjectId]);
 
   const handleDeleteArtifact = useCallback(
     async (artifactId: string) => {
@@ -2531,43 +2580,6 @@ export default function App() {
   const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
   const featuredAssistant = aiAssistants[0];
 
-  const CollapsibleSection: React.FC<{
-    title: string;
-    isCollapsed: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-  }> = ({ title, isCollapsed, onToggle, children }) => (
-    <div className="rounded-lg border border-slate-700/50 bg-slate-800/20">
-      <h2 className="border-b border-slate-700/50 px-4 py-2 text-sm font-semibold text-slate-300">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex w-full items-center justify-between text-left"
-          aria-expanded={!isCollapsed}
-        >
-          <span>{title}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={`h-5 w-5 transform transition-transform ${
-              isCollapsed ? 'rotate-0' : 'rotate-180'
-            }`}
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      </h2>
-      <Zippy isOpen={!isCollapsed}>
-        <div className="p-4">{children}</div>
-      </Zippy>
-    </div>
-  );
-
   const ViewSwitcher = () => (
     <div className="flex items-center gap-1 p-1 bg-slate-700/50 rounded-lg">
         <button onClick={() => handleViewModeChange('table')} className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors ${viewMode === 'table' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}>
@@ -2732,424 +2744,472 @@ export default function App() {
           <Achievements achievements={achievements} artifacts={artifacts} projects={projects} />
         </aside>
 
-        <section className="lg:col-span-9 space-y-8">
+        <section className="lg:col-span-9 space-y-10">
           {selectedProject ? (
             <>
-              {projectHeroStats ? (
-                <ProjectHero
-                  project={selectedProject}
-                  stats={projectHeroStats}
-                  quickFacts={quickFactPreview}
-                  totalQuickFacts={quickFacts.length}
-                  statusLabel={formatStatusLabel(selectedProject.status)}
-                  onCreateArtifact={() => setIsCreateModalOpen(true)}
-                  onCaptureQuickFact={() => setIsQuickFactModalOpen(true)}
-                  onPublishProject={handlePublish}
-                  onOpenInsights={() => setIsInsightsOpen(true)}
-                  onSelectQuickFact={setSelectedArtifactId}
-                  level={level}
-                  xpProgress={xpProgress}
-                />
-              ) : null}
-              <ProjectOverview
-                  project={selectedProject}
-                  onUpdateProject={handleUpdateProject}
-                  onDeleteProject={handleDeleteProject}
-              />
-              <MemorySyncPanel
-                conversations={projectConversations}
-                onStatusChange={handleMemoryStatusChange}
-              />
-              <CollapsibleSection
-                title="Project Insights"
-                isCollapsed={areInsightsCollapsed}
-                onToggle={() => setAreInsightsCollapsed(!areInsightsCollapsed)}
-              >
-              <ProjectInsights artifacts={projectArtifacts} />
-              </CollapsibleSection>
-              <CollapsibleSection
-                title="Open Tasks"
-                isCollapsed={areTasksCollapsed}
-                onToggle={() => setAreTasksCollapsed(!areTasksCollapsed)}
-              >
-                <OpenTasksPanel
-                  artifacts={projectArtifacts}
-                  projectTitle={selectedProject.title}
-                  onSelectTask={(taskId) => setSelectedArtifactId(taskId)}
-                />
-              </CollapsibleSection>
-              <div>
-                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <h2 className="text-2xl font-bold text-white">Artifacts in {selectedProject.title}</h2>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</span>
-                      <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv,.tsv" className="hidden" />
-                      <button
-                        onClick={handleImportClick}
-                        title="Import artifacts from CSV or TSV"
-                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                      >
-                        <ArrowUpTrayIcon className="h-5 w-5" />
-                        Import
-                      </button>
-                      <label htmlFor="artifact-export-select" className="sr-only">Export artifacts</label>
-                      <select
-                        id="artifact-export-select"
-                        onChange={handleExportOptionSelection}
-                        defaultValue=""
-                        className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                      >
-                        <option value="">Export…</option>
-                        <option value="export-csv">Artifacts (CSV)</option>
-                        <option value="export-tsv">Artifacts (TSV)</option>
-                        <option value="export-chapter-markdown">Chapter Bible (Markdown)</option>
-                        <option value="export-chapter-pdf">Chapter Bible (PDF)</option>
-                        <option value="export-lore-json">Lore Bundle (JSON)</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">View</span>
-                      <ViewSwitcher />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsQuickFactModalOpen(true)}
-                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={!selectedProject}
-                        title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
-                      >
-                        <SparklesIcon className="h-5 w-5" />
-                        Add One Fact
-                      </button>
-                      <button
-                        onClick={handlePublish}
-                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                      >
-                        <BuildingStorefrontIcon className="h-5 w-5" />
-                        Publish Site
-                      </button>
-                      <button
-                        onClick={() => {
-                          void handlePublishToGithub();
-                        }}
-                        className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                      >
-                        <GitHubIcon className="h-5 w-5" />
-                        Publish to GitHub
-                      </button>
-                      <button
-                        id="add-new-artifact-button"
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                      >
-                        <PlusIcon className="h-5 w-5" />
-                        New Seed
-                      </button>
-                    </div>
-                  </div>
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.summary.title}</h2>
+                  <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.summary.description}</p>
                 </div>
-                <div className="mt-3 bg-slate-900/40 border border-slate-700/50 rounded-lg px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="artifact-type-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Type</label>
-                            <select
-                                id="artifact-type-filter"
-                                value={artifactTypeFilter}
-                                onChange={(event) => setArtifactTypeFilter(event.target.value as 'ALL' | ArtifactType)}
-                                className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            >
-                                <option value="ALL">All artifact types</option>
-                                {Object.values(ArtifactType).map((type) => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
+                <div className="space-y-6">
+                  {currentProjectVisibility.projectHero && projectHeroStats ? (
+                    <ProjectHero
+                      project={selectedProject}
+                      stats={projectHeroStats}
+                      quickFacts={quickFactPreview}
+                      totalQuickFacts={quickFacts.length}
+                      statusLabel={formatStatusLabel(selectedProject.status)}
+                      onCreateArtifact={() => setIsCreateModalOpen(true)}
+                      onCaptureQuickFact={() => setIsQuickFactModalOpen(true)}
+                      onPublishProject={handlePublish}
+                      onSelectQuickFact={setSelectedArtifactId}
+                      level={level}
+                      xpProgress={xpProgress}
+                    />
+                  ) : null}
+                  {currentProjectVisibility.projectOverview && (
+                    <ProjectOverview
+                        project={selectedProject}
+                        onUpdateProject={handleUpdateProject}
+                        onDeleteProject={handleDeleteProject}
+                    />
+                  )}
+                  <ProjectSettingsPanel
+                    settings={currentProjectVisibility}
+                    onToggle={handleToggleComponentVisibility}
+                    onReset={handleResetComponentVisibility}
+                  />
+                  {currentProjectVisibility.artifactExplorer && (
+                    <section className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg shadow-slate-950/20">
+                      <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                          <h3 className="text-2xl font-bold text-white">Artifact workspace</h3>
+                          <p className="text-sm text-slate-400">Filter, explore, and evolve the seeds that power this atlas.</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="artifact-status-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stage</label>
-                            <select
-                                id="artifact-status-filter"
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value as 'ALL' | string)}
-                                className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            >
-                                <option value="ALL">All stages</option>
-                                {availableStatuses.map((status) => (
-                                    <option key={status} value={status}>{formatStatusLabel(status)}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="artifact-search" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Search</label>
-                            <input
-                                id="artifact-search"
-                                type="search"
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="Title, summary, or tag"
-                                className="bg-slate-800/80 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 w-48 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                        </div>
-                        {hasActiveFilters && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</span>
+                            <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".csv,.tsv" className="hidden" />
                             <button
-                                type="button"
-                                onClick={handleResetFilters}
-                                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                              onClick={handleImportClick}
+                              title="Import artifacts from CSV or TSV"
+                              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
                             >
-                                Clear filters
+                              <ArrowUpTrayIcon className="h-5 w-5" />
+                              Import
                             </button>
-                        )}
-                        {availableTagFilters.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-2 w-full border-t border-slate-800/60 pt-2 mt-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</span>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              {availableTagFilters.map((tag) => {
-                                const isActive = activeTagFilters.some((item) => item.toLowerCase() === tag.toLowerCase());
-                                return (
-                                  <button
-                                    key={tag.toLowerCase()}
-                                    type="button"
-                                    onClick={() => handleToggleTagFilter(tag)}
-                                    aria-pressed={isActive}
-                                    className={`rounded border px-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 ${
-                                      isActive
-                                        ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-200'
-                                        : 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                                    }`}
-                                  >
-                                    {tag}
-                                  </button>
-                                );
-                              })}
+                            <label htmlFor="artifact-export-select" className="sr-only">Export artifacts</label>
+                            <select
+                              id="artifact-export-select"
+                              onChange={handleExportOptionSelection}
+                              defaultValue=""
+                              className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                            >
+                              <option value="">Export…</option>
+                              <option value="export-csv">Artifacts (CSV)</option>
+                              <option value="export-tsv">Artifacts (TSV)</option>
+                              <option value="export-chapter-markdown">Chapter Bible (Markdown)</option>
+                              <option value="export-chapter-pdf">Chapter Bible (PDF)</option>
+                              <option value="export-lore-json">Lore Bundle (JSON)</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">View</span>
+                            <ViewSwitcher />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsQuickFactModalOpen(true)}
+                              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={!selectedProject}
+                              title={selectedProject ? 'Capture a tiny lore beat.' : 'Select a project to add a fact.'}
+                            >
+                              <SparklesIcon className="h-5 w-5" />
+                              Add One Fact
+                            </button>
+                            <button
+                              id="add-new-artifact-button"
+                              onClick={() => setIsCreateModalOpen(true)}
+                              className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                            >
+                              <PlusIcon className="h-5 w-5" />
+                              New Seed
+                            </button>
+                          </div>
+                        </div>
+                      </header>
+                      <div className="space-y-6">
+                        <div className="bg-slate-900/40 border border-slate-700/50 rounded-lg px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="artifact-type-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Type</label>
+                                    <select
+                                        id="artifact-type-filter"
+                                        value={artifactTypeFilter}
+                                        onChange={(event) => setArtifactTypeFilter(event.target.value as 'ALL' | ArtifactType)}
+                                        className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    >
+                                        <option value="ALL">All artifact types</option>
+                                        {Object.values(ArtifactType).map((type) => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="artifact-status-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stage</label>
+                                    <select
+                                        id="artifact-status-filter"
+                                        value={statusFilter}
+                                        onChange={(event) => setStatusFilter(event.target.value as 'ALL' | string)}
+                                        className="bg-slate-800/80 border border-slate-700 rounded-md px-2 py-1 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    >
+                                        <option value="ALL">All stages</option>
+                                        {availableStatuses.map((status) => (
+                                            <option key={status} value={status}>{formatStatusLabel(status)}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="artifact-search" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Search</label>
+                                    <input
+                                        id="artifact-search"
+                                        type="search"
+                                        value={searchTerm}
+                                        onChange={(event) => setSearchTerm(event.target.value)}
+                                        placeholder="Title, summary, or tag"
+                                        className="bg-slate-800/80 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 w-48 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    />
+                                </div>
+                                {hasActiveFilters && (
+                                    <button
+                                        type="button"
+                                        onClick={handleResetFilters}
+                                        className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                                    >
+                                        Clear filters
+                                    </button>
+                                )}
+                                {availableTagFilters.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-2 w-full border-t border-slate-800/60 pt-2 mt-2">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</span>
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      {availableTagFilters.map((tag) => {
+                                        const isActive = activeTagFilters.some((item) => item.toLowerCase() === tag.toLowerCase());
+                                        return (
+                                          <button
+                                            key={tag.toLowerCase()}
+                                            type="button"
+                                            onClick={() => handleToggleTagFilter(tag)}
+                                            aria-pressed={isActive}
+                                            className={`rounded border px-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 ${
+                                              isActive
+                                                ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-200'
+                                                : 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                                            }`}
+                                          >
+                                            {tag}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                             </div>
+                            <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
+                                <RevealDepthToggle />
+                                <span>
+                                    Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
+                                </span>
+                            </div>
+                        </div>
+                        {viewMode === 'table' && (
+                            <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="border-b border-slate-700 bg-slate-800">
+                                        <tr>
+                                            <th className="p-3 text-sm font-semibold text-slate-300">Title</th>
+                                            <th className="p-3 text-sm font-semibold text-slate-300">Type</th>
+                                            <th className="p-3 text-sm font-semibold text-slate-300">Stage</th>
+                                            <th className="p-3 text-sm font-semibold text-slate-300 hidden lg:table-cell">Summary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredArtifacts.length > 0 ? (
+                                            filteredArtifacts.map(art => (
+                                                <ArtifactListItem key={art.id} artifact={art} onSelect={setSelectedArtifactId} isSelected={art.id === selectedArtifactId} />
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={4} className="text-center p-8 text-slate-500">
+                                                    {hasActiveFilters ? 'No artifacts match the current filters.' : 'No artifacts in this project yet. Create a new seed!'}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        {viewMode === 'graph' && <GraphView artifacts={filteredArtifacts} onNodeClick={setSelectedArtifactId} />}
+                        {viewMode === 'kanban' && <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={handleUpdateArtifactData} />}
+                        {selectedArtifact && (
+                          <div className="space-y-8">
+                              {filteredSelectedArtifactHidden && (
+                                  <div className="bg-amber-900/40 border border-amber-700/60 text-amber-200 text-sm px-4 py-3 rounded-lg">
+                                      This artifact is currently hidden by the active filters. Clear them to surface it in the list.
+                                  </div>
+                              )}
+                              <ArtifactDetail
+                                artifact={selectedArtifact}
+                                projectArtifacts={projectArtifacts}
+                                onUpdateArtifact={handleUpdateArtifact}
+                                onAddRelation={handleAddRelation}
+                                onRemoveRelation={handleRemoveRelation}
+                                onDeleteArtifact={handleDeleteArtifact}
+                                onDuplicateArtifact={handleDuplicateArtifact}
+                                onNewArtifact={(sourceId) => {
+                                  setSourceArtifactId(sourceId);
+                                  setIsCreateModalOpen(true);
+                                }}
+                                addXp={addXp}
+                              />
+                              {selectedArtifact.type === ArtifactType.Conlang && (
+                                  <ConlangLexiconEditor
+                                      artifact={selectedArtifact}
+                                      conlangName={selectedProject.title}
+                                      onLexemesChange={(id, lexemes) => handleUpdateArtifactData(id, lexemes)}
+                                      addXp={addXp}
+                                  />
+                              )}
+                              {isNarrativeArtifactType(selectedArtifact.type) && (
+                                  <StoryEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, scenes) => handleUpdateArtifactData(id, scenes)}
+                                      projectArtifacts={projectArtifacts}
+                                      onAddRelation={handleAddRelation}
+                                      onRemoveRelation={handleRemoveRelation}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.Character && (
+                                  <CharacterEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                      projectArtifacts={projectArtifacts}
+                                      onAddRelation={handleAddRelation}
+                                      onRemoveRelation={handleRemoveRelation}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.Wiki && (
+                                  <WikiEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                      assistants={aiAssistants}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.Location && (
+                                  <LocationEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                      projectArtifacts={projectArtifacts}
+                                      onAddRelation={handleAddRelation}
+                                      onRemoveRelation={handleRemoveRelation}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.MagicSystem && (
+                                  <MagicSystemBuilder
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.Task && (
+                                  <TaskEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                  />
+                              )}
+                              {selectedArtifact.type === ArtifactType.Timeline && (
+                                  <TimelineEditor
+                                      artifact={selectedArtifact}
+                                      onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
+                                  />
+                              )}
                           </div>
                         )}
-                    </div>
-                    <div className="flex flex-col items-start gap-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:gap-4">
-                        <RevealDepthToggle />
-                        <span>
-                            Showing <span className="text-slate-200 font-semibold">{filteredArtifacts.length}</span> of <span className="text-slate-200 font-semibold">{projectArtifacts.length}</span> artifacts
-                        </span>
-                    </div>
-                </div>
-                {viewMode === 'table' && (
-                    <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="border-b border-slate-700 bg-slate-800">
-                                <tr>
-                                    <th className="p-3 text-sm font-semibold text-slate-300">Title</th>
-                                    <th className="p-3 text-sm font-semibold text-slate-300">Type</th>
-                                    <th className="p-3 text-sm font-semibold text-slate-300">Stage</th>
-                                    <th className="p-3 text-sm font-semibold text-slate-300 hidden lg:table-cell">Summary</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredArtifacts.length > 0 ? (
-                                    filteredArtifacts.map(art => (
-                                        <ArtifactListItem key={art.id} artifact={art} onSelect={setSelectedArtifactId} isSelected={art.id === selectedArtifactId} />
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={4} className="text-center p-8 text-slate-500">
-                                            {hasActiveFilters ? 'No artifacts match the current filters.' : 'No artifacts in this project yet. Create a new seed!'}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-                {viewMode === 'graph' && <GraphView artifacts={filteredArtifacts} onNodeClick={setSelectedArtifactId} />}
-                {viewMode === 'kanban' && <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={handleUpdateArtifactData} />}
-              </div>
-
-              {selectedArtifact && (
-                <div className="space-y-8">
-                    {filteredSelectedArtifactHidden && (
-                        <div className="bg-amber-900/40 border border-amber-700/60 text-amber-200 text-sm px-4 py-3 rounded-lg">
-                            This artifact is currently hidden by the active filters. Clear them to surface it in the list.
-                        </div>
-                    )}
-                    <ArtifactDetail
-                      artifact={selectedArtifact}
-                      projectArtifacts={projectArtifacts}
-                      onUpdateArtifact={handleUpdateArtifact}
-                      onAddRelation={handleAddRelation}
-                      onRemoveRelation={handleRemoveRelation}
-                      onDeleteArtifact={handleDeleteArtifact}
-                      onDuplicateArtifact={handleDuplicateArtifact}
-                      onNewArtifact={(sourceId) => {
-                        setSourceArtifactId(sourceId);
-                        setIsCreateModalOpen(true);
-                      }}
-                      addXp={addXp}
+                      </div>
+                    </section>
+                  )}
+                  {currentProjectVisibility.quickFactsPanel && (
+                    <QuickFactsPanel
+                      facts={quickFactPreview}
+                      totalFacts={quickFacts.length}
+                      projectTitle={selectedProject.title}
+                      onSelectFact={setSelectedArtifactId}
+                      onAddFact={() => setIsQuickFactModalOpen(true)}
                     />
-                    {selectedArtifact.type === ArtifactType.Conlang && (
-                        <ConlangLexiconEditor
-                            artifact={selectedArtifact}
-                            conlangName={selectedProject.title}
-                            onLexemesChange={(id, lexemes) => handleUpdateArtifactData(id, lexemes)}
-                            addXp={addXp}
-                        />
-                    )}
-                    {isNarrativeArtifactType(selectedArtifact.type) && (
-                        <StoryEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, scenes) => handleUpdateArtifactData(id, scenes)}
-                            projectArtifacts={projectArtifacts}
-                            onAddRelation={handleAddRelation}
-                            onRemoveRelation={handleRemoveRelation}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.Character && (
-                        <CharacterEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                            projectArtifacts={projectArtifacts}
-                            onAddRelation={handleAddRelation}
-                            onRemoveRelation={handleRemoveRelation}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.Wiki && (
-                        <WikiEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                            assistants={aiAssistants}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.Location && (
-                        <LocationEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                            projectArtifacts={projectArtifacts}
-                            onAddRelation={handleAddRelation}
-                            onRemoveRelation={handleRemoveRelation}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.MagicSystem && (
-                        <MagicSystemBuilder
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.Task && (
-                        <TaskEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                        />
-                    )}
-                    {selectedArtifact.type === ArtifactType.Timeline && (
-                        <TimelineEditor
-                            artifact={selectedArtifact}
-                            onUpdateArtifactData={(id, data) => handleUpdateArtifactData(id, data)}
-                        />
-                    )}
+                  )}
                 </div>
-              )}
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                <NarrativeHealthPanel artifacts={projectArtifacts} />
-                <ContinuityMonitor artifacts={projectArtifacts} />
-                <WorldSimulationPanel
-                  artifacts={projectArtifacts}
-                  allArtifacts={artifacts}
-                  projectTitle={selectedProject.title}
-                  onSelectArtifact={setSelectedArtifactId}
-                />
-              </div>
-              <NarrativePipelineBoard artifacts={projectArtifacts} />
-              <CharacterArcTracker artifacts={projectArtifacts} />
-              <InspirationDeck
-                onCaptureCard={handleCaptureInspirationCard}
-                isCaptureDisabled={!selectedProjectId}
-              />
-              <GitHubImportPanel
-                  projectId={selectedProject.id}
-                  ownerId={profile.uid}
-                  existingArtifacts={projectArtifacts}
-                  onArtifactsImported={handleGitHubArtifactsImported}
-                  addXp={addXp}
-              />
+              </section>
 
-              <QuickFactsPanel
-                facts={quickFactPreview}
-                totalFacts={quickFacts.length}
-                projectTitle={selectedProject.title}
-                onSelectFact={setSelectedArtifactId}
-                onAddFact={() => setIsQuickFactModalOpen(true)}
-              />
-
-              <MilestoneTracker items={milestoneProgress} />
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
-                <div className="space-y-6 xl:col-span-2">
-                  <ProjectTemplatePicker
-                    templates={projectTemplates}
-                    categories={templateLibrary}
-                    activeProjectTitle={selectedProject.title}
-                    onApplyTemplate={handleApplyProjectTemplate}
-                    isApplyDisabled={!selectedProjectId}
-                  />
-                  <TemplateGallery
-                    categories={templateLibrary}
-                    projectTemplates={projectTemplates}
-                    activeProjectTitle={selectedProject.title}
-                    onSelectTemplate={handleSelectTemplate}
-                  />
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.analytics.title}</h2>
+                  <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.analytics.description}</p>
                 </div>
-                <ReleaseNotesGenerator
-                    projectId={selectedProject.id}
-                    projectTitle={selectedProject.title}
-                    artifacts={projectArtifacts}
-                    addXp={addXp}
-                    onDraftGenerated={() => markSelectedProjectActivity({ generatedReleaseNotes: true })}
-                />
-                <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 flex flex-col gap-5">
-                    <header className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                            <div className="rounded-xl bg-pink-500/10 border border-pink-500/40 p-2">
-                                <IntelligenceLogo className="w-5 h-5 text-pink-300" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-100">Creator Insights Hub</h3>
-                                <p className="text-sm text-slate-400">Visit the secondary panel when you&apos;re ready for Atlas Intelligence and roadmap lore.</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsInsightsOpen(true)}
-                            className="flex items-center gap-2 rounded-md border border-pink-500/40 bg-pink-500/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:border-pink-400 hover:bg-pink-500/30 transition-colors"
-                        >
+                <div className="space-y-6">
+                  {currentProjectVisibility.projectInsights && (
+                    <ProjectInsights artifacts={projectArtifacts} />
+                  )}
+                  {currentProjectVisibility.aiCopilot && (
+                    <div className="space-y-4">
+                      {featuredAssistant && (
+                        <div className="rounded-2xl border border-pink-500/40 bg-pink-500/10 p-4 text-sm text-pink-100 shadow-lg shadow-pink-900/10">
+                          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-pink-200">
                             <IntelligenceLogo className="w-4 h-4" />
-                            Open insights
-                        </button>
-                    </header>
-                    <div className="space-y-3 text-sm text-slate-300">
-                        {featuredAssistant && (
-                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
-                                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-pink-300/80">
-                                    <IntelligenceLogo className="w-4 h-4" />
-                                    Atlas Intelligence spotlight
-                                </p>
-                                <p className="text-base font-semibold text-slate-100">{featuredAssistant.name}</p>
-                                <p className="text-xs text-slate-400">{featuredAssistant.focus}</p>
-                            </div>
-                        )}
-                        {upcomingMilestoneOverview && (
-                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3 space-y-1.5">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/80">Next milestone</p>
-                                <p className="text-base font-semibold text-slate-100">{upcomingMilestoneOverview.milestone.title}</p>
-                                <p className="text-xs text-slate-400">{upcomingMilestoneOverview.milestone.focus}</p>
-                                <p className="text-xs text-slate-500">
-                                    {Math.round(upcomingMilestoneOverview.completion * 100)}% complete
-                                </p>
-                            </div>
-                        )}
-                        <p className="text-xs text-slate-500">
-                            Insights stay tucked away until you call for them, keeping the main workspace focused on capturing and shipping.
-                        </p>
+                            Atlas Intelligence spotlight
+                          </p>
+                          <p className="text-base font-semibold text-pink-50">{featuredAssistant.name}</p>
+                          <p className="text-xs text-pink-100/80">{featuredAssistant.focus}</p>
+                        </div>
+                      )}
+                      <AICopilotPanel assistants={aiAssistants} />
                     </div>
-                </section>
-              </div>
+                  )}
+                  {(currentProjectVisibility.narrativeHealth || currentProjectVisibility.continuityMonitor || currentProjectVisibility.worldSimulation) && (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+                      {currentProjectVisibility.narrativeHealth && <NarrativeHealthPanel artifacts={projectArtifacts} />}
+                      {currentProjectVisibility.continuityMonitor && <ContinuityMonitor artifacts={projectArtifacts} />}
+                      {currentProjectVisibility.worldSimulation && (
+                        <WorldSimulationPanel
+                          artifacts={projectArtifacts}
+                          allArtifacts={artifacts}
+                          projectTitle={selectedProject.title}
+                          onSelectArtifact={setSelectedArtifactId}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {currentProjectVisibility.inspirationDeck && (
+                    <InspirationDeck
+                      onCaptureCard={handleCaptureInspirationCard}
+                      isCaptureDisabled={!selectedProjectId}
+                    />
+                  )}
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.tracking.title}</h2>
+                  <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.tracking.description}</p>
+                </div>
+                <div className="space-y-6">
+                  {currentProjectVisibility.memorySync && (
+                    <MemorySyncPanel
+                      conversations={projectConversations}
+                      onStatusChange={handleMemoryStatusChange}
+                    />
+                  )}
+                  {currentProjectVisibility.openTasks && (
+                    <OpenTasksPanel
+                      artifacts={projectArtifacts}
+                      projectTitle={selectedProject.title}
+                      onSelectTask={(taskId) => setSelectedArtifactId(taskId)}
+                    />
+                  )}
+                  {currentProjectVisibility.narrativePipeline && (
+                    <NarrativePipelineBoard artifacts={projectArtifacts} />
+                  )}
+                  {currentProjectVisibility.characterArcTracker && (
+                    <CharacterArcTracker artifacts={projectArtifacts} />
+                  )}
+                  {currentProjectVisibility.milestoneTracker && (
+                    <>
+                      {upcomingMilestoneOverview && (
+                        <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-100 shadow-lg shadow-amber-900/10">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Next milestone</p>
+                          <p className="text-base font-semibold text-amber-50">{upcomingMilestoneOverview.milestone.title}</p>
+                          <p className="text-xs text-amber-200/80">{upcomingMilestoneOverview.milestone.focus}</p>
+                          <p className="text-xs text-amber-200/60">
+                            {Math.round(upcomingMilestoneOverview.completion * 100)}% complete
+                          </p>
+                        </div>
+                      )}
+                      <MilestoneTracker items={milestoneProgress} />
+                    </>
+                  )}
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.distribution.title}</h2>
+                  <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.distribution.description}</p>
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-4">
+                    {currentProjectVisibility.templates && (
+                      <div className="space-y-6 xl:col-span-2">
+                        <ProjectTemplatePicker
+                          templates={projectTemplates}
+                          categories={templateLibrary}
+                          activeProjectTitle={selectedProject.title}
+                          onApplyTemplate={handleApplyProjectTemplate}
+                          isApplyDisabled={!selectedProjectId}
+                        />
+                        <TemplateGallery
+                          categories={templateLibrary}
+                          projectTemplates={projectTemplates}
+                          activeProjectTitle={selectedProject.title}
+                          onSelectTemplate={handleSelectTemplate}
+                        />
+                      </div>
+                    )}
+                    {currentProjectVisibility.githubImport && (
+                      <GitHubImportPanel
+                          projectId={selectedProject.id}
+                          ownerId={profile.uid}
+                          existingArtifacts={projectArtifacts}
+                          onArtifactsImported={handleGitHubArtifactsImported}
+                          addXp={addXp}
+                      />
+                    )}
+                    {currentProjectVisibility.releaseWorkflows && (
+                      <div className="space-y-6 xl:col-span-2">
+                        <ReleaseNotesGenerator
+                            projectId={selectedProject.id}
+                            projectTitle={selectedProject.title}
+                            artifacts={projectArtifacts}
+                            addXp={addXp}
+                            onDraftGenerated={() => markSelectedProjectActivity({ generatedReleaseNotes: true })}
+                        />
+                        <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 space-y-4 shadow-lg shadow-slate-950/20">
+                          <header className="space-y-1">
+                            <h3 className="text-lg font-semibold text-slate-100">Publishing actions</h3>
+                            <p className="text-sm text-slate-400">Ship updates whenever you are ready to share new lore.</p>
+                          </header>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={handlePublish}
+                              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                            >
+                              <BuildingStorefrontIcon className="h-5 w-5" />
+                              Publish Site
+                            </button>
+                            <button
+                              onClick={() => { void handlePublishToGithub(); }}
+                              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                            >
+                              <GitHubIcon className="h-5 w-5" />
+                              Publish to GitHub
+                            </button>
+                          </div>
+                        </section>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
             </>
           ) : (
             <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
@@ -3202,12 +3262,6 @@ export default function App() {
             onClose={() => setIsCreateProjectModalOpen(false)}
         />
       </Modal>
-      <SecondaryInsightsPanel
-        assistants={aiAssistants}
-        milestones={milestoneProgress}
-        isOpen={isInsightsOpen}
-        onClose={() => setIsInsightsOpen(false)}
-      />
       {infoModalContent && (
         <InfoModal
           isOpen={!!infoModalContent}
