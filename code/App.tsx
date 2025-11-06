@@ -1370,8 +1370,6 @@ export default function App() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
-  const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
-  const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
 
   const handleOpenPublishModal = useCallback(() => {
