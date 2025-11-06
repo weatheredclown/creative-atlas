@@ -176,6 +176,35 @@ router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res
     respondWithOAuthPage(res, { status: 'success' });
 }));
 
+router.get('/repos', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const accessToken = req.session.github_access_token;
+
+    if (!accessToken) {
+        return res.status(401).json({ error: 'GitHub access token not found in session.' });
+    }
+
+    const response = await fetch('https://api.github.com/user/repos?type=owner&sort=pushed&per_page=100', {
+        headers: {
+            'Authorization': `token ${accessToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error fetching repositories:', errorData.message);
+        return res.status(response.status).json({ error: 'Failed to fetch repositories from GitHub.' });
+    }
+
+    const repos = await response.json();
+    const repoData = repos.map((repo: any) => ({
+        fullName: repo.full_name,
+        name: repo.name,
+    }));
+
+    res.json(repoData);
+}));
+
 const publishSchema = z.object({
     repoName: z.string().min(1),
     publishDir: z.string().optional(),
@@ -190,23 +219,31 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
     }
 
     addJob(async () => {
-        const response = await fetch('https://api.github.com/user/repos', {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-            },
-            body: JSON.stringify({
-                name: repoName,
-                private: false,
-            }),
-        });
+        const isNewRepo = !repoName.includes('/');
+        let owner: string;
+        let repo: string;
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error('Error creating repository:', data.message);
-            return;
+        if (isNewRepo) {
+            const response = await fetch('https://api.github.com/user/repos', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${accessToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                },
+                body: JSON.stringify({
+                    name: repoName,
+                    private: false,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                console.error('Error creating repository:', data.message);
+                return;
+            }
+            owner = data.owner.login;
+            repo = data.name;
+        } else {
+            [owner, repo] = repoName.split('/');
         }
 
         try {
@@ -216,49 +253,33 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
             return;
         }
 
-        const owner = data.owner.login;
-        const repo = data.name;
-
         const distPath = path.resolve('code', 'dist');
 
         const sanitizePublishDir = (dir: string | undefined): string | undefined => {
-            if (!dir) {
-                return undefined;
-            }
+            if (!dir) return undefined;
             const trimmed = dir.trim().replace(/^\/+|\/+$/g, '');
             return trimmed.length > 0 ? trimmed : undefined;
         };
 
         const normalizedPublishDir = sanitizePublishDir(publishDir);
 
-        const collectFiles = async (
-            directory: string,
-            relativeRoot = '',
-        ): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
+        const collectFiles = async (directory: string, relativeRoot = ''): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
             const entries = await fs.readdir(directory, { withFileTypes: true });
-            const allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
-
+            let allFiles: Array<{ relativePath: string; absolutePath: string }> = [];
             for (const entry of entries) {
                 const absolutePath = path.join(directory, entry.name);
-                const relativePath = relativeRoot
-                    ? path.posix.join(relativeRoot, entry.name)
-                    : entry.name;
-
+                const relativePath = relativeRoot ? path.posix.join(relativeRoot, entry.name) : entry.name;
                 if (entry.isDirectory()) {
-                    const nested = await collectFiles(absolutePath, relativePath);
-                    allFiles.push(...nested);
-                } else if (entry.isFile()) {
+                    allFiles = allFiles.concat(await collectFiles(absolutePath, relativePath));
+                } else {
                     allFiles.push({ relativePath, absolutePath });
                 }
             }
-
             return allFiles;
         };
 
         const files = await collectFiles(distPath);
-        const fileBlobs = [];
-
-        for (const file of files) {
+        const fileBlobs = await Promise.all(files.map(async (file) => {
             const content = await fs.readFile(file.absolutePath, 'base64');
             const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
                 method: 'POST',
@@ -266,60 +287,64 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
                     'Authorization': `token ${accessToken}`,
                     'Accept': 'application/vnd.github.v3+json',
                 },
-                body: JSON.stringify({
-                    content,
-                    encoding: 'base64',
-                }),
+                body: JSON.stringify({ content, encoding: 'base64' }),
             });
             const blobData = await blobResponse.json();
-            const relativePath = normalizedPublishDir
-                ? path.posix.join(normalizedPublishDir, file.relativePath)
-                : file.relativePath;
-            fileBlobs.push({
-                path: relativePath,
-                mode: '100644',
-                type: 'blob',
-                sha: blobData.sha,
+            const relativePath = normalizedPublishDir ? path.posix.join(normalizedPublishDir, file.relativePath) : file.relativePath;
+            return { path: relativePath, mode: '100644', type: 'blob', sha: blobData.sha };
+        }));
+
+        let parentCommitSha: string | undefined;
+        try {
+            const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/gh-pages`, {
+                headers: { 'Authorization': `token ${accessToken}` },
             });
+            if (refResponse.ok) {
+                const refData = await refResponse.json();
+                parentCommitSha = refData.object.sha;
+            }
+        } catch (error) {
+            console.log('gh-pages branch does not exist yet. Creating it.');
         }
 
         const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
             method: 'POST',
-            headers: {
-                'Authorization': `token ${accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-            },
-            body: JSON.stringify({
-                tree: fileBlobs,
-            }),
+            headers: { 'Authorization': `token ${accessToken}` },
+            body: JSON.stringify({ tree: fileBlobs }),
         });
         const treeData = await treeResponse.json();
 
+        const commitPayload: { message: string; tree: string; parents?: string[] } = {
+            message: 'Publish to GitHub Pages',
+            tree: treeData.sha,
+        };
+        if (parentCommitSha) {
+            commitPayload.parents = [parentCommitSha];
+        }
+
         const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
             method: 'POST',
-            headers: {
-                'Authorization': `token ${accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-            },
-            body: JSON.stringify({
-                message: 'Initial commit',
-                tree: treeData.sha,
-            }),
+            headers: { 'Authorization': `token ${accessToken}` },
+            body: JSON.stringify(commitPayload),
         });
         const commitData = await commitResponse.json();
 
-        await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-            },
-            body: JSON.stringify({
-                ref: 'refs/heads/gh-pages',
-                sha: commitData.sha,
-            }),
-        });
+        const refPayload = { sha: commitData.sha };
+        if (parentCommitSha) {
+            await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/gh-pages`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `token ${accessToken}` },
+                body: JSON.stringify(refPayload),
+            });
+        } else {
+            await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+                method: 'POST',
+                headers: { 'Authorization': `token ${accessToken}` },
+                body: JSON.stringify({ ref: 'refs/heads/gh-pages', ...refPayload }),
+            });
+        }
 
+        const pagesSourcePath = normalizedPublishDir ? `/${normalizedPublishDir}` : '/';
         const enablePagesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
             method: 'POST',
             headers: {
@@ -327,10 +352,7 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
                 'Accept': 'application/vnd.github+json',
             },
             body: JSON.stringify({
-                source: {
-                    branch: 'gh-pages',
-                    path: '/',
-                },
+                source: { branch: 'gh-pages', path: pagesSourcePath },
             }),
         });
 
