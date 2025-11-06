@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, ProjectComponentKey, ProjectStatus, ProjectVisibilitySettings } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
-import { Cog6ToothIcon, PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
+import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 import ProjectSettingsPanel from './ProjectSettingsPanel';
 
@@ -353,286 +353,285 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
 
   return (
     <>
-      <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Project Overview</p>
-            <div className="mt-1 flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-white">{project.title}</h2>
-              <div className="relative">
-                <button
-                  type="button"
-                  ref={settingsButtonRef}
-                  onClick={() => setIsSettingsOpen((current) => !current)}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-600/60 bg-slate-800/70 p-1 text-slate-300 transition hover:border-cyan-400/60 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
-                  aria-expanded={isSettingsOpen}
-                  aria-haspopup="true"
+      <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-8">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Project Overview</p>
+              <h2 className="mt-1 text-2xl font-bold text-white">{project.title}</h2>
+              <p className="text-xs text-slate-500 mt-2 font-mono break-all">ID: {project.id}</p>
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Summary</h3>
+              <p className="text-sm text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg px-4 py-3">
+                {project.summary || 'No summary yet. Add one to give collaborators context.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-stretch gap-4 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
+              <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${getStatusClasses(project.status)}`}>
+                {formatStatusLabel(project.status)}
+              </span>
+              <select
+                value={project.status}
+                onChange={handleStatusChange}
+                className="bg-slate-800/80 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                {statusOrder.map((status) => (
+                  <option key={status} value={status}>
+                    {formatStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmVisible(true)}
+                className="px-3 py-2 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
+              >
+                Delete project
+              </button>
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <button
+                type="button"
+                ref={settingsButtonRef}
+                onClick={() => setIsSettingsOpen((current) => !current)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                aria-expanded={isSettingsOpen}
+                aria-haspopup="true"
+              >
+                Project settings
+              </button>
+              {isSettingsOpen ? (
+                <div
+                  ref={settingsPanelRef}
+                  className="absolute left-1/2 top-full z-30 mt-3 w-screen max-w-3xl -translate-x-1/2 px-4 sm:px-0"
                 >
-                  <Cog6ToothIcon className="h-5 w-5" />
-                  <span className="sr-only">Open project details and surface settings</span>
-                </button>
-                {isSettingsOpen ? (
-                  <div
-                    ref={settingsPanelRef}
-                    className="absolute right-0 top-full z-30 mt-3 w-screen max-w-3xl"
-                  >
-                    <div className="space-y-6 rounded-2xl border border-slate-700/70 bg-slate-950/95 p-6 shadow-2xl shadow-slate-900/60 backdrop-blur">
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-slate-100">Project details</h3>
-                        <form className="space-y-4" onSubmit={handleSaveProjectDetails}>
-                          <div className="space-y-1.5">
-                            <label htmlFor="project-title-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                              Project name
-                            </label>
-                            <input
-                              id="project-title-input"
-                              value={titleDraft}
-                              onChange={(event) => {
-                                setTitleDraft(event.target.value);
-                                if (titleError) {
-                                  setTitleError(null);
-                                }
-                              }}
-                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                            {titleError ? <p className="text-xs text-rose-300">{titleError}</p> : null}
-                          </div>
-                          <div className="space-y-1.5">
-                            <label htmlFor="project-summary-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                              Summary
-                            </label>
-                            <textarea
-                              id="project-summary-input"
-                              value={summaryDraft}
-                              onChange={(event) => {
-                                setSummaryDraft(event.target.value);
-                                if (summaryError) {
-                                  setSummaryError(null);
-                                }
-                              }}
-                              rows={3}
-                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                            {summaryError ? <p className="text-xs text-rose-300">{summaryError}</p> : null}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="submit"
-                              className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-cyan-500"
-                            >
-                              Save changes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleResetProjectDetails}
-                              className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
-                            >
-                              Reset form
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setIsSettingsOpen(false)}
-                              className="inline-flex items-center gap-2 rounded-md border border-slate-700/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:text-white"
-                            >
-                              Close
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                      <ProjectSettingsPanel
-                        settings={visibilitySettings}
-                        onToggle={onToggleVisibility}
-                        onReset={onResetVisibility}
-                        className="border-slate-800/70 bg-slate-900/80"
-                      />
+                  <div className="space-y-6 rounded-2xl border border-slate-700/70 bg-slate-950/95 p-6 shadow-2xl shadow-slate-900/60 backdrop-blur">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-slate-100">Project details</h3>
+                      <form className="space-y-4" onSubmit={handleSaveProjectDetails}>
+                        <div className="space-y-1.5">
+                          <label htmlFor="project-title-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Project name
+                          </label>
+                          <input
+                            id="project-title-input"
+                            value={titleDraft}
+                            onChange={(event) => {
+                              setTitleDraft(event.target.value);
+                              if (titleError) {
+                                setTitleError(null);
+                              }
+                            }}
+                            className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          />
+                          {titleError ? <p className="text-xs text-rose-300">{titleError}</p> : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          <label htmlFor="project-summary-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Summary
+                          </label>
+                          <textarea
+                            id="project-summary-input"
+                            value={summaryDraft}
+                            onChange={(event) => {
+                              setSummaryDraft(event.target.value);
+                              if (summaryError) {
+                                setSummaryError(null);
+                              }
+                            }}
+                            rows={3}
+                            className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          />
+                          {summaryError ? <p className="text-xs text-rose-300">{summaryError}</p> : null}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-cyan-500"
+                          >
+                            Save changes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleResetProjectDetails}
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
+                          >
+                            Reset form
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsSettingsOpen(false)}
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-700/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:text-white"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                    <ProjectSettingsPanel
+                      settings={visibilitySettings}
+                      onToggle={onToggleVisibility}
+                      onReset={onResetVisibility}
+                      className="border-slate-800/70 bg-slate-900/80"
+                    />
                     </div>
                   </div>
                 ) : null}
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-mono break-all">ID: {project.id}</p>
-          </div>
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-          <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${getStatusClasses(project.status)}`}>
-            {formatStatusLabel(project.status)}
-          </span>
-          <select
-            value={project.status}
-            onChange={handleStatusChange}
-            className="bg-slate-800/80 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            {statusOrder.map((status) => (
-              <option key={status} value={status}>
-                {formatStatusLabel(status)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setIsDeleteConfirmVisible(true)}
-            className="px-3 py-2 text-xs font-semibold text-rose-100 bg-rose-600/20 border border-rose-500/30 rounded-md hover:bg-rose-600/30 transition-colors"
-          >
-            Delete project
-          </button>
-        </div>
-      </header>
+        </header>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Summary</h3>
-        <p className="text-sm text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg px-4 py-3">
-          {project.summary || 'No summary yet. Add one to give collaborators context.'}
-        </p>
-      </div>
-
-      <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="rounded-md bg-cyan-500/20 p-2 text-cyan-200">
-              <SparklesIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Need a starter fact?</p>
-              <h3 className="text-sm font-semibold text-slate-200">Shuffle a prompt to kickstart your next detail.</h3>
-              <p className="text-xs text-slate-400">
-                These hooks pair well with quick facts, wiki entries, or a fast project summary update.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleGenerateFact}
-            className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={FACT_PROMPTS.length === 0}
-          >
-            Shuffle prompt
-          </button>
-        </div>
-        {factSuggestion ? (
-          <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">{factSuggestion.category}</p>
-                <p className="text-sm font-semibold text-slate-100">{factSuggestion.prompt}</p>
+        <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-cyan-500/20 p-2 text-cyan-200">
+                <SparklesIcon className="h-4 w-4" />
               </div>
-              <button
-                type="button"
-                onClick={handleDismissFact}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-200"
-              >
-                Dismiss
-              </button>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Need a starter fact?</p>
+                <h3 className="text-sm font-semibold text-slate-200">Shuffle a prompt to kickstart your next detail.</h3>
+                <p className="text-xs text-slate-400">
+                  These hooks pair well with quick facts, wiki entries, or a fast project summary update.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleInsertFact}
-                className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white"
-              >
-                Drop into summary
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyFact}
-                className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
-              >
-                Copy prompt
-              </button>
-            </div>
-            {factFeedback && <p className="text-xs font-semibold text-emerald-300">{factFeedback}</p>}
-          </div>
-        ) : (
-          <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
-            Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without
-            overthinking the full seed form.
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wide">
-          <TagIcon className="w-4 h-4 text-cyan-300" />
-          Tags
-          <span className="text-xs font-normal text-slate-500">({tagCount})</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {project.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-slate-800/60 border border-slate-700/60 rounded-full text-slate-200"
+            <button
+              type="button"
+              onClick={handleGenerateFact}
+              className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={FACT_PROMPTS.length === 0}
             >
-              {tag}
-              <button
-                type="button"
-                onClick={() => handleRemoveTag(tag)}
-                className="text-slate-400 hover:text-rose-300"
-                aria-label={`Remove ${tag}`}
-              >
-                <XMarkIcon className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-          {project.tags.length === 0 && !isAddingTag && (
-            <span className="text-xs text-slate-500">No tags yet. Add some to aid search and filtering.</span>
+              Shuffle prompt
+            </button>
+          </div>
+          {factSuggestion ? (
+            <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">{factSuggestion.category}</p>
+                  <p className="text-sm font-semibold text-slate-100">{factSuggestion.prompt}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDismissFact}
+                  className="text-xs font-semibold text-slate-400 hover:text-slate-200"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleInsertFact}
+                  className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white"
+                >
+                  Drop into summary
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyFact}
+                  className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
+                >
+                  Copy prompt
+                </button>
+              </div>
+              {factFeedback && <p className="text-xs font-semibold text-emerald-300">{factFeedback}</p>}
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
+              Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without overthinking the full seed form.
+            </p>
           )}
-          {isAddingTag ? (
-            <div className="flex items-center gap-2">
-              <input
-                ref={tagInputRef}
-                type="text"
-                value={tagInput}
-                onChange={(event) => {
-                  setTagInput(event.target.value);
-                  if (tagError) {
-                    setTagError(null);
-                  }
-                }}
-                onKeyDown={handleTagKeyDown}
-                onBlur={() => {
-                  if (!tagInput.trim()) {
-                    handleCancelAddTag();
-                  }
-                }}
-                placeholder="Add a project tag and press Enter"
-                className="bg-slate-900/70 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-300">
+            <TagIcon className="w-4 h-4 text-cyan-300" />
+            Tags
+            <span className="text-xs font-normal text-slate-500">({tagCount})</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {project.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-slate-800/60 border border-slate-700/60 rounded-full text-slate-200"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="text-slate-400 hover:text-rose-300"
+                  aria-label={`Remove ${tag}`}
+                >
+                  <XMarkIcon className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            {project.tags.length === 0 && !isAddingTag && (
+              <span className="text-xs text-slate-500">No tags yet. Add some to aid search and filtering.</span>
+            )}
+            {isAddingTag ? (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={tagInputRef}
+                  type="text"
+                  value={tagInput}
+                  onChange={(event) => {
+                    setTagInput(event.target.value);
+                    if (tagError) {
+                      setTagError(null);
+                    }
+                  }}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => {
+                    if (!tagInput.trim()) {
+                      handleCancelAddTag();
+                    }
+                  }}
+                  placeholder="Add a project tag and press Enter"
+                  className="bg-slate-900/70 border border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                  aria-label="Add tag"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelAddTag}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800/70 text-slate-300 hover:bg-slate-700/70 transition-colors"
+                  aria-label="Cancel adding tag"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={handleAddTag}
+                onClick={handleStartAddingTag}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
-                aria-label="Add tag"
+                aria-label="Add a new tag"
               >
                 <PlusIcon className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={handleCancelAddTag}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800/70 text-slate-300 hover:bg-slate-700/70 transition-colors"
-                aria-label="Cancel adding tag"
-              >
-                <XMarkIcon className="w-4 h-4" />
-              </button>
-            </div>
+            )}
+          </div>
+          {tagError ? (
+            <p className="text-xs text-rose-300">{tagError}</p>
           ) : (
-            <button
-              type="button"
-              onClick={handleStartAddingTag}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
-              aria-label="Add a new tag"
-            >
-              <PlusIcon className="w-4 h-4" />
-            </button>
+            <p className="text-xs text-slate-500">
+              {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new project tag.'}
+            </p>
           )}
         </div>
-        {tagError ? (
-          <p className="text-xs text-rose-300">{tagError}</p>
-        ) : (
-          <p className="text-xs text-slate-500">
-            {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new project tag.'}
-          </p>
-        )}
-      </div>
-    </section>
+      </section>
       <ConfirmationModal
         isOpen={isDeleteConfirmVisible}
         onClose={() => setIsDeleteConfirmVisible(false)}
