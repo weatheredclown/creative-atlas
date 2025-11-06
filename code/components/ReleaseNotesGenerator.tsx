@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Artifact, ArtifactType, ConlangLexeme, TaskData, TASK_STATE } from '../types';
 import { generateReleaseNotes } from '../services/geminiService';
-import { MegaphoneIcon, SparklesIcon, Spinner } from './Icons';
+import { IntelligenceLogo, MegaphoneIcon, Spinner } from './Icons';
 
 interface ReleaseNotesGeneratorProps {
   projectId: string;
@@ -141,9 +141,15 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-5">
       <header className="flex items-center gap-3">
-        <MegaphoneIcon className="w-5 h-5 text-amber-400" />
+        <div className="flex items-center justify-center rounded-xl bg-amber-500/10 border border-amber-400/40 p-2">
+          <IntelligenceLogo className="w-5 h-5 text-amber-300" />
+        </div>
         <div>
-          <h3 className="text-lg font-semibold text-slate-100">Release Bard</h3>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">
+            <MegaphoneIcon className="w-4 h-4" />
+            Release Bard
+          </div>
+          <h3 className="text-lg font-semibold text-slate-100">Atlas Intelligence Release Bard</h3>
           <p className="text-sm text-slate-400">
             Turn highlights into narrative release notes tailored to your team or community.
           </p>
@@ -223,7 +229,7 @@ const ReleaseNotesGenerator: React.FC<ReleaseNotesGeneratorProps> = ({
           </>
         ) : (
           <>
-            <SparklesIcon className="w-4 h-4" />
+            <IntelligenceLogo className="w-4 h-4" />
             Generate release notes
           </>
         )}

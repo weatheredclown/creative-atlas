@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ThemePreference, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { TriangleToggleIcon } from './Icons';
+import { TriangleToggleIcon, IntelligenceLogo } from './Icons';
 import AccountDeletionPanel from './AccountDeletionPanel';
 
 interface UserProfileCardProps {
@@ -183,7 +183,10 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-200">AI copilots tips</p>
+                <p className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <IntelligenceLogo className="w-4 h-4 text-pink-300" />
+                  Atlas Intelligence tips
+                </p>
                 <p className="text-xs text-slate-400">{profile.settings.aiTipsEnabled ? 'Enabled' : 'Disabled'} for contextual suggestions.</p>
               </div>
               <button

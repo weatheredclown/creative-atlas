@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { generateProjectFromDescription } from '../services/geminiService';
+import { IntelligenceLogo } from './Icons';
 import type { TemplateArtifactBlueprint } from '../types';
 
 interface CreateProjectFormProps {
@@ -108,21 +109,22 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
     onClose();
   };
 
-  return (
-    <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-3 rounded-lg border border-cyan-500/20 bg-slate-800/40 p-4">
-        <div className="flex items-center justify-between">
-          <label htmlFor="project-description" className="text-sm font-medium text-slate-200">
-            AI Project Blueprint
-          </label>
-          <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-300">
-            Beta
-          </span>
-        </div>
-        <p className="text-xs text-slate-400">
-          Paste a detailed description of the project you have in mind. We&apos;ll translate it into a title, summary, and tags
-          you can review.
-        </p>
+    return (
+      <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-3 rounded-lg border border-cyan-500/20 bg-slate-800/40 p-4">
+          <div className="flex items-center justify-between">
+            <label htmlFor="project-description" className="flex items-center gap-2 text-sm font-medium text-slate-200">
+              <IntelligenceLogo className="w-4 h-4 text-cyan-300" />
+              Atlas Intelligence Blueprint
+            </label>
+            <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-300">
+              Beta
+            </span>
+          </div>
+          <p className="text-xs text-slate-400">
+            Paste a detailed description of the project you have in mind. Atlas Intelligence will translate it into a title,
+            summary, and tags you can review.
+          </p>
         <textarea
           id="project-description"
           value={description}
@@ -139,19 +141,20 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
           className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 transition"
           placeholder="Describe your world, themes, tone, or what you want to build."
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
-            This optional assistant uses AI and may create imperfect results. Make edits before you publish.
-          </p>
-          <button
-            type="button"
-            onClick={handleGenerateFromDescription}
-            disabled={isGenerating || !description.trim()}
-            className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-cyan-600/60"
-          >
-            {isGenerating ? 'Generating…' : 'Generate project details'}
-          </button>
-        </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              <IntelligenceLogo className="w-4 h-4 text-cyan-300" />
+              This optional assistant may create imperfect results. Make edits before you publish.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateFromDescription}
+              disabled={isGenerating || !description.trim()}
+              className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-cyan-600/60"
+            >
+              {isGenerating ? 'Generating…' : 'Summon Atlas Intelligence'}
+            </button>
+          </div>
         {generationError && (
           <p className="text-sm text-red-400" aria-live="assertive">
             {generationError}

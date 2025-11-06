@@ -125,7 +125,7 @@ const projectBlueprintSchema = {
 };
 
 /**
- * Implements the "Conlang Smith" AI Copilot.
+ * Implements the "Conlang Smith" Atlas Intelligence guide.
  * Generates a batch of lexemes for a constructed language based on a theme.
  */
 export const generateLexemes = async (
@@ -185,7 +185,7 @@ export const generateLexemes = async (
 };
 
 /**
- * Implements the "Lore Weaver" AI Copilot.
+ * Implements the "Lore Weaver" Atlas Intelligence guide.
  * Expands on a given summary for an artifact.
  */
 export const generateProjectFromDescription = async (
@@ -331,7 +331,7 @@ const sanitizeGeneratedArtifacts = (artifacts: TemplateArtifactBlueprint[]): Tem
 };
 
 /**
- * Implements the "Lore Weaver" AI Copilot.
+ * Implements the "Lore Weaver" Atlas Intelligence guide.
  * Expands on a given summary for an artifact.
  */
 export const expandSummary = async (artifact: Artifact): Promise<string> => {

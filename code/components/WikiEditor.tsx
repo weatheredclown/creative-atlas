@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Artifact, WikiData, AIAssistant } from '../types';
-import { GlobeAltIcon, SparklesIcon } from './Icons';
+import { GlobeAltIcon, IntelligenceLogo } from './Icons';
 import { simpleMarkdownToHtml } from '../utils/markdown';
 import AICopilotPanel from './AICopilotPanel';
 
@@ -42,8 +42,8 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData,
           onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
           className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors bg-pink-600/30 border border-pink-500/60 text-pink-200 hover:bg-pink-600/40"
         >
-          <SparklesIcon className="w-4 h-4" />
-          {isAiPanelOpen ? 'Close Copilot' : 'Open Copilot'}
+          <IntelligenceLogo className="w-4 h-4" />
+          {isAiPanelOpen ? 'Close Atlas Intelligence' : 'Open Atlas Intelligence'}
         </button>
       </div>
 

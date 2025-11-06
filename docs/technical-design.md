@@ -255,7 +255,7 @@ creative-atlas publish static --project tamenzut --target gh-pages
 
 ---
 
-## 14) AI Copilots (Opt‑In)
+## 14) Atlas Intelligence (Opt‑In)
 - **Lore Weaver:** expands summaries, proposes links, conflict matrices.
 - **Conlang Smith:** lexeme batches, paradigm tables, example sentences.
 - **Story Doctor:** beat diagnostics, tension graphs, comp titles.

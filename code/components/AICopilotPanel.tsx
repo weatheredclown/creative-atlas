@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AIAssistant } from '../types';
-import { SparklesIcon, BookOpenIcon } from './Icons';
+import { IntelligenceLogo, BookOpenIcon } from './Icons';
 import { generateText } from '../services/generation';
 
 interface AICopilotPanelProps {
@@ -8,7 +8,8 @@ interface AICopilotPanelProps {
   onGenerate?: (text: string) => void;
 }
 
-const EMPTY_PANEL_MESSAGE = 'No copilots are configured yet. Add one in your workspace settings to unlock creative prompts.';
+const EMPTY_PANEL_MESSAGE =
+  'Atlas Intelligence is not configured yet. Add a guide in your workspace settings to unlock creative prompts.';
 
 const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate }) => {
   const [activeId, setActiveId] = useState<string>(assistants[0]?.id ?? '');
@@ -47,7 +48,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
     if (!activeAssistant) return;
     const prompt = promptInput.trim();
     if (!prompt) {
-      setError('Enter or select a prompt before invoking the copilot.');
+      setError('Enter or select a prompt before invoking Atlas Intelligence.');
       return;
     }
 
@@ -59,7 +60,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
       onGenerate?.(generatedText);
     } catch (err) {
       console.error('Failed to generate text:', err);
-      const message = err instanceof Error ? err.message : 'Unable to reach the copilot service right now.';
+      const message = err instanceof Error ? err.message : 'Unable to reach the Atlas Intelligence service right now.';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -69,17 +70,19 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
   return (
     <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-5">
       <header className="flex items-center gap-3">
-        <SparklesIcon className="w-5 h-5 text-pink-400" />
+        <div className="flex items-center justify-center rounded-xl bg-pink-500/10 border border-pink-500/40 p-2">
+          <IntelligenceLogo className="w-5 h-5 text-pink-300" />
+        </div>
         <div>
-          <h3 className="text-lg font-semibold text-slate-100">AI Copilots</h3>
+          <h3 className="text-lg font-semibold text-slate-100">Atlas Intelligence Studio</h3>
           <p className="text-sm text-slate-400">
-            Four opt-in copilots stand ready with prompt slots tuned to Creative Atlas workflows. Swap between them to preview their specialities.
+            Four opt-in Atlas Intelligence guides stand ready with prompt slots tuned to Creative Atlas workflows. Swap between them to preview their specialities.
           </p>
         </div>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        <nav className="flex lg:flex-col gap-2 lg:w-48" aria-label="Select an AI copilot">
+        <nav className="flex lg:flex-col gap-2 lg:w-48" aria-label="Select an Atlas Intelligence guide">
           {assistants.map((assistant) => {
             const isActive = assistant.id === activeAssistant?.id;
             return (
@@ -136,15 +139,15 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
                 </ul>
               </div>
               <div className="space-y-2">
-                <label htmlFor="copilot-custom-prompt" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <label htmlFor="atlas-intelligence-custom-prompt" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Customise prompt
                 </label>
                 <textarea
-                  id="copilot-custom-prompt"
+                  id="atlas-intelligence-custom-prompt"
                   value={promptInput}
                   onChange={(event) => setPromptInput(event.target.value)}
                   className="w-full min-h-[120px] rounded-lg border border-slate-700/60 bg-slate-950/70 p-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                  placeholder="Describe what you want the copilot to generate."
+                  placeholder="Describe what you want Atlas Intelligence to generate."
                 />
               </div>
               {error && <p className="text-sm text-rose-300">{error}</p>}
@@ -155,13 +158,13 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-cyan-600/30 border border-cyan-500/60 text-cyan-200 hover:bg-cyan-600/40 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
               >
-                <SparklesIcon className="w-4 h-4" />
+                <IntelligenceLogo className="w-4 h-4" />
                 {isLoading ? 'Generating...' : 'Generate'}
               </button>
             </div>
             {generatedPreview && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Latest copilot draft</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Latest Atlas Intelligence draft</p>
                 <div className="rounded-lg border border-slate-800/70 bg-slate-900/70 p-3 text-sm text-slate-200 whitespace-pre-wrap">
                   {generatedPreview}
                 </div>

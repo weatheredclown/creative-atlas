@@ -1,7 +1,7 @@
 import React from 'react';
 import { AIAssistant } from '../types';
 import { MilestoneProgressOverview } from '../utils/milestoneProgress';
-import { SparklesIcon, XMarkIcon } from './Icons';
+import { IntelligenceLogo, XMarkIcon } from './Icons';
 import AICopilotPanel from './AICopilotPanel';
 import Roadmap from './Roadmap';
 
@@ -33,12 +33,12 @@ const SecondaryInsightsPanel: React.FC<SecondaryInsightsPanelProps> = ({ assista
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-800 bg-slate-950/95 px-6 py-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <SparklesIcon className="w-4 h-4 text-pink-400" />
+              <IntelligenceLogo className="w-4 h-4 text-pink-400" />
               Creator Insights
             </div>
-            <h2 className="text-xl font-semibold text-slate-100">Copilots &amp; Milestone Lore</h2>
+            <h2 className="text-xl font-semibold text-slate-100">Atlas Intelligence &amp; Milestone Lore</h2>
             <p className="text-sm text-slate-400">
-              Explore opt-in AI companions and revisit the milestone roadmap without crowding your main workspace.
+              Explore opt-in Atlas Intelligence guides and revisit the milestone roadmap without crowding your main workspace.
             </p>
           </div>
           <button
