@@ -82,6 +82,7 @@ import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import Zippy from './components/Zippy';
+import WorldSimulationPanel from './components/WorldSimulationPanel';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -2691,6 +2692,11 @@ export default function App() {
               <MemorySyncPanel
                 conversations={projectConversations}
                 onStatusChange={handleMemoryStatusChange}
+              />
+              <WorldSimulationPanel
+                projectTitle={selectedProject.title}
+                artifacts={projectArtifacts}
+                onSelectArtifact={setSelectedArtifactId}
               />
               <CollapsibleSection
                 title="Project Insights"
