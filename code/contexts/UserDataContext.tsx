@@ -24,6 +24,7 @@ import {
   createProjectViaApi,
   deleteArtifactViaApi,
   deleteProjectViaApi,
+  deleteAccountViaApi,
   fetchProfile,
   fetchProjectArtifacts,
   fetchProjects,
@@ -69,6 +70,7 @@ interface UserDataContextValue {
   ) => void;
   updateProfile: (update: ProfileUpdate) => Promise<void>;
   addXp: (amount: number) => Promise<void>;
+  deleteAccountData: () => Promise<boolean>;
 }
 
 const UserDataContext = createContext<UserDataContextValue | undefined>(undefined);
@@ -153,6 +155,17 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [memoryConversations, setMemoryConversations] = useState<MemorySyncConversation[]>([]);
 
   const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const clearWorkspaceState = useCallback(() => {
+    setProjects([]);
+    setProjectPageToken(null);
+    setArtifactsByProject({});
+    setArtifactPageTokens({});
+    setProfile(null);
+    setMemoryConversations([]);
+    setLoading(false);
     setError(null);
   }, []);
 
@@ -840,6 +853,41 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [getIdToken, isGuestMode, reportError],
   );
 
+  const deleteAccountData = useCallback(async () => {
+    if (!profile && !isGuestMode) {
+      return false;
+    }
+
+    if (isGuestMode || !isDataApiConfigured) {
+      clearWorkspaceState();
+      return true;
+    }
+
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Missing authentication token.');
+      }
+      await deleteAccountViaApi(token);
+      clearWorkspaceState();
+      return true;
+    } catch (error) {
+      reportError(
+        'Failed to delete account data',
+        error,
+        'We could not delete your account data. Please try again later.',
+        { suppressState: true },
+      );
+      return false;
+    }
+  }, [
+    clearWorkspaceState,
+    getIdToken,
+    isGuestMode,
+    profile,
+    reportError,
+  ]);
+
   const value = useMemo<UserDataContextValue>(
     () => ({
       projects,
@@ -865,6 +913,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updateMemorySuggestionStatus,
       updateProfile,
       addXp,
+      deleteAccountData,
     }),
     [
       projects,
@@ -890,6 +939,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updateMemorySuggestionStatus,
       updateProfile,
       addXp,
+      deleteAccountData,
     ],
   );
 
