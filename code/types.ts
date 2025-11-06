@@ -331,9 +331,31 @@ export interface AIAssistant {
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
+export interface ComponentSettings {
+    milestoneTrackerVisible: boolean;
+    questsVisible: boolean;
+    achievementsVisible: boolean;
+    questlinesVisible: boolean;
+    projectInsightsVisible: boolean;
+    openTasksVisible: boolean;
+    memorySyncVisible: boolean;
+    narrativeHealthVisible: boolean;
+    continuityMonitorVisible: boolean;
+    worldSimulationVisible: boolean;
+    narrativePipelineVisible: boolean;
+    characterArcTrackerVisible: boolean;
+    inspirationDeckVisible: boolean;
+    githubImportVisible: boolean;
+    quickFactsVisible: boolean;
+    templatePickerVisible: boolean;
+    releaseNotesVisible: boolean;
+    creatorInsightsVisible: boolean;
+}
+
 export interface UserSettings {
     theme: ThemePreference;
     aiTipsEnabled: boolean;
+    components: ComponentSettings;
 }
 
 export interface UserProfile {

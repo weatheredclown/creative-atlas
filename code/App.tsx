@@ -60,6 +60,7 @@ import TimelineEditor from './components/TimelineEditor';
 import MagicSystemBuilder from './components/MagicSystemBuilder';
 import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
+import ProjectSettings from './components/ProjectSettings';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
 import OpenTasksPanel from './components/OpenTasksPanel';
@@ -74,7 +75,8 @@ import { useAuth } from './contexts/AuthContext';
 import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured, startGitHubOAuth } from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
-import SecondaryInsightsPanel from './components/SecondaryInsightsPanel';
+import AICopilotPanel from './components/AICopilotPanel';
+import Roadmap from './components/Roadmap';
 import MemorySyncPanel from './components/MemorySyncPanel';
 import MilestoneTracker from './components/MilestoneTracker';
 import ErrorBanner from './components/ErrorBanner';
@@ -1359,6 +1361,7 @@ export default function App() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [areInsightsCollapsed, setAreInsightsCollapsed] = useState(true);
   const [areTasksCollapsed, setAreTasksCollapsed] = useState(true);
+  const [areImportExportCollapsed, setAreImportExportCollapsed] = useState(true);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   
   const triggerDownload = useCallback((blob: Blob, filename:string) => {
@@ -2693,8 +2696,8 @@ export default function App() {
               </div>
             </div>
           </div>
-          <Quests quests={todaysDailyQuests} artifacts={artifacts} projects={projects} />
-          <QuestlineBoard
+          {profile.settings.components.questsVisible && <Quests quests={todaysDailyQuests} artifacts={artifacts} projects={projects} />}
+          {profile.settings.components.questlinesVisible && <QuestlineBoard
             questlines={questlines}
             artifacts={artifacts}
             projects={projects}
@@ -2702,8 +2705,8 @@ export default function App() {
             level={level}
             claimedQuestlines={profile.questlinesClaimed}
             onClaim={handleQuestlineClaim}
-          />
-          <Achievements achievements={achievements} artifacts={artifacts} projects={projects} />
+          />}
+          {profile.settings.components.achievementsVisible && <Achievements achievements={achievements} artifacts={artifacts} projects={projects} />}
         </aside>
 
         <section className="lg:col-span-9 space-y-8">
@@ -2725,32 +2728,72 @@ export default function App() {
                   xpProgress={xpProgress}
                 />
               ) : null}
-              <ProjectOverview
-                  project={selectedProject}
-                  onUpdateProject={handleUpdateProject}
-                  onDeleteProject={handleDeleteProject}
-              />
-              <MemorySyncPanel
-                conversations={projectConversations}
-                onStatusChange={handleMemoryStatusChange}
-              />
-              <CollapsibleSection
-                title="Project Insights"
+<CollapsibleSection
+                title="Summary/Settings & Artifacts"
                 isCollapsed={areInsightsCollapsed}
                 onToggle={() => setAreInsightsCollapsed(!areInsightsCollapsed)}
               >
-              <ProjectInsights artifacts={projectArtifacts} />
+                <ProjectOverview
+                  project={selectedProject}
+                  onUpdateProject={handleUpdateProject}
+                  onDeleteProject={handleDeleteProject}
+                />
+                <ProjectSettings profile={profile} onUpdateProfile={handleProfileUpdate} />
               </CollapsibleSection>
               <CollapsibleSection
-                title="Open Tasks"
+                title="Analytics & Inspiration/Assistance"
+                isCollapsed={areInsightsCollapsed}
+                onToggle={() => setAreInsightsCollapsed(!areInsightsCollapsed)}
+              >
+                {profile.settings.components.projectInsightsVisible && <ProjectInsights artifacts={projectArtifacts} />}
+                {profile.settings.components.inspirationDeckVisible && <InspirationDeck
+                  onCaptureCard={handleCaptureInspirationCard}
+                  isCaptureDisabled={!selectedProjectId}
+                />}
+                <AICopilotPanel assistants={aiAssistants} />
+                <Roadmap items={milestoneProgress} />
+              </CollapsibleSection>
+              <CollapsibleSection
+                title="Tracking"
                 isCollapsed={areTasksCollapsed}
                 onToggle={() => setAreTasksCollapsed(!areTasksCollapsed)}
               >
-                <OpenTasksPanel
+                {profile.settings.components.openTasksVisible && <OpenTasksPanel
                   artifacts={projectArtifacts}
                   projectTitle={selectedProject.title}
                   onSelectTask={(taskId) => setSelectedArtifactId(taskId)}
-                />
+                />}
+                {profile.settings.components.milestoneTrackerVisible && <MilestoneTracker items={milestoneProgress} />}
+                {profile.settings.components.narrativeHealthVisible && <NarrativeHealthPanel artifacts={projectArtifacts} />}
+                {profile.settings.components.continuityMonitorVisible && <ContinuityMonitor artifacts={projectArtifacts} />}
+                {profile.settings.components.worldSimulationVisible && <WorldSimulationPanel
+                  artifacts={projectArtifacts}
+                  allArtifacts={artifacts}
+                  projectTitle={selectedProject.title}
+                  onSelectArtifact={setSelectedArtifactId}
+                />}
+                {profile.settings.components.narrativePipelineVisible && <NarrativePipelineBoard artifacts={projectArtifacts} />}
+                {profile.settings.components.characterArcTrackerVisible && <CharacterArcTracker artifacts={projectArtifacts} />}
+              </CollapsibleSection>
+              <CollapsibleSection
+                title="Import/Export & Releasing/Publishing"
+                isCollapsed={areImportExportCollapsed}
+                onToggle={() => setAreImportExportCollapsed(!areImportExportCollapsed)}
+              >
+                {profile.settings.components.githubImportVisible && <GitHubImportPanel
+                  projectId={selectedProject.id}
+                  ownerId={profile.uid}
+                  existingArtifacts={projectArtifacts}
+                  onArtifactsImported={handleGitHubArtifactsImported}
+                  addXp={addXp}
+                />}
+                {profile.settings.components.releaseNotesVisible && <ReleaseNotesGenerator
+                    projectId={selectedProject.id}
+                    projectTitle={selectedProject.title}
+                    artifacts={projectArtifacts}
+                    addXp={addXp}
+                    onDraftGenerated={() => markSelectedProjectActivity({ generatedReleaseNotes: true })}
+                />}
               </CollapsibleSection>
               <div>
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -3021,41 +3064,41 @@ export default function App() {
                     )}
                 </div>
               )}
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {profile.settings.components.narrativeHealthVisible && <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <NarrativeHealthPanel artifacts={projectArtifacts} />
-                <ContinuityMonitor artifacts={projectArtifacts} />
-                <WorldSimulationPanel
+                {profile.settings.components.continuityMonitorVisible && <ContinuityMonitor artifacts={projectArtifacts} />}
+                {profile.settings.components.worldSimulationVisible && <WorldSimulationPanel
                   artifacts={projectArtifacts}
                   allArtifacts={artifacts}
                   projectTitle={selectedProject.title}
                   onSelectArtifact={setSelectedArtifactId}
-                />
-              </div>
-              <NarrativePipelineBoard artifacts={projectArtifacts} />
-              <CharacterArcTracker artifacts={projectArtifacts} />
-              <InspirationDeck
+                />}
+              </div>}
+              {profile.settings.components.narrativePipelineVisible && <NarrativePipelineBoard artifacts={projectArtifacts} />}
+              {profile.settings.components.characterArcTrackerVisible && <CharacterArcTracker artifacts={projectArtifacts} />}
+              {profile.settings.components.inspirationDeckVisible && <InspirationDeck
                 onCaptureCard={handleCaptureInspirationCard}
                 isCaptureDisabled={!selectedProjectId}
-              />
-              <GitHubImportPanel
+              />}
+              {profile.settings.components.githubImportVisible && <GitHubImportPanel
                   projectId={selectedProject.id}
                   ownerId={profile.uid}
                   existingArtifacts={projectArtifacts}
                   onArtifactsImported={handleGitHubArtifactsImported}
                   addXp={addXp}
-              />
+              />}
 
-              <QuickFactsPanel
+              {profile.settings.components.quickFactsVisible && <QuickFactsPanel
                 facts={quickFactPreview}
                 totalFacts={quickFacts.length}
                 projectTitle={selectedProject.title}
                 onSelectFact={setSelectedArtifactId}
                 onAddFact={() => setIsQuickFactModalOpen(true)}
-              />
+              />}
 
-              <MilestoneTracker items={milestoneProgress} />
+              {profile.settings.components.milestoneTrackerVisible && <MilestoneTracker items={milestoneProgress} />}
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-8">
-                <div className="space-y-6 xl:col-span-2">
+                {profile.settings.components.templatePickerVisible && <div className="space-y-6 xl:col-span-2">
                   <ProjectTemplatePicker
                     templates={projectTemplates}
                     categories={templateLibrary}
@@ -3069,60 +3112,14 @@ export default function App() {
                     activeProjectTitle={selectedProject.title}
                     onSelectTemplate={handleSelectTemplate}
                   />
-                </div>
-                <ReleaseNotesGenerator
+                </div>}
+                {profile.settings.components.releaseNotesVisible && <ReleaseNotesGenerator
                     projectId={selectedProject.id}
                     projectTitle={selectedProject.title}
                     artifacts={projectArtifacts}
                     addXp={addXp}
                     onDraftGenerated={() => markSelectedProjectActivity({ generatedReleaseNotes: true })}
-                />
-                <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 flex flex-col gap-5">
-                    <header className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                            <div className="rounded-xl bg-pink-500/10 border border-pink-500/40 p-2">
-                                <IntelligenceLogo className="w-5 h-5 text-pink-300" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-100">Creator Insights Hub</h3>
-                                <p className="text-sm text-slate-400">Visit the secondary panel when you&apos;re ready for Atlas Intelligence and roadmap lore.</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsInsightsOpen(true)}
-                            className="flex items-center gap-2 rounded-md border border-pink-500/40 bg-pink-500/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:border-pink-400 hover:bg-pink-500/30 transition-colors"
-                        >
-                            <IntelligenceLogo className="w-4 h-4" />
-                            Open insights
-                        </button>
-                    </header>
-                    <div className="space-y-3 text-sm text-slate-300">
-                        {featuredAssistant && (
-                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3">
-                                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-pink-300/80">
-                                    <IntelligenceLogo className="w-4 h-4" />
-                                    Atlas Intelligence spotlight
-                                </p>
-                                <p className="text-base font-semibold text-slate-100">{featuredAssistant.name}</p>
-                                <p className="text-xs text-slate-400">{featuredAssistant.focus}</p>
-                            </div>
-                        )}
-                        {upcomingMilestoneOverview && (
-                            <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-4 py-3 space-y-1.5">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/80">Next milestone</p>
-                                <p className="text-base font-semibold text-slate-100">{upcomingMilestoneOverview.milestone.title}</p>
-                                <p className="text-xs text-slate-400">{upcomingMilestoneOverview.milestone.focus}</p>
-                                <p className="text-xs text-slate-500">
-                                    {Math.round(upcomingMilestoneOverview.completion * 100)}% complete
-                                </p>
-                            </div>
-                        )}
-                        <p className="text-xs text-slate-500">
-                            Insights stay tucked away until you call for them, keeping the main workspace focused on capturing and shipping.
-                        </p>
-                    </div>
-                </section>
+                />}
               </div>
             </>
           ) : (
@@ -3176,12 +3173,6 @@ export default function App() {
             onClose={() => setIsCreateProjectModalOpen(false)}
         />
       </Modal>
-      <SecondaryInsightsPanel
-        assistants={aiAssistants}
-        milestones={milestoneProgress}
-        isOpen={isInsightsOpen}
-        onClose={() => setIsInsightsOpen(false)}
-      />
       {infoModalContent && (
         <InfoModal
           isOpen={!!infoModalContent}
