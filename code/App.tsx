@@ -60,7 +60,13 @@ import LocationEditor from './components/LocationEditor';
 import TaskEditor from './components/TaskEditor';
 import TimelineEditor from './components/TimelineEditor';
 import MagicSystemBuilder from './components/MagicSystemBuilder';
-import { exportProjectAsStaticSite, exportChapterBibleMarkdown, exportChapterBiblePdf, exportLoreJson } from './utils/export';
+import {
+  exportProjectAsStaticSite,
+  exportChapterBibleMarkdown,
+  exportChapterBiblePdf,
+  exportLoreJson,
+  createProjectStaticSiteFiles,
+} from './utils/export';
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
@@ -2169,13 +2175,35 @@ export default function App() {
   };
 
   const handlePublishToGithubRepo = async (repoName: string, publishDir: string) => {
+    if (!selectedProject) {
+      setPublishError('Select a project to publish to GitHub.');
+      return;
+    }
+
+    if (projectArtifacts.length === 0) {
+      setPublishError('Add at least one artifact before publishing to GitHub.');
+      return;
+    }
+
+    const siteFiles = createProjectStaticSiteFiles(selectedProject, projectArtifacts);
+
+    if (siteFiles.length === 0) {
+      setPublishError('No publishable content was generated for this project.');
+      return;
+    }
+
     setIsPublishing(true);
     setPublishError(null);
     setPublishSuccess(null);
     try {
       const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to authenticate the GitHub publish request.');
+      }
+
       const trimmedPublishDir = publishDir.trim();
-      const result = await publishToGitHub(token, repoName, trimmedPublishDir);
+      const publishDirectory = trimmedPublishDir.length > 0 ? trimmedPublishDir : 'pages';
+      const result = await publishToGitHub(token, repoName, publishDirectory, siteFiles);
       const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
       setPublishSuccess(successMessage);
     } catch (err) {
