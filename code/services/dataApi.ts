@@ -384,6 +384,11 @@ export interface PublishToGitHubResponse {
   pagesUrl: string;
 }
 
+export interface GitHubRepositorySummary {
+  fullName: string;
+  name: string;
+}
+
 export const publishToGitHub = async (
   token: string | null,
   repoName: string,
@@ -399,6 +404,13 @@ export const publishToGitHub = async (
     body: { repoName, publishDir, siteFiles },
   });
 };
+
+export const fetchGitHubRepositories = async (
+  token: string | null,
+): Promise<GitHubRepositorySummary[]> =>
+  sendJson<GitHubRepositorySummary[]>(token, '/api/github/repos', {
+    method: 'GET',
+  });
 
 export interface GitHubOAuthStartResponse {
   authUrl: string;
