@@ -26,11 +26,32 @@ const withAuth = async (token: string | null, init: RequestInit = {}): Promise<R
 };
 
 const parseJson = async <T>(response: Response): Promise<T> => {
+  const rawText = await response.text();
+
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Data API request failed with status ${response.status}.`);
+    throw new Error(rawText || `Data API request failed with status ${response.status}.`);
   }
-  return (await response.json()) as T;
+
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    throw new Error('Data API returned an empty response.');
+  }
+
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    const contentType = response.headers.get('Content-Type') ?? 'unknown content type';
+    const snippet = trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
+    const normalizedContentType = contentType.toLowerCase();
+
+    if (normalizedContentType.includes('json')) {
+      throw new Error(`Failed to parse JSON response from data API: ${snippet}`);
+    }
+
+    throw new Error(
+      `Expected JSON response from data API but received ${contentType}: ${snippet}`,
+    );
+  }
 };
 
 const sendJson = async <T>(

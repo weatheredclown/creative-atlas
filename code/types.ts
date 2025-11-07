@@ -369,6 +369,7 @@ export const PROJECT_COMPONENT_KEYS = [
   'openTasks',
   'narrativePipeline',
   'characterArcTracker',
+  'familyTreeTools',
   'milestoneTracker',
   'artifactExplorer',
   'githubImport',

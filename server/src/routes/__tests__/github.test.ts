@@ -17,6 +17,8 @@ vi.mock('../../firebaseAdmin.js', () => ({
 import githubRouter from '../github.js';
 
 const fetchMock = vi.fn<typeof fetch>();
+const originalAppBaseUrl = process.env.APP_BASE_URL;
+const originalAllowedOrigins = process.env.ALLOWED_ORIGINS;
 
 const createApp = () => {
   const app = express();
@@ -36,14 +38,38 @@ const createApp = () => {
   return app;
 };
 
+const createOAuthApp = () => {
+  const app = express();
+  app.use(express.json());
+  app.use(
+    session({
+      secret: 'test-secret',
+      resave: false,
+      saveUninitialized: true,
+    }),
+  );
+  app.get('/test/set-state', (req, res) => {
+    req.session.github_oauth_state =
+      (typeof req.query.state === 'string' ? req.query.state : undefined) ??
+      'test-state';
+    res.json({ state: req.session.github_oauth_state });
+  });
+  app.use('/api/github', githubRouter);
+  return app;
+};
+
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
+  process.env.APP_BASE_URL = '';
+  process.env.ALLOWED_ORIGINS = '';
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  process.env.APP_BASE_URL = originalAppBaseUrl;
+  process.env.ALLOWED_ORIGINS = originalAllowedOrigins;
 });
 
 const jsonResponse = (body: unknown, init?: ResponseInit) =>
@@ -54,6 +80,59 @@ const jsonResponse = (body: unknown, init?: ResponseInit) =>
   });
 
 describe('GitHub routes', () => {
+  describe('GET /api/github/oauth/callback', () => {
+    it('returns an authorization completion page with success redirect parameters when popups are blocked', async () => {
+      const app = createOAuthApp();
+      const agent = request.agent(app);
+
+      await agent.get('/test/set-state').query({ state: 'oauth-state' });
+
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ access_token: 'access-token', scope: 'repo,user' }),
+      );
+
+      const response = await agent
+        .get('/api/github/oauth/callback')
+        .query({ code: 'auth-code', state: 'oauth-state' })
+        .expect(200);
+
+      const html = response.text;
+      expect(html).toContain('GitHub authorization complete. You may close this window.');
+      expect(html).toContain('github_auth=success');
+      expect(html).toContain('window.location.replace("/?github_auth=success")');
+    });
+
+    it('returns an error page that redirects with the error reason when authorization fails', async () => {
+      const app = createOAuthApp();
+      const agent = request.agent(app);
+
+      await agent.get('/test/set-state').query({ state: 'oauth-state' });
+
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(
+          {
+            error: 'bad_verification_code',
+            error_description: 'The code passed is incorrect or expired.',
+          },
+          { status: 200 },
+        ),
+      );
+
+      const response = await agent
+        .get('/api/github/oauth/callback')
+        .query({ code: 'auth-code', state: 'oauth-state' })
+        .expect(400);
+
+      const html = response.text;
+      expect(html).toContain('The code passed is incorrect or expired.');
+      expect(html).toContain('github_auth=error');
+      expect(html).toContain(
+        'github_message=The+code+passed+is+incorrect+or+expired.',
+      );
+      expect(html).toContain('window.location.replace("/?github_auth=error&github_message=The+code+passed+is+incorrect+or+expired.")');
+    });
+  });
+
   describe('GET /api/github/repos', () => {
     it('returns repositories for the authenticated user', async () => {
       const app = createApp();

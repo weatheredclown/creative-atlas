@@ -110,6 +110,7 @@ import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import WorldSimulationPanel from './components/WorldSimulationPanel';
 import CharacterArcTracker from './components/CharacterArcTracker';
+import FamilyTreeTools from './components/FamilyTreeTools';
 import {
   PROJECT_FEATURE_GROUPS,
   createDefaultVisibility,
@@ -1532,15 +1533,34 @@ export default function App() {
   }, [projects, selectedProjectId]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('github_auth') === 'success') {
+    const status = searchParams.get('github_auth');
+    if (!status) {
+      return;
+    }
+
+    if (status === 'success') {
       handleOpenPublishModal(
         'authorized',
         githubAuthSuccessMessage,
       );
-      // Clean up the URL
-      window.history.replaceState({}, document.title, "/");
+    } else if (status === 'error') {
+      const message =
+        searchParams.get('github_message') ?? 'GitHub authorization failed.';
+      handleOpenPublishModal('error', message);
+      alert(message);
     }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('github_auth');
+    url.searchParams.delete('github_message');
+    const nextSearch = url.searchParams.toString();
+    const nextPath = nextSearch ? `${url.pathname}?${nextSearch}` : url.pathname;
+    window.history.replaceState({}, document.title, `${nextPath}${url.hash}`);
   }, [githubAuthSuccessMessage, handleOpenPublishModal]);
 
   useEffect(() => {
@@ -3248,6 +3268,12 @@ export default function App() {
                   )}
                   {currentProjectVisibility.narrativePipeline && (
                     <NarrativePipelineBoard artifacts={projectArtifacts} />
+                  )}
+                  {currentProjectVisibility.familyTreeTools && (
+                    <FamilyTreeTools
+                      artifacts={projectArtifacts}
+                      onSelectCharacter={setSelectedArtifactId}
+                    />
                   )}
                   {currentProjectVisibility.characterArcTracker && (
                     <CharacterArcTracker artifacts={projectArtifacts} />

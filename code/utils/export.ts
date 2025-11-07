@@ -1230,10 +1230,15 @@ const createHtmlShell = (title: string, content: string) => `
     <title>${title}</title>
     <script src='https://cdn.tailwindcss.com'></script>
 </head>
-<body class='bg-slate-900 text-slate-300 font-sans antialiased'>
-    <div class='container mx-auto p-8'>
+<body class='bg-slate-900 text-slate-300 font-sans antialiased min-h-screen flex flex-col'>
+    <div class='container mx-auto p-8 flex-1 w-full'>
         ${content}
     </div>
+    <footer class='bg-slate-950 border-t border-slate-800 py-6 mt-12'>
+        <div class='container mx-auto px-8 text-center text-sm text-slate-500'>
+            This page was pushed from <a href='https://creative-atlas.web.app' class='text-cyan-400 hover:text-cyan-300'>creative-atlas.web.app</a>
+        </div>
+    </footer>
 </body>
 </html>
 `;
