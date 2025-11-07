@@ -521,6 +521,10 @@ router.post('/oauth/start', authenticate, asyncHandler(async (req: Authenticated
     res.json({ authUrl });
 }));
 
+router.get('/status', authenticate, (req: AuthenticatedRequest, res) => {
+  res.json({ authorized: Boolean(req.session.github_access_token) });
+});
+
 router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { code, state } = req.query;
     const storedState = req.session.github_oauth_state;
