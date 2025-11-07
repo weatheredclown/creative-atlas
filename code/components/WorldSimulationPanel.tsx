@@ -21,6 +21,7 @@ import {
   ShareIcon,
   SparklesIcon,
 } from './Icons';
+import SimulatedHistoryHeatmap from '../features/history/SimulatedHistoryHeatmap';
 
 interface WorldSimulationPanelProps {
   artifacts: Artifact[];
@@ -143,6 +144,8 @@ const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
           }
         />
       </div>
+
+      <SimulatedHistoryHeatmap artifacts={artifacts} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <ConstraintColumn constraints={constraints} onSelectArtifact={onSelectArtifact} />
