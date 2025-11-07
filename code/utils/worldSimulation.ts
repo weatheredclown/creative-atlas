@@ -476,7 +476,7 @@ const detectConstraintType = (text: string, explicitType?: ConstraintType): Cons
   return 'metaphysics';
 };
 
-const parseChronoValue = (value: string): number | null => {
+export const parseChronoValue = (value: string): number | null => {
   const trimmed = value.trim();
   if (!trimmed) {
     return null;
@@ -721,6 +721,160 @@ const buildWorldAgeProgression = (events: TimelineEventWithMeta[]): WorldAgeProg
     upcomingAge,
     eras,
     lastRecordedYear: lastYear,
+  };
+};
+
+interface HistoryHeatmapEventDetail {
+  id: string;
+  title: string;
+  date?: string;
+  year: number;
+  artifactId: string;
+}
+
+export interface SimulatedHistoryHeatmapBucket {
+  start: number;
+  end: number;
+  label: string;
+}
+
+export interface SimulatedHistoryHeatmapCell {
+  bucketStart: number;
+  count: number;
+  events: HistoryHeatmapEventDetail[];
+}
+
+export interface SimulatedHistoryHeatmapRow {
+  timelineId: string;
+  timelineTitle: string;
+  totalEvents: number;
+  cells: SimulatedHistoryHeatmapCell[];
+}
+
+export interface SimulatedHistoryHeatmap {
+  buckets: SimulatedHistoryHeatmapBucket[];
+  rows: SimulatedHistoryHeatmapRow[];
+  maxCount: number;
+  totalEvents: number;
+  timelineCount: number;
+  earliestYear: number | null;
+  latestYear: number | null;
+  undatedEventCount: number;
+}
+
+const HEATMAP_BUCKET_SPAN = 100;
+
+const buildHeatmapBuckets = (earliest: number, latest: number): SimulatedHistoryHeatmapBucket[] => {
+  const minStart = Math.floor(earliest / HEATMAP_BUCKET_SPAN) * HEATMAP_BUCKET_SPAN;
+  const maxStart = Math.floor(latest / HEATMAP_BUCKET_SPAN) * HEATMAP_BUCKET_SPAN;
+  const buckets: SimulatedHistoryHeatmapBucket[] = [];
+
+  for (let start = minStart; start <= maxStart; start += HEATMAP_BUCKET_SPAN) {
+    const end = start + HEATMAP_BUCKET_SPAN - 1;
+    const label = getCenturyLabel(end);
+    buckets.push({ start, end, label });
+  }
+
+  return buckets;
+};
+
+export const buildSimulatedHistoryHeatmap = (artifacts: Artifact[]): SimulatedHistoryHeatmap => {
+  const timelineArtifacts = artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline);
+  const allTimelineEvents = timelineArtifacts.flatMap((artifact) => {
+    const data = artifact.data as TimelineData | undefined;
+    if (!data) {
+      return [];
+    }
+    return buildTimelineEvents(artifact, data).map((event) => ({
+      artifact,
+      event,
+    }));
+  });
+
+  const totalEvents = allTimelineEvents.length;
+
+  const datedEvents = allTimelineEvents.filter((record) => record.event.year !== null) as Array<{
+    artifact: Artifact;
+    event: TimelineEventWithMeta & { year: number };
+  }>;
+
+  if (datedEvents.length === 0) {
+    return {
+      buckets: [],
+      rows: timelineArtifacts.map((artifact) => ({
+        timelineId: artifact.id,
+        timelineTitle: artifact.title,
+        totalEvents: 0,
+        cells: [],
+      })),
+      maxCount: 0,
+      totalEvents,
+      timelineCount: timelineArtifacts.length,
+      earliestYear: null,
+      latestYear: null,
+      undatedEventCount: totalEvents,
+    };
+  }
+
+  const earliestYear = datedEvents.reduce((min, record) => Math.min(min, record.event.year), datedEvents[0]!.event.year);
+  const latestYear = datedEvents.reduce((max, record) => Math.max(max, record.event.year), datedEvents[0]!.event.year);
+  const buckets = buildHeatmapBuckets(earliestYear, latestYear);
+  const bucketIndex = new Map<number, SimulatedHistoryHeatmapBucket>(buckets.map((bucket) => [bucket.start, bucket]));
+
+  const rowMap = new Map<string, SimulatedHistoryHeatmapRow>();
+  const globalCounts: number[] = [];
+
+  timelineArtifacts.forEach((artifact) => {
+    rowMap.set(artifact.id, {
+      timelineId: artifact.id,
+      timelineTitle: artifact.title,
+      totalEvents: 0,
+      cells: buckets.map((bucket) => ({
+        bucketStart: bucket.start,
+        count: 0,
+        events: [],
+      })),
+    });
+  });
+
+  datedEvents.forEach(({ artifact, event }) => {
+    const bucketStart = Math.floor(event.year / HEATMAP_BUCKET_SPAN) * HEATMAP_BUCKET_SPAN;
+    const bucket = bucketIndex.get(bucketStart);
+    const row = rowMap.get(artifact.id);
+    if (!bucket || !row) {
+      return;
+    }
+
+    const cellIndex = row.cells.findIndex((cell) => cell.bucketStart === bucket.start);
+    if (cellIndex === -1) {
+      return;
+    }
+
+    const cell = row.cells[cellIndex]!;
+    cell.count += 1;
+    cell.events.push({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      year: event.year,
+      artifactId: event.artifactId,
+    });
+    row.totalEvents += 1;
+    globalCounts.push(cell.count);
+  });
+
+  const rows = Array.from(rowMap.values());
+  const maxCount = globalCounts.length > 0 ? Math.max(...globalCounts) : 0;
+
+  return {
+    buckets,
+    rows,
+    maxCount,
+    totalEvents,
+    timelineCount: timelineArtifacts.length,
+    earliestYear,
+    latestYear,
+    undatedEventCount: totalEvents - datedEvents.length,
   };
 };
 
