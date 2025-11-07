@@ -383,6 +383,10 @@ export interface GitHubOAuthStartResponse {
   authUrl: string;
 }
 
+export interface GitHubAuthorizationStatusResponse {
+  authorized: boolean;
+}
+
 export const startGitHubOAuth = async (
   token: string | null,
 ): Promise<GitHubOAuthStartResponse> => {
@@ -400,4 +404,23 @@ export const startGitHubOAuth = async (
   });
 
   return parseJson<GitHubOAuthStartResponse>(response);
+};
+
+export const checkGitHubAuthorization = async (
+  token: string | null,
+): Promise<GitHubAuthorizationStatusResponse> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/github/status`, {
+    method: 'GET',
+    ...(await withAuth(token, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })),
+  });
+
+  return parseJson<GitHubAuthorizationStatusResponse>(response);
 };

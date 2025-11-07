@@ -79,7 +79,14 @@ import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
-import { dataApiBaseUrl, downloadProjectExport, importArtifactsViaApi, isDataApiConfigured, startGitHubOAuth } from './services/dataApi';
+import {
+  checkGitHubAuthorization,
+  dataApiBaseUrl,
+  downloadProjectExport,
+  importArtifactsViaApi,
+  isDataApiConfigured,
+  startGitHubOAuth,
+} from './services/dataApi';
 import UserProfileCard from './components/UserProfileCard';
 import GitHubImportPanel from './components/GitHubImportPanel';
 import AICopilotPanel from './components/AICopilotPanel';
@@ -1377,31 +1384,85 @@ export default function App() {
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
   const [githubAuthStatus, setGithubAuthStatus] = useState<GitHubAuthStatus>('idle');
   const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
+  const githubOAuthPopupRef = useRef<Window | null>(null);
+  const githubOAuthMonitorRef = useRef<number | null>(null);
+  const githubAuthStatusRef = useRef<GitHubAuthStatus>('idle');
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
+  const githubAuthSuccessMessage =
+    'GitHub authorization complete. Select a repository to publish your site.';
+
+  const clearGithubOAuthMonitor = useCallback(() => {
+    if (typeof window !== 'undefined' && githubOAuthMonitorRef.current !== null) {
+      window.clearInterval(githubOAuthMonitorRef.current);
+    }
+    githubOAuthMonitorRef.current = null;
+    githubOAuthPopupRef.current = null;
+  }, []);
 
   const handleOpenPublishModal = useCallback(
     (status: GitHubAuthStatus = 'authorized', message: string | null = null) => {
+      if (status !== 'authorizing') {
+        clearGithubOAuthMonitor();
+      }
       setPublishError(null);
       setPublishSuccess(null);
+      githubAuthStatusRef.current = status;
       setGithubAuthStatus(status);
       setGithubAuthMessage(message);
       setIsPublishModalOpen(true);
     },
-    [],
+    [clearGithubOAuthMonitor],
   );
 
   const handleClosePublishModal = useCallback(() => {
+    clearGithubOAuthMonitor();
     setIsPublishModalOpen(false);
     setPublishError(null);
     setPublishSuccess(null);
+    githubAuthStatusRef.current = 'idle';
     setGithubAuthStatus('idle');
     setGithubAuthMessage(null);
-  }, []);
+  }, [clearGithubOAuthMonitor]);
 
   const handleResetPublishStatus = useCallback(() => {
     setPublishError(null);
     setPublishSuccess(null);
   }, []);
+
+  useEffect(
+    () => () => {
+      clearGithubOAuthMonitor();
+    },
+    [clearGithubOAuthMonitor],
+  );
+
+  const verifyGithubAuthorization = useCallback(async () => {
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Unable to verify GitHub authorization.');
+      }
+
+      const { authorized } = await checkGitHubAuthorization(token);
+      if (authorized) {
+        handleOpenPublishModal('authorized', githubAuthSuccessMessage);
+        return;
+      }
+
+      const message =
+        'GitHub authorization did not complete. Please try again.';
+      handleOpenPublishModal('error', message);
+      alert(message);
+    } catch (error) {
+      console.error('Failed to verify GitHub authorization', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to verify GitHub authorization. Please try again.';
+      handleOpenPublishModal('error', message);
+      alert(message);
+    }
+  }, [getIdToken, githubAuthSuccessMessage, handleOpenPublishModal]);
   
   const triggerDownload = useCallback((blob: Blob, filename:string) => {
     const url = URL.createObjectURL(blob);
@@ -1484,7 +1545,7 @@ export default function App() {
     if (status === 'success') {
       handleOpenPublishModal(
         'authorized',
-        'GitHub authorization complete. Select a repository to publish your site.',
+        githubAuthSuccessMessage,
       );
     } else if (status === 'error') {
       const message =
@@ -1499,7 +1560,7 @@ export default function App() {
     const nextSearch = url.searchParams.toString();
     const nextPath = nextSearch ? `${url.pathname}?${nextSearch}` : url.pathname;
     window.history.replaceState({}, document.title, `${nextPath}${url.hash}`);
-  }, [handleOpenPublishModal]);
+  }, [githubAuthSuccessMessage, handleOpenPublishModal]);
 
   useEffect(() => {
     let apiOrigin: string | null = null;
@@ -1539,7 +1600,7 @@ export default function App() {
       if (messagePayload.status === 'success') {
         handleOpenPublishModal(
           'authorized',
-          'GitHub authorization complete. Select a repository to publish your site.',
+          githubAuthSuccessMessage,
         );
       } else if (messagePayload.status === 'error') {
         const message =
@@ -1555,7 +1616,7 @@ export default function App() {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [handleOpenPublishModal]);
+  }, [githubAuthSuccessMessage, handleOpenPublishModal]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -2197,23 +2258,43 @@ export default function App() {
       }
 
       const { authUrl } = await startGitHubOAuth(token);
-      const popup = window.open(
-        authUrl,
-        'creative-atlas-github-oauth',
-        'width=600,height=700',
-      );
+      if (typeof window !== 'undefined') {
+        const popup = window.open(
+          authUrl,
+          'creative-atlas-github-oauth',
+          'width=600,height=700',
+        );
 
-      if (!popup) {
-        window.location.href = authUrl;
+        if (!popup) {
+          window.location.href = authUrl;
+          return;
+        }
+
+        githubOAuthPopupRef.current = popup;
+
+        if (githubOAuthMonitorRef.current !== null) {
+          window.clearInterval(githubOAuthMonitorRef.current);
+        }
+
+        githubOAuthMonitorRef.current = window.setInterval(() => {
+          const popupWindow = githubOAuthPopupRef.current;
+          if (popupWindow && !popupWindow.closed) {
+            return;
+          }
+
+          clearGithubOAuthMonitor();
+
+          if (githubAuthStatusRef.current === 'authorizing') {
+            void verifyGithubAuthorization();
+          }
+        }, 500);
       }
     } catch (error) {
       console.error('Failed to initiate GitHub authorization', error);
       const message = `Unable to start GitHub authorization. ${
         error instanceof Error ? error.message : 'Please try again.'
       }`;
-      setGithubAuthStatus('error');
-      setGithubAuthMessage(message);
-      setIsPublishModalOpen(true);
+      handleOpenPublishModal('error', message);
       alert(message);
     }
   };
