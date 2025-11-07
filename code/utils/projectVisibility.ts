@@ -101,6 +101,11 @@ export const PROJECT_COMPONENT_DEFINITIONS: Record<ProjectComponentKey, Componen
     description: 'Visualises beat coverage and continuity for key characters.',
     group: 'tracking',
   },
+  familyTreeTools: {
+    label: 'Family tree tools',
+    description: 'Diagram character lineages and household relationships.',
+    group: 'tracking',
+  },
   milestoneTracker: {
     label: 'Milestone tracker',
     description: 'Roadmap-aligned progress tracker for upcoming milestones.',

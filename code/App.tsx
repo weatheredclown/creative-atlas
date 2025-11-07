@@ -110,6 +110,7 @@ import NarrativePipelineBoard from './components/NarrativePipelineBoard';
 import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import WorldSimulationPanel from './components/WorldSimulationPanel';
 import CharacterArcTracker from './components/CharacterArcTracker';
+import FamilyTreeTools from './components/FamilyTreeTools';
 import {
   PROJECT_FEATURE_GROUPS,
   createDefaultVisibility,
@@ -3267,6 +3268,12 @@ export default function App() {
                   )}
                   {currentProjectVisibility.narrativePipeline && (
                     <NarrativePipelineBoard artifacts={projectArtifacts} />
+                  )}
+                  {currentProjectVisibility.familyTreeTools && (
+                    <FamilyTreeTools
+                      artifacts={projectArtifacts}
+                      onSelectCharacter={setSelectedArtifactId}
+                    />
                   )}
                   {currentProjectVisibility.characterArcTracker && (
                     <CharacterArcTracker artifacts={projectArtifacts} />

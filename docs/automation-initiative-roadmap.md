@@ -15,6 +15,8 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (UI now reliably surfaces GitHub authorization feedback; wire up backend status endpoints next.)
 
 ## Segment B — Feature Depth & Design Polish
+- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
+- Deliver character arc tooling: family tree visualizations are in place; next add progression state overlays and sync them with the relationship graph.
 - Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
 - Deliver character arc tooling: add progression states and visualizations for characters, ensuring integration with the relationship graph.
 - Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
