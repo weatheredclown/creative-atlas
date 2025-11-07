@@ -52,14 +52,28 @@ const respondWithOAuthPage = (
   }
 
   let targetOrigin = '*';
-  let fallbackUrl = '/'; // Fallback to root if no base URL can be determined.
+  const createRelativeFallbackUrl = () => {
+    const params = new URLSearchParams({ github_auth: result.status });
+    if (result.status === 'error' && result.message) {
+      params.set('github_message', result.message);
+    }
+    const query = params.toString();
+    return query ? `/?${query}` : '/';
+  };
+
+  let fallbackUrl = createRelativeFallbackUrl();
 
   if (appBaseUrl) {
     try {
       const url = new URL(appBaseUrl);
       targetOrigin = url.origin;
-      if (result.status === 'success') {
-        url.searchParams.set('github_auth', 'success');
+      url.searchParams.set('github_auth', result.status);
+      if (result.status === 'error') {
+        if (result.message) {
+          url.searchParams.set('github_message', result.message);
+        }
+      } else {
+        url.searchParams.delete('github_message');
       }
       fallbackUrl = url.toString();
     } catch (error) {
@@ -111,9 +125,7 @@ const respondWithOAuthPage = (
         } catch (error) {
           console.error('Unable to notify opener about GitHub OAuth result', error);
         }
-        if (payload.status === 'success') {
-          window.location.replace(${JSON.stringify(fallbackUrl)});
-        }
+        window.location.replace(${JSON.stringify(fallbackUrl)});
       })();
     </script>
   </body>
