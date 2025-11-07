@@ -1,6 +1,7 @@
 import { Router, type Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/authenticate.js';
 import { authenticate } from '../middleware/authenticate.js';
+import { authenticateGithub } from '../middleware/authenticateGithub.js';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import path from 'node:path';
@@ -561,12 +562,8 @@ router.get('/oauth/callback', asyncHandler(async (req: AuthenticatedRequest, res
     respondWithOAuthPage(res, { status: 'success' });
 }));
 
-router.get('/repos', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/repos', authenticateGithub, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const accessToken = req.session.github_access_token;
-
-  if (!accessToken) {
-    return res.status(401).json({ error: 'GitHub access token not found in session.' });
-  }
 
   try {
     const response = await fetch(
@@ -611,13 +608,9 @@ const publishSchema = z.object({
       .min(1, 'Provide at least one file to publish.'),
 });
 
-router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/publish', authenticateGithub, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { repoName, publishDir, siteFiles } = publishSchema.parse(req.body);
   const accessToken = req.session.github_access_token;
-
-  if (!accessToken) {
-    return res.status(401).json({ error: 'GitHub access token not found in session.' });
-  }
 
   try {
     const result = await addJob(() =>
