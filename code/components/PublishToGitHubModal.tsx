@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Modal from './Modal';
 import { GitHubIcon } from './Icons';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  fetchGitHubRepositories,
+  type GitHubRepositorySummary,
+} from '../services/dataApi';
 
 export type GitHubAuthStatus = 'idle' | 'authorizing' | 'authorized' | 'error';
 
@@ -14,11 +19,6 @@ interface PublishToGitHubModalProps {
   onResetStatus: () => void;
   authStatus: GitHubAuthStatus;
   statusMessage?: string | null;
-}
-
-interface GitHubRepo {
-  fullName: string;
-  name: string;
 }
 
 const DEFAULT_FETCH_ERROR_MESSAGE =
@@ -37,12 +37,14 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
 }) => {
   const [repoName, setRepoName] = useState('');
   const [publishDir, setPublishDir] = useState('');
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  const [repos, setRepos] = useState<GitHubRepositorySummary[]>([]);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [showNewRepoInput, setShowNewRepoInput] = useState(false);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoFetchError, setRepoFetchError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const { getIdToken } = useAuth();
 
   useEffect(() => {
     if (!isOpen) {
@@ -81,41 +83,12 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
       setFormError(null);
 
       try {
-        const response = await fetch('/api/github/repos');
-
-        if (!response.ok) {
-          const contentType = response.headers.get('content-type') ?? '';
-          let message = DEFAULT_FETCH_ERROR_MESSAGE;
-
-          if (contentType.includes('application/json')) {
-            try {
-              const data = (await response.json()) as {
-                error?: unknown;
-                message?: unknown;
-              };
-              const extractedMessage =
-                typeof data.error === 'string'
-                  ? data.error
-                  : typeof data.message === 'string'
-                    ? data.message
-                    : null;
-              if (extractedMessage) {
-                message = extractedMessage;
-              }
-            } catch {
-              // Ignore JSON parsing issues and fall back to the default message.
-            }
-          } else {
-            const text = await response.text();
-            if (text) {
-              message = text;
-            }
-          }
-
-          throw new Error(message);
+        const token = await getIdToken();
+        if (!token) {
+          throw new Error('Unable to authenticate with GitHub. Please sign in again.');
         }
 
-        const data = (await response.json()) as GitHubRepo[];
+        const data = await fetchGitHubRepositories(token);
         if (isCancelled) {
           return;
         }
@@ -133,7 +106,9 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
           return;
         }
         const message =
-          error instanceof Error ? error.message : DEFAULT_FETCH_ERROR_MESSAGE;
+          error instanceof Error && error.message
+            ? error.message
+            : DEFAULT_FETCH_ERROR_MESSAGE;
         setRepoFetchError(message);
         setRepos([]);
         setSelectedRepo('');
@@ -150,7 +125,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, isOpen, onResetStatus]);
+  }, [authStatus, getIdToken, isOpen, onResetStatus]);
 
   const handleRepoSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
