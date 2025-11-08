@@ -98,7 +98,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
-import PublishToGitHubModal, { GitHubAuthStatus } from './components/PublishToGitHubModal';
+import PublishToGitHubModal, {
+  GitHubAuthStatus,
+  type PublishSuccessInfo,
+} from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
@@ -1382,7 +1385,7 @@ export default function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<PublishSuccessInfo | null>(null);
   const [githubAuthStatus, setGithubAuthStatus] = useState<GitHubAuthStatus>('idle');
   const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
   const githubOAuthPopupRef = useRef<Window | null>(null);
@@ -2330,8 +2333,19 @@ export default function App() {
       const trimmedPublishDir = publishDir.trim();
       const publishDirectory = trimmedPublishDir.length > 0 ? trimmedPublishDir : 'pages';
       const result = await publishToGitHub(token, repoName, publishDirectory, siteFiles);
-      const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
-      setPublishSuccess(successMessage);
+      const normalizedDirectory = publishDirectory.replace(/^\/+|\/+$/g, '');
+      const encodedDirectoryPath = normalizedDirectory
+        ? normalizedDirectory.split('/').map(encodeURIComponent).join('/')
+        : '';
+      const branchUrl = `https://github.com/${result.repository}/tree/gh-pages${
+        encodedDirectoryPath ? `/${encodedDirectoryPath}` : ''
+      }`;
+      setPublishSuccess({
+        message: result.message,
+        pagesUrl: result.pagesUrl,
+        branchUrl,
+        branchDirectory: normalizedDirectory || null,
+      });
     } catch (err) {
       const message =
         err instanceof Error
@@ -3431,7 +3445,7 @@ export default function App() {
         onPublish={handlePublishToGithubRepo}
         isPublishing={isPublishing}
         errorMessage={publishError}
-        successMessage={publishSuccess}
+        successInfo={publishSuccess}
         onResetStatus={handleResetPublishStatus}
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
