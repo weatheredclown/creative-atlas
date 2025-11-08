@@ -146,6 +146,38 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
             onRemoveRelation={onRemoveRelation}
             relationOptions={[
               {
+                kind: 'CHILD_OF',
+                label: 'Parents & Guardians',
+                description:
+                  'Identify the figures this character descends from to ground them in the family tree.',
+                targetFilter: (candidate) => candidate.type === ArtifactType.Character,
+                placeholder: 'Select a parent or guardian',
+              },
+              {
+                kind: 'PARENT_OF',
+                label: 'Children & Wards',
+                description:
+                  'Link children, protégés, or wards who look to this character as a parental figure.',
+                targetFilter: (candidate) => candidate.type === ArtifactType.Character,
+                placeholder: 'Select a child or ward',
+              },
+              {
+                kind: 'SIBLING_OF',
+                label: 'Siblings',
+                description:
+                  'Note litter-mates, adopted siblings, or sworn family bonds to map lateral ties.',
+                targetFilter: (candidate) => candidate.type === ArtifactType.Character,
+                placeholder: 'Select a sibling',
+              },
+              {
+                kind: 'PARTNER_OF',
+                label: 'Partners & Spouses',
+                description:
+                  'Track marriages, partnerships, and significant bonds for relationship insights.',
+                targetFilter: (candidate) => candidate.type === ArtifactType.Character,
+                placeholder: 'Select a partner',
+              },
+              {
                 kind: 'APPEARS_IN',
                 label: 'Appears In',
                 description: 'Connect stories, scenes, or locations where this character shows up.',
