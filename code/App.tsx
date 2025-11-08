@@ -37,6 +37,7 @@ import {
     BuildingStorefrontIcon,
     FolderPlusIcon,
     SparklesIcon,
+    GlobeAltIcon,
     GitHubIcon,
     CubeIcon,
     IntelligenceLogo,
@@ -121,6 +122,11 @@ import {
   loadProjectVisibility,
   persistProjectVisibility,
 } from './utils/projectVisibility';
+import {
+  loadProjectPublishHistory,
+  persistProjectPublishHistory,
+  type ProjectPublishRecord,
+} from './utils/publishHistory';
 
 const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
@@ -1379,6 +1385,9 @@ export default function App() {
   const [projectVisibilityMap, setProjectVisibilityMap] = useState<Record<string, ProjectVisibilitySettings>>(
     () => loadProjectVisibility(),
   );
+  const [projectPublishHistory, setProjectPublishHistory] = useState<Record<string, ProjectPublishRecord>>(
+    () => loadProjectPublishHistory(),
+  );
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
   const [isTutorialVisible, setIsTutorialVisible] = useState(true);
   const [infoModalContent, setInfoModalContent] = useState<{ title: string; message: string } | null>(null);
@@ -1499,6 +1508,10 @@ export default function App() {
   useEffect(() => {
     persistProjectVisibility(projectVisibilityMap);
   }, [projectVisibilityMap]);
+
+  useEffect(() => {
+    persistProjectPublishHistory(projectPublishHistory);
+  }, [projectPublishHistory]);
 
   const todaysDailyQuests = useMemo(
     () => selectDailyQuestsForDate(dailyQuestDayKey),
@@ -2054,6 +2067,14 @@ export default function App() {
         delete next[projectId];
         return next;
       });
+      setProjectPublishHistory((prev) => {
+        if (!prev[projectId]) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
+      });
       setSelectedProjectId((current) => (current === projectId ? null : current));
       setSelectedArtifactId((current) =>
         current && projectArtifactIds.includes(current) ? null : current,
@@ -2321,31 +2342,60 @@ export default function App() {
       return;
     }
 
-    setIsPublishing(true);
     setPublishError(null);
     setPublishSuccess(null);
+
+    const trimmedPublishDir = publishDir.trim();
+    const normalizedPublishDir = trimmedPublishDir.replace(/^\/+|\/+$/g, '');
+    let publishDirectory = '';
+
+    if (normalizedPublishDir.length > 0) {
+      if (normalizedPublishDir.toLowerCase() === 'docs') {
+        publishDirectory = 'docs';
+      } else {
+        setPublishError(
+          'GitHub Pages only supports publishing from the site root or a docs/ folder. Leave the field blank or enter "docs".',
+        );
+        return;
+      }
+    }
+
+    setIsPublishing(true);
     try {
       const token = await getIdToken();
       if (!token) {
         throw new Error('Unable to authenticate the GitHub publish request.');
       }
 
-      const trimmedPublishDir = publishDir.trim();
-      const publishDirectory = trimmedPublishDir.length > 0 ? trimmedPublishDir : 'pages';
       const result = await publishToGitHub(token, repoName, publishDirectory, siteFiles);
+// MERGED FIX:
       const normalizedDirectory = publishDirectory.replace(/^\/+|\/+$/g, '');
       const encodedDirectoryPath = normalizedDirectory
         ? normalizedDirectory.split('/').map(encodeURIComponent).join('/')
         : '';
+      
       const branchUrl = `https://github.com/${result.repository}/tree/gh-pages${
         encodedDirectoryPath ? `/${encodedDirectoryPath}` : ''
       }`;
+
+      // 1. Set the structured success object for the modal (from 'codex' branch)
       setPublishSuccess({
         message: result.message,
         pagesUrl: result.pagesUrl,
         branchUrl,
         branchDirectory: normalizedDirectory || null,
       });
+
+      // 2. Persist the publish history (from 'main' branch)
+      setProjectPublishHistory((prev) => ({
+        ...prev,
+        [selectedProject.id]: {
+          repository: repoName,
+          publishDirectory,
+          pagesUrl: result.pagesUrl,
+          publishedAt: new Date().toISOString(),
+        },
+      }));      
     } catch (err) {
       const message =
         err instanceof Error
@@ -2454,6 +2504,20 @@ export default function App() {
     [selectedProjectId, selectedProject, createArtifact, addXp],
   );
   const selectedArtifact = useMemo(() => artifacts.find(a => a.id === selectedArtifactId), [artifacts, selectedArtifactId]);
+  const selectedProjectPublishRecord = useMemo(
+    () => (selectedProjectId ? projectPublishHistory[selectedProjectId] ?? null : null),
+    [projectPublishHistory, selectedProjectId],
+  );
+  const lastPublishedAtLabel = useMemo(() => {
+    if (!selectedProjectPublishRecord) {
+      return null;
+    }
+    const timestamp = new Date(selectedProjectPublishRecord.publishedAt);
+    if (Number.isNaN(timestamp.getTime())) {
+      return null;
+    }
+    return timestamp.toLocaleString();
+  }, [selectedProjectPublishRecord]);
   const availableStatuses = useMemo(
     () => Array.from(new Set(projectArtifacts.map((artifact) => artifact.status))).sort(),
     [projectArtifacts],
@@ -3357,6 +3421,41 @@ export default function App() {
                             <h3 className="text-lg font-semibold text-slate-100">Publishing actions</h3>
                             <p className="text-sm text-slate-400">Ship updates whenever you are ready to share new lore.</p>
                           </header>
+                          {selectedProjectPublishRecord ? (
+                            <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex items-start gap-3">
+                                  <GlobeAltIcon className="h-5 w-5 flex-shrink-0 text-cyan-200" />
+                                  <div className="space-y-1">
+                                    <p className="font-semibold text-cyan-100">Latest GitHub Pages site</p>
+                                    <p className="text-xs text-cyan-100/80">
+                                      {selectedProjectPublishRecord.repository}
+                                      {selectedProjectPublishRecord.publishDirectory
+                                        ? ` · ${selectedProjectPublishRecord.publishDirectory}`
+                                        : ''}
+                                      {lastPublishedAtLabel ? ` · Published ${lastPublishedAtLabel}` : ''}
+                                    </p>
+                                    <a
+                                      href={selectedProjectPublishRecord.pagesUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block break-all text-xs font-medium text-cyan-50 underline"
+                                    >
+                                      {selectedProjectPublishRecord.pagesUrl}
+                                    </a>
+                                  </div>
+                                </div>
+                                <a
+                                  href={selectedProjectPublishRecord.pagesUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-cyan-50 transition-colors hover:bg-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                >
+                                  Visit live site
+                                </a>
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="flex flex-wrap items-center gap-3">
                             <button
                               onClick={handlePublish}

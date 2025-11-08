@@ -243,13 +243,16 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
           <label htmlFor="publish-dir" className="text-sm text-slate-400 mt-4 block">
             Publish Directory (optional)
           </label>
-          <p className="text-xs text-slate-500 mb-1">Defaults to a pages/ folder if left blank.</p>
+          <p className="text-xs text-slate-500 mb-1">
+            Leave blank to publish from the site root, or enter <code>docs</code> to publish from a docs/
+            folder.
+          </p>
           <input
             id="publish-dir"
             type="text"
             value={publishDir}
             onChange={handlePublishDirChange}
-            placeholder="e.g., pages"
+            placeholder="e.g., docs"
             className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-60"
             disabled={isPublishing || authStatus !== 'authorized'}
           />
