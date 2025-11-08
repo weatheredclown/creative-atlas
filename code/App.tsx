@@ -2339,17 +2339,31 @@ export default function App() {
       return;
     }
 
-    setIsPublishing(true);
     setPublishError(null);
     setPublishSuccess(null);
+
+    const trimmedPublishDir = publishDir.trim();
+    const normalizedPublishDir = trimmedPublishDir.replace(/^\/+|\/+$/g, '');
+    let publishDirectory = '';
+
+    if (normalizedPublishDir.length > 0) {
+      if (normalizedPublishDir.toLowerCase() === 'docs') {
+        publishDirectory = 'docs';
+      } else {
+        setPublishError(
+          'GitHub Pages only supports publishing from the site root or a docs/ folder. Leave the field blank or enter "docs".',
+        );
+        return;
+      }
+    }
+
+    setIsPublishing(true);
     try {
       const token = await getIdToken();
       if (!token) {
         throw new Error('Unable to authenticate the GitHub publish request.');
       }
 
-      const trimmedPublishDir = publishDir.trim();
-      const publishDirectory = trimmedPublishDir.length > 0 ? trimmedPublishDir : 'pages';
       const result = await publishToGitHub(token, repoName, publishDirectory, siteFiles);
       const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
       setPublishSuccess(successMessage);

@@ -249,14 +249,94 @@ describe('GitHub routes', () => {
       const treePayload = JSON.parse(treeCall?.[1]?.body as string);
       expect(treePayload).toEqual({
         tree: [
-          { path: 'pages/index.html', mode: '100644', type: 'blob', sha: 'blob-index' },
+          { path: 'index.html', mode: '100644', type: 'blob', sha: 'blob-index' },
           {
-            path: 'pages/artifacts/story.html',
+            path: 'artifacts/story.html',
             mode: '100644',
             type: 'blob',
             sha: 'blob-story',
           },
         ],
+      });
+    });
+
+    it('publishes site files into docs directory when requested', async () => {
+      const app = createApp();
+      const siteFiles = [
+        { path: 'index.html', contents: '<html>Index</html>' },
+        { path: 'artifacts/story.html', contents: '<html>Story</html>' },
+      ];
+
+      fetchMock
+        .mockResolvedValueOnce(
+          jsonResponse(
+            {
+              owner: { login: 'test-user' },
+              name: 'demo-site',
+            },
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ sha: 'blob-index' }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ sha: 'blob-story' }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          new Response('', { status: 404 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ sha: 'tree-sha' }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ sha: 'commit-sha' }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({}, { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({}, { status: 201 }),
+        );
+
+      const response = await request(app)
+        .post('/api/github/publish')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ repoName: 'demo-site', publishDir: 'docs', siteFiles })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        message: 'Published test-user/demo-site from the gh-pages branch.',
+        repository: 'test-user/demo-site',
+        pagesUrl: 'https://test-user.github.io/demo-site',
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(8);
+
+      const treeCall = fetchMock.mock.calls.find((call) =>
+        typeof call[0] === 'string' && call[0].endsWith('/git/trees'),
+      );
+      expect(treeCall).toBeDefined();
+      const treePayload = JSON.parse(treeCall?.[1]?.body as string);
+      expect(treePayload).toEqual({
+        tree: [
+          { path: 'docs/index.html', mode: '100644', type: 'blob', sha: 'blob-index' },
+          {
+            path: 'docs/artifacts/story.html',
+            mode: '100644',
+            type: 'blob',
+            sha: 'blob-story',
+          },
+        ],
+      });
+
+      const pagesCall = fetchMock.mock.calls.find((call) =>
+        typeof call[0] === 'string' && call[0].endsWith('/pages'),
+      );
+      expect(pagesCall).toBeDefined();
+      const pagesPayload = JSON.parse(pagesCall?.[1]?.body as string);
+      expect(pagesPayload).toEqual({
+        source: { branch: 'gh-pages', path: '/docs' },
       });
     });
 
