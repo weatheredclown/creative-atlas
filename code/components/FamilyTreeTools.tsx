@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, CharacterData } from '../types';
-import { UserCircleIcon, LinkIcon } from './Icons';
+import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
 
 type FamilyTreeToolsProps = {
   artifacts: Artifact[];
   onSelectCharacter?: (id: string) => void;
+  onCreateCharacter?: () => void;
 };
 
 type FamilyTreeNode = {
@@ -109,7 +110,7 @@ const extractCharacterDescriptor = (artifact: Artifact): string | undefined => {
   return undefined;
 };
 
-const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCharacter }) => {
+const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCharacter, onCreateCharacter }) => {
   const { characters, treeNodes, relationSummaries, stats } = useMemo(() => {
     const characters = artifacts
       .filter((artifact) => artifact.type === ArtifactType.Character)
@@ -203,18 +204,42 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
   if (characters.length === 0) {
     return (
       <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/10">
-        <header className="flex items-center gap-3">
-          <div className="rounded-md bg-slate-800/80 p-2 text-slate-300">
-            <UserCircleIcon className="h-5 w-5" />
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-md bg-slate-800/80 p-2 text-slate-300">
+              <UserCircleIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-100">Family tree tools</h3>
+              <p className="text-sm text-slate-400">Add characters to start diagramming family structures.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">Family tree tools</h3>
-            <p className="text-sm text-slate-400">Add characters to start diagramming family structures.</p>
-          </div>
+          {onCreateCharacter && (
+            <button
+              type="button"
+              onClick={onCreateCharacter}
+              className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow transition-colors hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Character
+            </button>
+          )}
         </header>
         <p className="mt-4 text-sm text-slate-400">
           Once you create character artifacts, Creative Atlas will map their parents, partners, and siblings here.
         </p>
+        {onCreateCharacter && (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={onCreateCharacter}
+              className="inline-flex items-center gap-2 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-cyan-100 transition-colors hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Create a character seed
+            </button>
+          </div>
+        )}
       </section>
     );
   }
@@ -293,16 +318,28 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
 
   return (
     <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/10 space-y-6">
-      <header className="flex items-start gap-3">
-        <div className="rounded-md bg-slate-800/80 p-2 text-slate-300">
-          <UserCircleIcon className="h-5 w-5" />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-md bg-slate-800/80 p-2 text-slate-300">
+            <UserCircleIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-100">Family tree tools</h3>
+            <p className="text-sm text-slate-400">
+              Visualise how your characters connect across generations, households, and sibling bonds.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold text-slate-100">Family tree tools</h3>
-          <p className="text-sm text-slate-400">
-            Visualise how your characters connect across generations, households, and sibling bonds.
-          </p>
-        </div>
+        {onCreateCharacter && (
+          <button
+            type="button"
+            onClick={onCreateCharacter}
+            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow transition-colors hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+          >
+            <PlusIcon className="h-4 w-4" />
+            New Character
+          </button>
+        )}
       </header>
 
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
