@@ -217,13 +217,17 @@ const readGithubJson = async <T>(
   }
 };
 
-const sanitizePublishDir = (dir: string | undefined): string | undefined => {
+const sanitizePublishDir = (dir: string | undefined): 'docs' | undefined => {
   if (!dir) {
     return undefined;
   }
 
   const trimmed = dir.trim().replace(/^\/+|\/+$/g, '');
-  return trimmed.length > 0 ? trimmed : undefined;
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed.toLowerCase() === 'docs' ? 'docs' : undefined;
 };
 
 const sanitizeSiteFilePath = (filePath: string): string => {
@@ -262,7 +266,7 @@ const runPublishJob = async ({
   siteFiles,
 }: PublishJobOptions): Promise<PublishJobResult> => {
   const normalizedPublishDir = sanitizePublishDir(publishDir);
-  const targetDirectory = normalizedPublishDir ?? 'pages';
+  const targetDirectory = normalizedPublishDir === 'docs' ? 'docs' : undefined;
   const defaultHeaders = {
     Authorization: `token ${accessToken}`,
     Accept: 'application/vnd.github+json',
