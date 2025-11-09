@@ -14,7 +14,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
-- Add a static analysis guard (custom ESLint rule or TypeScript check) that rejects `import type` usage for runtime enums like `ArtifactType` to prevent regressions similar to the recent production crash.
+- Add a static analysis guard (custom ESLint rule or TypeScript check) that rejects `import type` usage for runtime enums like `ArtifactType` to prevent regressions similar to the recent production crash. (Hotfixed the immediate regression by switching `utils/artifactMetrics.ts` back to a value import; guard still needed.)
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
