@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { Artifact, ArtifactType } from '../types';
+import { ArtifactType } from '../types';
+import type { Artifact } from '../types';
 
 interface UseArtifactFiltersOptions {
   initialViewMode?: 'table' | 'graph' | 'kanban';
