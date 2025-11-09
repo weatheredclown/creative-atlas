@@ -71,6 +71,7 @@ import {
 import ProjectOverview from './components/ProjectOverview';
 import ProjectInsights from './components/ProjectInsights';
 import ProjectHero from './components/ProjectHero';
+import ProjectSharePanel from './components/ProjectSharePanel';
 import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
@@ -3036,6 +3037,7 @@ export default function App() {
                       xpProgress={xpProgress}
                     />
                   ) : null}
+                  <ProjectSharePanel project={selectedProject} />
                   {currentProjectVisibility.projectOverview && (
                     <ProjectOverview
                       project={selectedProject}

@@ -10,6 +10,7 @@ import { UserDataProvider } from './contexts/UserDataContext';
 import AuthGate from './components/AuthGate';
 import GitHubCallback from './components/GitHubCallback';
 import TermsOfService from './pages/TermsOfService';
+import SharedProjectPage from './pages/SharedProjectPage';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -29,6 +30,7 @@ root.render(
       <AuthProvider>
         <Routes>
           <Route path="/policies/terms" element={<TermsOfService />} />
+          <Route path="/share/:shareId" element={<SharedProjectPage />} />
           <Route
             path="/github/callback"
             element={(
