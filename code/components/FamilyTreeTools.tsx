@@ -78,8 +78,26 @@ const createFamilyTreeNode = (
     .map((siblingId) => characterMap.get(siblingId)!)
     .filter(Boolean);
 
+  const isCanonicalParentForChild = (childId: string) => {
+    const parentIds = Array.from(maps.parentMap.get(childId) ?? []);
+    if (parentIds.length <= 1) {
+      return true;
+    }
+
+    const orderedParents = parentIds
+      .filter((parentId) => characterMap.has(parentId))
+      .sort(sortByTitle);
+
+    if (orderedParents.length === 0) {
+      return true;
+    }
+
+    return orderedParents[0] === id;
+  };
+
   const children = childIds
     .filter((childId) => !visited.has(childId) && characterMap.has(childId))
+    .filter(isCanonicalParentForChild)
     .sort(sortByTitle)
     .map((childId) => createFamilyTreeNode(childId, maps, characterMap, nextVisited));
 
