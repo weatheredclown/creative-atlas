@@ -15,6 +15,16 @@ export interface Project {
   tags: string[];
 }
 
+export interface ProjectShareStatus {
+  enabled: boolean;
+  shareId?: string;
+}
+
+export interface SharedProjectPayload {
+  project: Project;
+  artifacts: Artifact[];
+}
+
 export interface StaticSiteFile {
   path: string;
   contents: string;

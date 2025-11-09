@@ -2,6 +2,8 @@ import type {
   Artifact,
   ConlangLexeme,
   Project,
+  ProjectShareStatus,
+  SharedProjectPayload,
   StaticSiteFile,
   UserProfile,
 } from '../types';
@@ -195,6 +197,37 @@ export const createArtifactsViaApi = async (
     method: 'POST',
     body: { artifacts },
   }).then((payload) => payload.artifacts);
+
+export const getProjectShareStatus = async (
+  token: string | null,
+  projectId: string,
+): Promise<ProjectShareStatus> =>
+  sendJson<ProjectShareStatus>(token, `/api/projects/${projectId}/share`, { method: 'GET' });
+
+export const enableProjectShare = async (
+  token: string | null,
+  projectId: string,
+): Promise<{ shareId: string }> =>
+  sendJson<{ shareId: string }>(token, `/api/projects/${projectId}/share`, { method: 'POST' });
+
+export const disableProjectShare = async (
+  token: string | null,
+  projectId: string,
+): Promise<{ success: boolean }> =>
+  sendJson<{ success: boolean }>(token, `/api/projects/${projectId}/share`, { method: 'DELETE' });
+
+export const fetchSharedProject = async (shareId: string): Promise<SharedProjectPayload> => {
+  if (!isDataApiConfigured) {
+    throw new Error('Data API is not configured.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/share/${shareId}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  return parseJson<SharedProjectPayload>(response);
+};
 
 export const updateArtifactViaApi = async (
   token: string | null,

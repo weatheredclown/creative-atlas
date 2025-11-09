@@ -20,6 +20,117 @@ import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types.js'
 
 const router = Router();
 
+const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
+  const data = doc.data() ?? {};
+  return {
+    id: doc.id,
+    ownerId,
+    title: typeof data.title === 'string' ? data.title : 'Untitled Project',
+    summary: typeof data.summary === 'string' ? data.summary : '',
+    status: typeof data.status === 'string' ? data.status : 'active',
+    tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
+  };
+};
+
+const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Artifact => {
+  const data = doc.data() ?? {};
+  return {
+    id: doc.id,
+    ownerId,
+    projectId: typeof data.projectId === 'string' ? data.projectId : '',
+    type: typeof data.type === 'string' ? data.type : 'Unknown',
+    title: typeof data.title === 'string' ? data.title : 'Untitled Artifact',
+    summary: typeof data.summary === 'string' ? data.summary : '',
+    status: typeof data.status === 'string' ? data.status : 'idea',
+    tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    relations: Array.isArray(data.relations) ? (data.relations as Artifact['relations']) : [],
+    data: data.data ?? {},
+    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
+    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
+  };
+};
+
+const findProjectShareDoc = async (
+  projectId: string,
+  ownerId: string,
+): Promise<QueryDocumentSnapshot | undefined> => {
+  const snapshot = await firestore
+    .collection('projectShares')
+    .where('projectId', '==', projectId)
+    .where('ownerId', '==', ownerId)
+    .limit(1)
+    .get();
+
+  return snapshot.docs[0];
+};
+
+const ensureProjectOwnership = async (
+  projectId: string,
+  ownerId: string,
+): Promise<DocumentSnapshot | null> => {
+  const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+  if (!projectSnapshot.exists) {
+    return null;
+  }
+
+  const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
+  if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
+    return null;
+  }
+
+  return projectSnapshot;
+};
+
+router.get(
+  '/share/:shareId',
+  asyncHandler(async (req, res) => {
+    const { shareId } = req.params;
+    if (!shareId) {
+      res.status(400).json({ error: 'Share identifier is required.' });
+      return;
+    }
+
+    const shareSnapshot = await firestore.collection('projectShares').doc(shareId).get();
+    if (!shareSnapshot.exists) {
+      res.status(404).json({ error: 'Shared project not found.' });
+      return;
+    }
+
+    const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
+    const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
+    const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
+
+    if (!projectId || !ownerId) {
+      res.status(404).json({ error: 'Shared project not found.' });
+      return;
+    }
+
+    const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+    if (!projectSnapshot.exists) {
+      res.status(404).json({ error: 'Shared project not found.' });
+      return;
+    }
+
+    const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
+    if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
+      res.status(404).json({ error: 'Shared project not found.' });
+      return;
+    }
+
+    const artifactsSnapshot = await firestore
+      .collection('artifacts')
+      .where('projectId', '==', projectId)
+      .get();
+
+    const project = mapProject(projectSnapshot, ownerId);
+    const artifacts = artifactsSnapshot.docs.map((doc) => mapArtifact(doc, ownerId));
+
+    res.json({ project, artifacts });
+  }),
+);
+
 router.use(authenticate);
 
 const MAX_BATCH_SIZE = 400;
@@ -266,38 +377,6 @@ const decodePageToken = (token: string): { title: string; id: string } | null =>
   }
 };
 
-const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
-  const data = doc.data() ?? {};
-  return {
-    id: doc.id,
-    ownerId,
-    title: typeof data.title === 'string' ? data.title : 'Untitled Project',
-    summary: typeof data.summary === 'string' ? data.summary : '',
-    status: typeof data.status === 'string' ? data.status : 'active',
-    tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
-    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
-  };
-};
-
-const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Artifact => {
-  const data = doc.data() ?? {};
-  return {
-    id: doc.id,
-    ownerId,
-    projectId: typeof data.projectId === 'string' ? data.projectId : '',
-    type: typeof data.type === 'string' ? data.type : 'Unknown',
-    title: typeof data.title === 'string' ? data.title : 'Untitled Artifact',
-    summary: typeof data.summary === 'string' ? data.summary : '',
-    status: typeof data.status === 'string' ? data.status : 'idea',
-    tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-    relations: Array.isArray(data.relations) ? (data.relations as Artifact['relations']) : [],
-    data: data.data ?? {},
-    createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
-    updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
-  };
-};
-
 router.get('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid, email, displayName, photoURL } = req.user!;
   const docRef = firestore.collection('users').doc(uid);
@@ -541,6 +620,70 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
   await docRef.set(payload, { merge: false });
   const snapshot = await docRef.get();
   res.status(201).json(mapProject(snapshot, uid));
+}));
+
+router.get('/projects/:id/share', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid } = req.user!;
+  const projectId = req.params.id;
+
+  if (!(await ensureProjectOwnership(projectId, uid))) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
+  }
+
+  const shareDoc = await findProjectShareDoc(projectId, uid);
+  if (!shareDoc) {
+    res.json({ enabled: false });
+    return;
+  }
+
+  res.json({ enabled: true, shareId: shareDoc.id });
+}));
+
+router.post('/projects/:id/share', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid } = req.user!;
+  const projectId = req.params.id;
+
+  if (!(await ensureProjectOwnership(projectId, uid))) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
+  }
+
+  const existing = await findProjectShareDoc(projectId, uid);
+  if (existing) {
+    await existing.ref.update({ updatedAt: FieldValue.serverTimestamp() });
+    res.json({ shareId: existing.id });
+    return;
+  }
+
+  const docRef = firestore.collection('projectShares').doc();
+  await docRef.set({
+    ownerId: uid,
+    projectId,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  res.status(201).json({ shareId: docRef.id });
+}));
+
+router.delete('/projects/:id/share', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid } = req.user!;
+  const projectId = req.params.id;
+
+  if (!(await ensureProjectOwnership(projectId, uid))) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
+  }
+
+  const existing = await findProjectShareDoc(projectId, uid);
+  if (!existing) {
+    res.json({ success: true });
+    return;
+  }
+
+  await existing.ref.delete();
+  res.json({ success: true });
 }));
 
 router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
