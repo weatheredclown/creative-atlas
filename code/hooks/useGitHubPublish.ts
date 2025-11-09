@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 
 import type { Artifact, Project } from '../types';
 import type { GitHubAuthStatus, PublishSuccessInfo } from '../components/PublishToGitHubModal';
@@ -16,7 +24,7 @@ interface UseGitHubPublishParams {
   getIdToken: () => Promise<string | null>;
   selectedProject: Project | null;
   projectArtifacts: Artifact[];
-  setProjectPublishHistory: React.Dispatch<React.SetStateAction<Record<string, ProjectPublishRecord>>>;
+  setProjectPublishHistory: Dispatch<SetStateAction<Record<string, ProjectPublishRecord>>>;
   githubAuthSuccessMessage: string;
   isGuestMode: boolean;
 }
@@ -270,6 +278,7 @@ export function useGitHubPublish({
     dataApiEnabled,
     getIdToken,
     clearGithubOAuthMonitor,
+    openModal,
     verifyGithubAuthorization,
   ]);
 
