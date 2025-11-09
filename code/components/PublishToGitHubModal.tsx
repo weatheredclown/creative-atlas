@@ -7,6 +7,13 @@ import {
   type GitHubRepositorySummary,
 } from '../services/dataApi';
 
+export interface PublishSuccessInfo {
+  message: string;
+  pagesUrl: string;
+  branchUrl: string;
+  branchDirectory: string | null;
+}
+
 export type GitHubAuthStatus = 'idle' | 'authorizing' | 'authorized' | 'error';
 
 interface PublishToGitHubModalProps {
@@ -15,7 +22,7 @@ interface PublishToGitHubModalProps {
   onPublish: (repoName: string, publishDir: string) => Promise<void>;
   isPublishing: boolean;
   errorMessage?: string | null;
-  successMessage?: string | null;
+  successInfo?: PublishSuccessInfo | null;
   onResetStatus: () => void;
   authStatus: GitHubAuthStatus;
   statusMessage?: string | null;
@@ -30,7 +37,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
   onPublish,
   isPublishing,
   errorMessage,
-  successMessage,
+  successInfo,
   onResetStatus,
   authStatus,
   statusMessage,
@@ -278,9 +285,35 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
             </div>
           )}
 
-          {successMessage && (
+          {successInfo && (
             <div className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-              {successMessage}
+              <p>{successInfo.message}</p>
+              <p className="mt-2">
+                Your site will be available at{' '}
+                <a
+                  href={successInfo.pagesUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-emerald-100 underline hover:text-white"
+                >
+                  {successInfo.pagesUrl}
+                </a>
+                .
+              </p>
+              <p className="mt-1">
+                <a
+                  href={successInfo.branchUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-emerald-100 underline hover:text-white"
+                >
+                  Browse{' '}
+                  {successInfo.branchDirectory
+                    ? `gh-pages/${successInfo.branchDirectory}`
+                    : 'gh-pages'}{' '}
+                  on GitHub
+                </a>
+              </p>
             </div>
           )}
         </div>

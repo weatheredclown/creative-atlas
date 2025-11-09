@@ -17,6 +17,8 @@ This document tracks the multi-session automation initiative to deliver the full
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
 - Deliver character arc tooling: family tree visualizations are in place; next add progression state overlays and sync them with the relationship graph.
+- Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; next add progression state overlays and sync them with the relationship graph.
+- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
 - Deliver character arc tooling: add progression states and visualizations for characters, ensuring integration with the relationship graph.
 - Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.

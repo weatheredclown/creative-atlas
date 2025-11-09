@@ -99,7 +99,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RevealDepthToggle from './components/RevealDepthToggle';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import InfoModal from './components/InfoModal';
-import PublishToGitHubModal, { GitHubAuthStatus } from './components/PublishToGitHubModal';
+import PublishToGitHubModal, {
+  GitHubAuthStatus,
+  type PublishSuccessInfo,
+} from './components/PublishToGitHubModal';
 import { publishToGitHub } from './services/dataApi';
 import QuickFactForm from './components/QuickFactForm';
 import QuickFactsPanel from './components/QuickFactsPanel';
@@ -1366,6 +1369,7 @@ export default function App() {
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [sourceArtifactId, setSourceArtifactId] = useState<string | null>(null);
+  const [defaultCreateArtifactType, setDefaultCreateArtifactType] = useState<ArtifactType | null>(null);
   const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -1391,7 +1395,7 @@ export default function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<PublishSuccessInfo | null>(null);
   const [githubAuthStatus, setGithubAuthStatus] = useState<GitHubAuthStatus>('idle');
   const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
   const githubOAuthPopupRef = useRef<Window | null>(null);
@@ -1705,6 +1709,21 @@ export default function App() {
     }
   }, [profile, artifacts, projects, updateProfile]);
 
+  const openCreateArtifactModal = useCallback(
+    ({ defaultType = null, sourceId = null }: { defaultType?: ArtifactType | null; sourceId?: string | null } = {}) => {
+      setDefaultCreateArtifactType(defaultType ?? null);
+      setSourceArtifactId(sourceId ?? null);
+      setIsCreateModalOpen(true);
+    },
+    [],
+  );
+
+  const closeCreateArtifactModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+    setSourceArtifactId(null);
+    setDefaultCreateArtifactType(null);
+  }, []);
+
   const handleUpdateArtifactData = useCallback(
     (artifactId: string, data: Artifact['data']) => {
       const target = artifacts.find((artifact) => artifact.id === artifactId);
@@ -1730,6 +1749,25 @@ export default function App() {
     [updateArtifact],
   );
 
+  const sanitizeRelationKind = useCallback((value: string) => value.trim().toUpperCase(), []);
+
+  const getReciprocalRelationKind = useCallback((kind: string): string => {
+    const normalized = sanitizeRelationKind(kind);
+    switch (normalized) {
+      case 'PARENT_OF':
+        return 'CHILD_OF';
+      case 'CHILD_OF':
+        return 'PARENT_OF';
+      case 'SIBLING_OF':
+      case 'PARTNER_OF':
+      case 'MARRIED_TO':
+      case 'SPOUSE_OF':
+        return normalized;
+      default:
+        return normalized;
+    }
+  }, [sanitizeRelationKind]);
+
   const handleAddRelation = useCallback(
     (fromId: string, toId: string, kind: string) => {
       const source = artifacts.find((artifact) => artifact.id === fromId);
@@ -1738,8 +1776,11 @@ export default function App() {
         return;
       }
 
-      const newRelation: Relation = { toId, kind };
-      const reciprocalRelation: Relation = { toId: fromId, kind };
+      const normalizedKind = sanitizeRelationKind(kind);
+      const reciprocalKind = getReciprocalRelationKind(normalizedKind);
+
+      const newRelation: Relation = { toId, kind: normalizedKind };
+      const reciprocalRelation: Relation = { toId: fromId, kind: reciprocalKind };
 
       const sourceHasRelation = source.relations.some((relation) => relation.toId === toId);
       const nextSourceRelations = sourceHasRelation
@@ -1747,7 +1788,9 @@ export default function App() {
         : [...source.relations, newRelation];
 
       const shouldUpdateSource = sourceHasRelation
-        ? source.relations.some((relation) => relation.toId === toId && relation.kind !== kind)
+        ? source.relations.some(
+            (relation) => relation.toId === toId && relation.kind !== normalizedKind,
+          )
         : true;
       if (shouldUpdateSource) {
         void updateArtifact(fromId, { relations: nextSourceRelations });
@@ -1762,7 +1805,7 @@ export default function App() {
 
       const shouldUpdateTarget = reciprocalExists
         ? target.relations.some(
-            (relation) => relation.toId === fromId && relation.kind !== kind,
+            (relation) => relation.toId === fromId && relation.kind !== reciprocalKind,
           )
         : true;
 
@@ -1770,7 +1813,7 @@ export default function App() {
         void updateArtifact(toId, { relations: nextTargetRelations });
       }
     },
-    [artifacts, updateArtifact],
+    [artifacts, getReciprocalRelationKind, sanitizeRelationKind, updateArtifact],
   );
 
   const handleRemoveRelation = useCallback(
@@ -2101,12 +2144,11 @@ export default function App() {
           handleAddRelation(created.id, sourceId, 'RELATES_TO');
         }
         void addXp(5);
-        setIsCreateModalOpen(false);
-        setSourceArtifactId(null);
+        closeCreateArtifactModal();
         setSelectedArtifactId(created.id);
       }
     },
-    [selectedProjectId, profile, createArtifact, addXp, handleAddRelation],
+    [selectedProjectId, profile, createArtifact, addXp, handleAddRelation, closeCreateArtifactModal],
   );
 
   const handleSelectTemplate = useCallback(async (template: TemplateEntry) => {
@@ -2365,8 +2407,25 @@ export default function App() {
       }
 
       const result = await publishToGitHub(token, repoName, publishDirectory, siteFiles);
-      const successMessage = `${result.message} Your site will be available at ${result.pagesUrl}.`;
-      setPublishSuccess(successMessage);
+// MERGED FIX:
+      const normalizedDirectory = publishDirectory.replace(/^\/+|\/+$/g, '');
+      const encodedDirectoryPath = normalizedDirectory
+        ? normalizedDirectory.split('/').map(encodeURIComponent).join('/')
+        : '';
+      
+      const branchUrl = `https://github.com/${result.repository}/tree/gh-pages${
+        encodedDirectoryPath ? `/${encodedDirectoryPath}` : ''
+      }`;
+
+      // 1. Set the structured success object for the modal (from 'codex' branch)
+      setPublishSuccess({
+        message: result.message,
+        pagesUrl: result.pagesUrl,
+        branchUrl,
+        branchDirectory: normalizedDirectory || null,
+      });
+
+      // 2. Persist the publish history (from 'main' branch)
       setProjectPublishHistory((prev) => ({
         ...prev,
         [selectedProject.id]: {
@@ -2375,7 +2434,7 @@ export default function App() {
           pagesUrl: result.pagesUrl,
           publishedAt: new Date().toISOString(),
         },
-      }));
+      }));      
     } catch (err) {
       const message =
         err instanceof Error
@@ -2969,7 +3028,7 @@ export default function App() {
                       quickFacts={quickFactPreview}
                       totalQuickFacts={quickFacts.length}
                       statusLabel={formatStatusLabel(selectedProject.status)}
-                      onCreateArtifact={() => setIsCreateModalOpen(true)}
+                      onCreateArtifact={() => openCreateArtifactModal()}
                       onCaptureQuickFact={() => setIsQuickFactModalOpen(true)}
                       onPublishProject={handlePublish}
                       onSelectQuickFact={setSelectedArtifactId}
@@ -3038,7 +3097,7 @@ export default function App() {
                             </button>
                             <button
                               id="add-new-artifact-button"
-                              onClick={() => setIsCreateModalOpen(true)}
+                              onClick={() => openCreateArtifactModal()}
                               className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
                             >
                               <PlusIcon className="h-5 w-5" />
@@ -3176,8 +3235,7 @@ export default function App() {
                                 onDeleteArtifact={handleDeleteArtifact}
                                 onDuplicateArtifact={handleDuplicateArtifact}
                                 onNewArtifact={(sourceId) => {
-                                  setSourceArtifactId(sourceId);
-                                  setIsCreateModalOpen(true);
+                                  openCreateArtifactModal({ sourceId });
                                 }}
                                 addXp={addXp}
                               />
@@ -3331,6 +3389,7 @@ export default function App() {
                     <FamilyTreeTools
                       artifacts={projectArtifacts}
                       onSelectCharacter={setSelectedArtifactId}
+                      onCreateCharacter={() => openCreateArtifactModal({ defaultType: ArtifactType.Character })}
                     />
                   )}
                   {currentProjectVisibility.characterArcTracker && (
@@ -3468,16 +3527,14 @@ export default function App() {
       </main>
       <Modal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={closeCreateArtifactModal}
         title="Seed a New Artifact"
       >
         <CreateArtifactForm
           onCreate={handleCreateArtifact}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setSourceArtifactId(null);
-          }}
+          onClose={closeCreateArtifactModal}
           sourceArtifactId={sourceArtifactId}
+          defaultType={defaultCreateArtifactType ?? undefined}
         />
       </Modal>
       <Modal
@@ -3524,7 +3581,7 @@ export default function App() {
         onPublish={handlePublishToGithubRepo}
         isPublishing={isPublishing}
         errorMessage={publishError}
-        successMessage={publishSuccess}
+        successInfo={publishSuccess}
         onResetStatus={handleResetPublishStatus}
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
