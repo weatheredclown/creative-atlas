@@ -1,31 +1,20 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
-    AIAssistant,
-    Achievement,
     Artifact,
     ArtifactType,
-    CharacterData,
-    ConlangLexeme,
-    Milestone,
     Project,
     ProjectStatus,
     ProjectTemplate,
-    Quest,
-    Questline,
     InspirationCard,
     MemorySyncStatus,
     Relation,
     TaskData,
     TASK_STATE,
-    type TaskState,
     type ProjectComponentKey,
     type ProjectVisibilitySettings,
-    TemplateCategory,
     TemplateEntry,
     TemplateArtifactBlueprint,
-    TimelineData,
     UserProfile,
-    WikiData,
     isNarrativeArtifactType,
 } from './types';
 import {
@@ -75,12 +64,35 @@ import ProjectSharePanel from './components/ProjectSharePanel';
 import OpenTasksPanel from './components/OpenTasksPanel';
 import { formatStatusLabel } from './utils/status';
 import TemplateGallery from './components/TemplateGallery';
+import { getDefaultDataForType } from './utils/artifactDefaults';
 import ProjectTemplatePicker from './components/ProjectTemplatePicker';
 import ReleaseNotesGenerator from './components/ReleaseNotesGenerator';
 import StreakTracker from './components/StreakTracker';
 import QuestlineBoard from './components/QuestlineBoard';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
+import { useArtifactFilters } from './hooks/useArtifactFilters';
+import { achievements } from './src/data/achievements';
+import { aiAssistants } from './src/data/aiAssistants';
+import { milestoneRoadmap } from './src/data/milestones';
+import { questlines, selectDailyQuestsForDate } from './src/data/quests';
+import { templateLibrary, projectTemplates } from './src/data/templates';
+import { getCurrentDateKey } from './utils/date';
+import {
+  getCompletedTaskCount,
+  getTotalRelations,
+  getConlangLexemeCount,
+  getWikiWordCount,
+} from './utils/artifactMetrics';
+import {
+  QUICK_FACT_TAG,
+  deriveQuickFactTitle,
+  createQuickFactSummary,
+  createQuickFactContent,
+  cloneArtifactData,
+  isQuickFactArtifact,
+  sortQuickFactsByRecency,
+} from './utils/quickFacts';
 import {
   checkGitHubAuthorization,
   dataApiBaseUrl,
@@ -112,7 +124,6 @@ import NarrativeHealthPanel from './components/NarrativeHealthPanel';
 import ContinuityMonitor from './components/ContinuityMonitor';
 import InspirationDeck from './components/InspirationDeck';
 import NarrativePipelineBoard from './components/NarrativePipelineBoard';
-import { createBlankMagicSystemData, createTamenzutMagicSystemData } from './utils/magicSystem';
 import WorldSimulationPanel from './components/WorldSimulationPanel';
 import CharacterArcTracker from './components/CharacterArcTracker';
 import FamilyTreeTools from './components/FamilyTreeTools';
@@ -128,321 +139,6 @@ import {
   persistProjectPublishHistory,
   type ProjectPublishRecord,
 } from './utils/publishHistory';
-
-const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
-  artifacts.filter((artifact) => artifact.type === type).length;
-
-const countTasksInState = (artifacts: Artifact[], state: TaskState) =>
-  artifacts.filter(
-    (artifact) =>
-      artifact.type === ArtifactType.Task &&
-      ((artifact.data as TaskData | undefined)?.state ?? null) === state,
-  ).length;
-
-const getCompletedTaskCount = (artifacts: Artifact[]) =>
-  countTasksInState(artifacts, TASK_STATE.Done);
-
-const getTotalRelations = (artifacts: Artifact[]) =>
-  artifacts.reduce((total, artifact) => total + artifact.relations.length, 0);
-
-const countArtifactsWithRelations = (artifacts: Artifact[], minimum: number) =>
-  artifacts.filter((artifact) => artifact.relations.length >= minimum).length;
-
-const getConlangLexemeCount = (artifacts: Artifact[]) =>
-  artifacts
-    .filter((artifact) => artifact.type === ArtifactType.Conlang)
-    .reduce((count, artifact) => {
-      const data = artifact.data as ConlangLexeme[] | undefined;
-      return count + (Array.isArray(data) ? data.length : 0);
-    }, 0);
-
-const getWikiWordCount = (artifacts: Artifact[]) =>
-  artifacts
-    .filter((artifact) => artifact.type === ArtifactType.Wiki)
-    .reduce((count, artifact) => {
-      const data = artifact.data as WikiData | undefined;
-      if (!data || typeof data.content !== 'string') {
-        return count;
-      }
-      const words = data.content.trim().split(/\s+/).filter(Boolean);
-      return count + words.length;
-    }, 0);
-
-const getCharacterTraitCount = (artifacts: Artifact[]) =>
-  artifacts
-    .filter((artifact) => artifact.type === ArtifactType.Character)
-    .reduce((count, artifact) => {
-      const data = artifact.data as CharacterData | undefined;
-      return count + (Array.isArray(data?.traits) ? data.traits.length : 0);
-    }, 0);
-
-const getMaxTimelineEventCount = (artifacts: Artifact[]) =>
-  artifacts
-    .filter((artifact) => artifact.type === ArtifactType.Timeline)
-    .reduce((max, artifact) => {
-      const data = artifact.data as TimelineData | undefined;
-      const events = Array.isArray(data?.events) ? data.events.length : 0;
-      return Math.max(max, events);
-    }, 0);
-
-const countTimelineArtifacts = (artifacts: Artifact[]) =>
-  artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline).length;
-
-const countTaggedArtifacts = (artifacts: Artifact[], minimumTags: number) =>
-  artifacts.filter((artifact) => (artifact.tags?.length ?? 0) >= minimumTags).length;
-
-const countProjectsByStatus = (projects: Project[], status: ProjectStatus) =>
-  projects.filter((project) => project.status === status).length;
-
-const deriveQuickFactTitle = (fact: string, fallbackTitle: string): string => {
-  const sanitized = fact.replace(/\s+/g, ' ').trim();
-  if (!sanitized) {
-    return fallbackTitle;
-  }
-
-  const sentenceMatch = sanitized.match(/^[^.!?\n]+[.!?]?/);
-  const firstSentence = (sentenceMatch?.[0] ?? sanitized).trim();
-  if (firstSentence.length <= 60) {
-    return firstSentence;
-  }
-
-  const truncated = firstSentence.slice(0, 57).trimEnd();
-  return `${truncated}\u2026`;
-};
-
-const createQuickFactSummary = (fact: string, detail?: string): string => {
-  const trimmedFact = fact.trim();
-  const trimmedDetail = detail?.trim();
-  const combined = trimmedDetail && trimmedDetail.length > 0 ? `${trimmedFact} — ${trimmedDetail}` : trimmedFact;
-
-  if (combined.length <= 160) {
-    return combined;
-  }
-
-  return `${combined.slice(0, 157).trimEnd()}\u2026`;
-};
-
-const createQuickFactContent = (title: string, fact: string, detail?: string): string => {
-  const trimmedFact = fact.trim();
-  const trimmedDetail = detail?.trim();
-  const segments = [`# ${title}`, '', trimmedFact];
-  if (trimmedDetail && trimmedDetail.length > 0) {
-    segments.push('', trimmedDetail);
-  }
-
-  const content = segments.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
-  return content.endsWith('\n') ? content : `${content}\n`;
-};
-
-const cloneArtifactData = (data: Artifact['data']) => {
-  if (data === undefined) {
-    return undefined;
-  }
-
-  const structuredCloneFn = (globalThis as { structuredClone?: <T>(value: T) => T }).structuredClone;
-  if (typeof structuredCloneFn === 'function') {
-    try {
-      return structuredCloneFn(data) as Artifact['data'];
-    } catch (error) {
-      console.warn('Structured clone failed for artifact data, falling back to JSON clone.', error);
-    }
-  }
-
-  try {
-    return JSON.parse(JSON.stringify(data)) as Artifact['data'];
-  } catch (error) {
-    console.warn('JSON clone failed for artifact data, returning shallow copy instead.', error);
-    if (Array.isArray(data)) {
-      return data.map((item) => (typeof item === 'object' && item !== null ? { ...item } : item)) as Artifact['data'];
-    }
-    if (typeof data === 'object' && data !== null) {
-      return { ...data } as Artifact['data'];
-    }
-    return data;
-  }
-};
-
-const QUICK_FACT_TAG = 'fact';
-const QUICK_FACT_TITLE_PATTERN = /fact\s+#\d+/i;
-
-const isQuickFactArtifact = (artifact: Artifact): boolean => {
-  if (artifact.type !== ArtifactType.Wiki) {
-    return false;
-  }
-  if (artifact.tags.some((tag) => tag.toLowerCase() === QUICK_FACT_TAG)) {
-    return true;
-  }
-  return QUICK_FACT_TITLE_PATTERN.test(artifact.title);
-};
-
-const extractQuickFactNumber = (artifact: Artifact): number | null => {
-  const match = artifact.title.match(/#(\d+)/);
-  if (!match) {
-    return null;
-  }
-  const parsed = Number.parseInt(match[1] ?? '', 10);
-  return Number.isNaN(parsed) ? null : parsed;
-};
-
-const sortQuickFactsByRecency = (a: Artifact, b: Artifact): number => {
-  const aNumber = extractQuickFactNumber(a);
-  const bNumber = extractQuickFactNumber(b);
-  if (aNumber !== null && bNumber !== null && aNumber !== bNumber) {
-    return bNumber - aNumber;
-  }
-  if (aNumber !== null && bNumber === null) {
-    return -1;
-  }
-  if (aNumber === null && bNumber !== null) {
-    return 1;
-  }
-  return b.title.localeCompare(a.title);
-};
-
-const DAILY_QUESTS_PER_DAY = 4;
-
-const DAILY_QUEST_POOL: Quest[] = [
-  {
-    id: 'daily-create-artifact',
-    title: 'Forge Something New',
-    description: 'Create at least one new artifact to expand your atlas.',
-    isCompleted: (artifacts) => artifacts.length >= 9,
-    xp: 10,
-  },
-  {
-    id: 'daily-task-finish',
-    title: 'Ship a Task',
-    description: 'Complete a task and mark it as done.',
-    isCompleted: (artifacts) => getCompletedTaskCount(artifacts) >= 1,
-    xp: 12,
-  },
-  {
-    id: 'daily-task-progress',
-    title: 'Kick Off a Task',
-    description: 'Move two tasks into progress to build momentum.',
-    isCompleted: (artifacts) => countTasksInState(artifacts, TASK_STATE.InProgress) >= 2,
-    xp: 9,
-  },
-  {
-    id: 'daily-link-architect',
-    title: 'Weave the Web',
-    description: 'Link artifacts together until at least three relationships exist.',
-    isCompleted: (artifacts) => getTotalRelations(artifacts) >= 3,
-    xp: 14,
-  },
-  {
-    id: 'daily-character-cast',
-    title: 'Expand the Cast',
-    description: 'Profile a second character to deepen your roster.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Character) >= 2,
-    xp: 9,
-  },
-  {
-    id: 'daily-location-cartographer',
-    title: 'Map New Territory',
-    description: 'Document a second location to enrich your world map.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Location) >= 2,
-    xp: 9,
-  },
-  {
-    id: 'daily-wiki-scribe',
-    title: 'Deepen the Lore',
-    description: 'Write at least 150 words across your wiki entries.',
-    isCompleted: (artifacts) => getWikiWordCount(artifacts) >= 150,
-    xp: 15,
-  },
-  {
-    id: 'daily-timeline-chronicler',
-    title: 'Log the Next Beat',
-    description: 'Record enough timeline entries so one timeline holds three events.',
-    isCompleted: (artifacts) => getMaxTimelineEventCount(artifacts) >= 3,
-    xp: 8,
-  },
-  {
-    id: 'daily-conlang-lexicographer',
-    title: 'Grow the Lexicon',
-    description: 'Record five lexemes across your conlangs.',
-    isCompleted: (artifacts) => getConlangLexemeCount(artifacts) >= 5,
-    xp: 11,
-  },
-  {
-    id: 'daily-project-pulse',
-    title: 'Maintain Momentum',
-    description: 'Keep at least three projects active at once.',
-    isCompleted: (_, projects) => countProjectsByStatus(projects, ProjectStatus.Active) >= 3,
-    xp: 6,
-  },
-  {
-    id: 'daily-scene-director',
-    title: 'Storyboard a Scene',
-    description: 'Create at least one scene artifact to visualize the story.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Scene) >= 1,
-    xp: 8,
-  },
-  {
-    id: 'daily-release-herald',
-    title: 'Draft Release Notes',
-    description: 'Add a release artifact summarizing your latest drop.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Release) >= 1,
-    xp: 12,
-  },
-  {
-    id: 'daily-faction-diplomat',
-    title: 'Outline a Faction',
-    description: 'Create a faction artifact to capture alliances and rivalries.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Faction) >= 1,
-    xp: 11,
-  },
-  {
-    id: 'daily-task-backlog',
-    title: 'Balance the Backlog',
-    description: 'Maintain at least three tasks to organize your workflow.',
-    isCompleted: (artifacts) => countArtifactsByType(artifacts, ArtifactType.Task) >= 3,
-    xp: 7,
-  },
-  {
-    id: 'daily-relation-weaver',
-    title: 'Connect the Threads',
-    description: 'Ensure five artifacts each have at least one relationship.',
-    isCompleted: (artifacts) => countArtifactsWithRelations(artifacts, 1) >= 5,
-    xp: 16,
-  },
-  {
-    id: 'daily-project-portfolio',
-    title: 'Curate the Portfolio',
-    description: 'Steward at least five total projects.',
-    isCompleted: (_, projects) => projects.length >= 5,
-    xp: 5,
-  },
-  {
-    id: 'daily-task-streak',
-    title: 'Ship a Trio',
-    description: 'Complete three tasks to earn a burst of XP.',
-    isCompleted: (artifacts) => getCompletedTaskCount(artifacts) >= 3,
-    xp: 18,
-  },
-  {
-    id: 'daily-character-depth',
-    title: 'Detail the Cast',
-    description: 'Record five character traits across your characters.',
-    isCompleted: (artifacts) => getCharacterTraitCount(artifacts) >= 5,
-    xp: 10,
-  },
-  {
-    id: 'daily-tag-curator',
-    title: 'Tag the Archive',
-    description: 'Keep at least four artifacts richly tagged with two or more labels.',
-    isCompleted: (artifacts) => countTaggedArtifacts(artifacts, 2) >= 4,
-    xp: 9,
-  },
-  {
-    id: 'daily-timeline-historian',
-    title: 'Chronicle Two Eras',
-    description: 'Maintain at least two timeline artifacts.',
-    isCompleted: (artifacts) => countTimelineArtifacts(artifacts) >= 2,
-    xp: 13,
-  },
-];
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -469,877 +165,6 @@ const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) 
     </main>
   </div>
 );
-
-const getCurrentDateKey = () => new Date().toISOString().slice(0, 10);
-
-const createSeedFromString = (value: string): number => {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0;
-  }
-  return hash >>> 0;
-};
-
-const mulberry32 = (seed: number) => {
-  let state = seed;
-  return () => {
-    state |= 0;
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-const selectDailyQuestsForDate = (dateKey: string, count = DAILY_QUESTS_PER_DAY): Quest[] => {
-  const seed = createSeedFromString(dateKey);
-  const random = mulberry32(seed);
-  const pool = [...DAILY_QUEST_POOL];
-  const selection: Quest[] = [];
-  const questCount = Math.min(count, pool.length);
-
-  for (let index = 0; index < questCount; index += 1) {
-    const choiceIndex = Math.floor(random() * pool.length);
-    selection.push(pool.splice(choiceIndex, 1)[0]);
-  }
-
-  return selection;
-};
-
-const achievements: Achievement[] = [
-    { id: 'ach-1', title: 'World Builder', description: 'Create your first project.', isUnlocked: (_, projects) => projects.length >= 1 },
-    { id: 'ach-2', title: 'Polyglot', description: 'Create a Conlang artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Conlang) },
-    { id: 'ach-3', title: 'Cartographer', description: 'Create a Location artifact.', isUnlocked: (artifacts) => artifacts.some(a => a.type === ArtifactType.Location) },
-    { id: 'ach-4', title: 'Connector', description: 'Link 3 artifacts together.', isUnlocked: (artifacts) => artifacts.reduce((acc, a) => acc + a.relations.length, 0) >= 3 },
-];
-
-const questlines: Questline[] = [
-    {
-        id: 'momentum-ritual',
-        title: 'Momentum Ritual',
-        summary: 'Lock in daily habits once you cross into Level 2.',
-        unlockLevel: 2,
-        objectives: [
-            {
-                id: 'momentum-streak-3',
-                title: 'Keep the flame burning',
-                description: 'Earn XP on three consecutive days to prove the habit is real.',
-                xpReward: 20,
-                isCompleted: (_, __, profile) => profile.bestStreak >= 3,
-            },
-            {
-                id: 'momentum-links-5',
-                title: 'Weave five links',
-                description: 'Create at least five artifact relationships across your worlds.',
-                xpReward: 15,
-                isCompleted: (artifacts) => artifacts.reduce((total, artifact) => total + artifact.relations.length, 0) >= 5,
-            },
-            {
-                id: 'momentum-ship-artifact',
-                title: 'Ship a finished artifact',
-                description: 'Mark any artifact as released or done to celebrate a drop.',
-                xpReward: 15,
-                isCompleted: (artifacts) =>
-                    artifacts.some((artifact) => {
-                        const status = artifact.status?.toLowerCase() ?? '';
-                        return status === 'released' || status === 'done';
-                    }),
-            },
-        ],
-    },
-    {
-        id: 'launch-cadence',
-        title: 'Launch Cadence',
-        summary: 'At Level 4, turn streaks into dependable release rituals.',
-        unlockLevel: 4,
-        objectives: [
-            {
-                id: 'cadence-streak-7',
-                title: 'Seven-day streak',
-                description: 'Sustain a seven-day creation streak.',
-                xpReward: 30,
-                isCompleted: (_, __, profile) => profile.bestStreak >= 7,
-            },
-            {
-                id: 'cadence-tasks-complete',
-                title: 'Finish three tasks',
-                description: 'Complete three Task artifacts to clear a sprint.',
-                xpReward: 25,
-                isCompleted: (artifacts) =>
-                    artifacts.filter(
-                        (artifact) =>
-                            artifact.type === ArtifactType.Task &&
-                            (artifact.data as TaskData | undefined)?.state === TASK_STATE.Done,
-                    ).length >= 3,
-            },
-            {
-                id: 'cadence-link-density',
-                title: 'Link ten artifacts',
-                description: 'Ensure at least ten artifacts are linked into your graph.',
-                xpReward: 25,
-                isCompleted: (artifacts) => artifacts.filter((artifact) => artifact.relations.length > 0).length >= 10,
-            },
-        ],
-    },
-];
-
-const templateLibrary: TemplateCategory[] = [
-    {
-        id: 'tamenzut',
-        title: 'Tamenzut Series',
-        description: 'High-fantasy seeds that keep the Tamenzut saga consistent from novel to novel.',
-        recommendedFor: ['Tamenzut'],
-        relatedProjectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad', 'tamenzut-series-bible'],
-        templates: [
-            { id: 'tam-magic-system', name: 'MagicSystem', type: ArtifactType.MagicSystem, description: 'Document the laws, costs, and taboos of threadweaving.', tags: ['magic', 'systems'] },
-            { id: 'tam-rulebook', name: 'Rulebook', type: ArtifactType.Wiki, description: 'Capture canon rulings, rituals, and battle procedures.', tags: ['canon', 'reference'] },
-            { id: 'tam-city', name: 'City', type: ArtifactType.Location, description: 'Map out districts, factions, and sensory details for a key metropolis.', tags: ['location'] },
-            { id: 'tam-faction', name: 'Faction', type: ArtifactType.Faction, description: 'Describe loyalties, resources, and political goals.', tags: ['faction', 'relationships'] },
-            { id: 'tam-edruel', name: 'Edruel Ruins', type: ArtifactType.Location, description: 'Archaeological log for the ruin that anchors the main mystery.', tags: ['lore'] },
-            { id: 'tam-thread-log', name: 'ThreadWeaving Log', type: ArtifactType.MagicSystem, description: 'Track legendary spells, their casters, and outcomes.', tags: ['magic', 'log'] },
-            { id: 'tam-canon', name: 'Canon Tracker', type: ArtifactType.Wiki, description: 'Record continuity-sensitive facts, pronunciations, and prophecies.', tags: ['continuity'] },
-        ],
-    },
-    {
-        id: 'steamweave',
-        title: 'Steamweave / Anya',
-        description: 'Coal-punk ops boards for Anya’s guild drama and gadgeteering.',
-        recommendedFor: ['Steamweave'],
-        relatedProjectTemplateIds: ['serial-comic-kit'],
-        templates: [
-            { id: 'steam-clan', name: 'Clan', type: ArtifactType.Faction, description: 'Roster clan leadership, ranks, and rivalries.', tags: ['faction'] },
-            { id: 'steam-workshop', name: 'Workshop', type: ArtifactType.Location, description: 'Layout stations, ongoing inventions, and supply flows.', tags: ['location', 'operations'] },
-            { id: 'steam-scene', name: 'Scene', type: ArtifactType.Scene, description: 'Storyboard high-tension coal-punk set pieces.', tags: ['story'] },
-            { id: 'steam-villain', name: 'Villain (Red-Eyes)', type: ArtifactType.Character, description: 'Profile motives, tactics, and weaknesses of Red-Eyes.', tags: ['character', 'antagonist'] },
-            { id: 'steam-triangle', name: 'Love Triangle Map', type: ArtifactType.Wiki, description: 'Visualize relationship beats and emotional stakes.', tags: ['relationships'] },
-            { id: 'steam-release', name: 'Release Notes', type: ArtifactType.Release, description: 'Translate updates into flavorful patch notes for collaborators.', tags: ['delivery'] },
-        ],
-    },
-    {
-        id: 'dustland',
-        title: 'Dustland RPG',
-        description: 'Retro CRT RPG modules for Dustland\'s persona-driven world-simulation.',
-        recommendedFor: ['Dustland'],
-        relatedProjectTemplateIds: ['game-design-lab'],
-        templates: [
-            { id: 'dust-module', name: 'Module', type: ArtifactType.Wiki, description: 'Outline module scope, level bands, and key beats.', tags: ['campaign'] },
-            { id: 'dust-quest', name: 'Quest', type: ArtifactType.Task, description: 'Track objectives, rewards, and branching outcomes.', tags: ['quest'] },
-            { id: 'dust-mask', name: 'Persona Mask', type: ArtifactType.MagicSystem, description: 'Detail roleplay cues, stat shifts, and hidden agendas unlocked by a mask.', tags: ['identity'] },
-            { id: 'dust-npc', name: 'NPC', type: ArtifactType.Character, description: 'Profile allies, merchants, and nemeses with quick hooks.', tags: ['npc'] },
-            { id: 'dust-item', name: 'Item', type: ArtifactType.Wiki, description: 'Catalog relics, crafting components, and upgrades.', tags: ['loot'] },
-            { id: 'dust-tileset', name: 'Tileset', type: ArtifactType.Location, description: 'Collect reusable battle maps and environmental hazards.', tags: ['maps'] },
-            { id: 'dust-memory', name: 'World Memory Log', type: ArtifactType.Wiki, description: 'Track persistent state changes, scars, and echoes across playthroughs.', tags: ['systems'] },
-            { id: 'dust-effect', name: 'Effect Pack', type: ArtifactType.MagicSystem, description: 'Bundle event-driven transformations and ambient triggers.', tags: ['events'] },
-            { id: 'dust-build', name: 'Build', type: ArtifactType.Character, description: 'Record loadouts, persona synergies, and playtest notes.', tags: ['characters'] },
-        ],
-    },
-    {
-        id: 'spatch',
-        title: 'Spatch League',
-        description: 'Sports-drama templates tuned for the Spatch comic universe.',
-        recommendedFor: ['Spatch'],
-        relatedProjectTemplateIds: ['serial-comic-kit'],
-        templates: [
-            { id: 'spatch-team', name: 'Team', type: ArtifactType.Faction, description: 'Roster starters, strategies, and rival teams.', tags: ['team'] },
-            { id: 'spatch-mentor', name: 'Mentor', type: ArtifactType.Character, description: 'Capture training montages, philosophies, and signature drills.', tags: ['character'] },
-            { id: 'spatch-rule', name: 'Rule Variant', type: ArtifactType.Wiki, description: 'Document variant mechanics and how they change match flow.', tags: ['rules'] },
-            { id: 'spatch-match', name: 'Match', type: ArtifactType.WebComic, description: 'Plan panels, momentum swings, and highlight reels.', tags: ['comic'] },
-            { id: 'spatch-board', name: 'Panel Board', type: ArtifactType.Timeline, description: 'Block out page layouts and pacing for episodes.', tags: ['storyboard'] },
-        ],
-    },
-    {
-        id: 'darv',
-        title: 'Darv Conlang',
-        description: 'Linguistic workbench for the ancient language of the Darv.',
-        recommendedFor: ['Darv'],
-        relatedProjectTemplateIds: ['conlang-workbench'],
-        templates: [
-            { id: 'darv-lexicon', name: 'Lexicon', type: ArtifactType.Conlang, description: 'List lemmas, glosses, and phonological notes.', tags: ['language'] },
-            { id: 'darv-phonology', name: 'Phonology', type: ArtifactType.Wiki, description: 'Summarize phonemes, clusters, and stress rules.', tags: ['language'] },
-            { id: 'darv-paradigm', name: 'Paradigm', type: ArtifactType.Wiki, description: 'Lay out conjugation or declension tables.', tags: ['grammar'] },
-            { id: 'darv-proverb', name: 'Proverb', type: ArtifactType.Wiki, description: 'Capture idioms with cultural context and translations.', tags: ['culture'] },
-            { id: 'darv-myth', name: 'Myth', type: ArtifactType.ShortStory, description: 'Outline myths and legends tied to linguistic lore.', tags: ['story'] },
-        ],
-    },
-    {
-        id: 'sacred-truth',
-        title: 'Sacred Truth Dossiers',
-        description: 'Supernatural investigation kits for the Sacred Truth vampire saga.',
-        recommendedFor: ['Sacred Truth'],
-        relatedProjectTemplateIds: ['world-wiki-launchpad', 'sacred-truth-vampires'],
-        templates: [
-            { id: 'sacred-episode', name: 'Episode', type: ArtifactType.Audiobook, description: 'Script a narrated case-of-the-week with cold opens and cliffhangers.', tags: ['story', 'audio'] },
-            { id: 'sacred-case', name: 'Case File', type: ArtifactType.Timeline, description: 'Log evidence, suspects, and unresolved leads.', tags: ['mystery'] },
-            { id: 'sacred-codex', name: 'Monster Codex', type: ArtifactType.Wiki, description: 'Detail monster biology, tells, and encounter best practices.', tags: ['bestiary'] },
-            { id: 'sacred-cathedral', name: 'Cathedral Asset', type: ArtifactType.Location, description: 'Catalog lairs, safe houses, and relic vaults.', tags: ['location'] },
-        ],
-    },
-];
-
-const projectTemplates: ProjectTemplate[] = [
-    {
-        id: 'tamenzut-series-bible',
-        name: 'Tamenzut Series Bible',
-        description: 'Magic systems, canon trackers, and city profiles for the Tamenzut saga.',
-        recommendedFor: ['Tamenzut'],
-        relatedCategoryIds: ['tamenzut'],
-        projectTags: ['novel', 'fantasy', 'magic'],
-        artifacts: [
-            {
-                title: 'Magic System Overview',
-                type: ArtifactType.MagicSystem,
-                summary: 'Define the rules and consequences of threadweaving.',
-                status: 'draft',
-                tags: ['magic', 'rules'],
-                data: createTamenzutMagicSystemData(),
-            },
-            {
-                title: 'Threadweaving Rulebook',
-                type: ArtifactType.Wiki,
-                summary: 'Comprehensive guide to magic mechanics, costs, and limitations.',
-                status: 'draft',
-                tags: ['magic', 'reference'],
-                data: { content: '# Threadweaving Rulebook\n\n## Core Mechanics\n- How threadweaving works\n\n## Costs & Consequences\n- Price of magic\n\n## Restrictions\n- What cannot be done' },
-            },
-            {
-                title: 'Canon Tracker',
-                type: ArtifactType.Wiki,
-                summary: 'Log continuity-sensitive details, from character lineage to prophecies.',
-                status: 'in-progress',
-                tags: ['canon', 'continuity'],
-                data: { content: '# Canon Tracker\n\n## Core Principles\n- Document foundational truths here.\n\n## Open Questions\n- What needs clarification?' },
-            },
-            {
-                title: 'Primary City Profile',
-                type: ArtifactType.Location,
-                summary: 'Flesh out the main city, its districts, and its role in the narrative.',
-                status: 'draft',
-                tags: ['location', 'city'],
-                data: {
-                    description: 'The central hub of the first novel.',
-                    features: [
-                        { id: 'tmpl-feature-2', name: "Weaver's Spire", description: 'The center of magical learning and intrigue.' },
-                    ],
-                },
-            },
-            {
-                title: 'Major Faction Overview',
-                type: ArtifactType.Faction,
-                summary: 'Document the key political and magical factions shaping the world.',
-                status: 'idea',
-                tags: ['factions', 'politics'],
-            },
-            {
-                title: 'Edruel Ruins',
-                type: ArtifactType.Location,
-                summary: 'Ancient ruins holding secrets of the old magic.',
-                status: 'draft',
-                tags: ['location', 'ruins', 'ancient'],
-                data: {
-                    description: 'The Edruel Ruins are remnants of a civilization that mastered threadweaving before it was lost.',
-                    features: [
-                        { id: 'edruel-feature-1', name: 'The Spire of Echoes', description: 'A tower that amplifies magical resonance.' },
-                        { id: 'edruel-feature-2', name: 'The Forgotten Archive', description: 'A library containing pre-cataclysm knowledge.' },
-                    ],
-                },
-            },
-            {
-                title: 'Thread-Weaving Log',
-                type: ArtifactType.Wiki,
-                summary: 'Record specific uses of magic throughout the story for consistency.',
-                status: 'in-progress',
-                tags: ['magic', 'log'],
-                data: { content: '# Thread-Weaving Log\n\n## Chapter 1\n- Magic uses and effects\n\n## Chapter 2\n- Continued tracking' },
-            },
-        ],
-    },
-    {
-        id: 'serial-comic-kit',
-        name: 'Serial Comic Kit',
-        description: 'Story arcs, cast rosters, and production tasks tuned for episodic comics.',
-        recommendedFor: ['Spatch', 'Steamweave'],
-        relatedCategoryIds: ['steamweave', 'spatch'],
-        projectTags: ['comic', 'storyboard', 'production'],
-        artifacts: [
-            {
-                title: 'Season Roadmap',
-                type: ArtifactType.WebComic,
-                summary: 'Outline upcoming arcs, spotlight issues, and publishing cadence.',
-                status: 'draft',
-                tags: ['roadmap', 'issues'],
-            },
-            {
-                title: 'Cast Gallery',
-                type: ArtifactType.Character,
-                summary: 'Snapshot bios, motivations, and relationship notes for the main cast.',
-                status: 'idea',
-                tags: ['characters', 'reference'],
-            },
-            {
-                title: 'Key Scene Beats',
-                type: ArtifactType.Scene,
-                summary: 'Critical emotional moments and action sequences across the arc.',
-                status: 'draft',
-                tags: ['scenes', 'beats'],
-            },
-            {
-                title: 'Clan/Team Roster',
-                type: ArtifactType.Faction,
-                summary: 'Define team dynamics, rivalries, and organizational structure.',
-                status: 'draft',
-                tags: ['team', 'clan'],
-            },
-            {
-                title: 'Workshop/Training Ground',
-                type: ArtifactType.Location,
-                summary: 'The central location where characters gather and conflicts unfold.',
-                status: 'draft',
-                tags: ['location', 'recurring'],
-                data: {
-                    description: 'A key gathering place for the cast.',
-                    features: [
-                        { id: 'workshop-feature-1', name: 'Main Hall', description: 'Central meeting and training area.' },
-                    ],
-                },
-            },
-            {
-                title: 'Antagonist Profile',
-                type: ArtifactType.Character,
-                summary: 'Detailed breakdown of the main villain, their motivations and methods.',
-                status: 'draft',
-                tags: ['villain', 'antagonist'],
-                data: {
-                    bio: 'The primary antagonist whose actions drive the central conflict.',
-                    traits: [
-                        { id: 'villain-trait-1', trait: 'Ruthless' },
-                        { id: 'villain-trait-2', trait: 'Strategic' },
-                    ],
-                },
-            },
-            {
-                title: 'Relationship Map',
-                type: ArtifactType.Wiki,
-                summary: 'Track romantic tensions, friendships, and emotional conflicts.',
-                status: 'draft',
-                tags: ['relationships', 'drama'],
-                data: { content: '# Relationship Map\n\n## Love Triangle\n- Character A ↔ Character B ↔ Character C\n\n## Friendships\n- Key alliances\n\n## Rivalries\n- Competitive dynamics' },
-            },
-            {
-                title: 'Panel Board Planner',
-                type: ArtifactType.Scene,
-                summary: 'Visual layout planning for key comic pages and splash moments.',
-                status: 'idea',
-                tags: ['panels', 'layout'],
-            },
-            {
-                title: 'Match/Encounter Tracker',
-                type: ArtifactType.Wiki,
-                summary: 'Log key competitions, battles, or confrontations with outcomes.',
-                status: 'draft',
-                tags: ['matches', 'events'],
-                data: { content: '# Match Tracker\n\n## Season 1\n- Match 1: Teams and outcome\n- Match 2: Key moments\n\n## Rule Variants\n- Special rules for different match types' },
-            },
-            {
-                title: 'Mentor Character',
-                type: ArtifactType.Character,
-                summary: 'The wise guide who shapes the protagonist\'s journey.',
-                status: 'draft',
-                tags: ['mentor', 'guide'],
-            },
-            {
-                title: 'Issue Sprint Backlog',
-                type: ArtifactType.Task,
-                summary: 'Track page breakdowns, lettering, and marketing beats for the next drop.',
-                status: 'in-progress',
-                tags: ['sprint', 'release'],
-                data: { state: TASK_STATE.InProgress } as TaskData,
-            },
-            {
-                title: 'Release Notes Template',
-                type: ArtifactType.Wiki,
-                summary: 'Format for announcing new issues with teasers and creator notes.',
-                status: 'draft',
-                tags: ['marketing', 'release'],
-                data: { content: '# Issue Release Notes\n\n## What\'s New\n- Key story beats (no spoilers)\n\n## Creator Commentary\n- Behind the scenes\n\n## Next Issue Teaser\n- Hook for next release' },
-            },
-        ],
-    },
-    {
-        id: 'conlang-workbench',
-        name: 'Conlang Workbench',
-        description: 'Lexicon, grammar notes, and workflow tasks for language-building.',
-        recommendedFor: ['Tamenzut', 'Darv'],
-        relatedCategoryIds: ['tamenzut', 'darv'],
-        projectTags: ['conlang', 'language'],
-        artifacts: [
-            {
-                title: 'Lexicon Seed',
-                type: ArtifactType.Conlang,
-                summary: 'Kick off vocabulary batches with phonotactics and thematic tags.',
-                status: 'draft',
-                tags: ['lexicon'],
-                data: [
-                    { id: 'tmpl-lex-1', lemma: 'salar', pos: 'n', gloss: 'ember-forged song' },
-                    { id: 'tmpl-lex-2', lemma: 'vith', pos: 'adj', gloss: 'woven with starlight' },
-                ] as ConlangLexeme[],
-            },
-            {
-                title: 'Phonology System',
-                type: ArtifactType.Wiki,
-                summary: 'Define consonants, vowels, phonotactics, and sound changes.',
-                status: 'draft',
-                tags: ['phonology', 'sounds'],
-                data: { content: '# Phonology\n\n## Consonants\n- Inventory: p t k b d g m n s h\n\n## Vowels\n- Basic: a e i o u\n\n## Phonotactics\n- Syllable structure: (C)V(C)\n\n## Sound Changes\n- Historical shifts and dialectal variations' },
-            },
-            {
-                title: 'Grammar Notes',
-                type: ArtifactType.Wiki,
-                summary: 'Document morphology, syntax quirks, and inspiration languages.',
-                status: 'idea',
-                tags: ['reference'],
-                data: { content: '## Phonology\n- Consonant harmony sketch\n\n## Morphology\n- Case markers TBD' },
-            },
-            {
-                title: 'Morphological Paradigms',
-                type: ArtifactType.Wiki,
-                summary: 'Conjugation tables, declension patterns, and grammatical categories.',
-                status: 'draft',
-                tags: ['grammar', 'paradigms'],
-                data: { content: '# Morphological Paradigms\n\n## Noun Declension\n- Nominative, Accusative, Genitive cases\n\n## Verb Conjugation\n- Present, Past, Future tenses\n\n## Affixes\n- Derivational and inflectional morphology' },
-            },
-            {
-                title: 'Proverbs & Sayings',
-                type: ArtifactType.Wiki,
-                summary: 'Collect cultural wisdom and idiomatic expressions in the language.',
-                status: 'idea',
-                tags: ['culture', 'idioms'],
-                data: { content: '# Proverbs\n\n## Common Sayings\n- Add proverbs with translations\n\n## Cultural Context\n- What these sayings reveal about speakers' },
-            },
-            {
-                title: 'Creation Myths',
-                type: ArtifactType.Story,
-                summary: 'Origin stories and legends told in the conlang to establish voice.',
-                status: 'draft',
-                tags: ['mythology', 'narrative'],
-            },
-            {
-                title: 'Phonology Recording Sprint',
-                type: ArtifactType.Task,
-                summary: 'Capture sound samples and finalize the consonant inventory.',
-                status: 'todo',
-                tags: ['audio', 'phonology'],
-            },
-        ],
-    },
-    {
-        id: 'game-design-lab',
-        name: 'Game Design Lab',
-        description: 'Gameplay loops, system glossaries, and playtest backlogs for interactive worlds.',
-        recommendedFor: ['Dustland'],
-        relatedCategoryIds: ['dustland'],
-        projectTags: ['game', 'systems'],
-        artifacts: [
-            {
-                title: 'Core Loop Prototype',
-                type: ArtifactType.Game,
-                summary: 'Define what players do minute-to-minute and the rewards that fuel repeat sessions.',
-                status: 'draft',
-                tags: ['core-loop', 'prototype'],
-            },
-            {
-                title: 'Game Module Template',
-                type: ArtifactType.GameModule,
-                summary: 'Reusable adventure or level structure with encounters and rewards.',
-                status: 'draft',
-                tags: ['module', 'adventure'],
-            },
-            {
-                title: 'Quest Design',
-                type: ArtifactType.Wiki,
-                summary: 'Quest chains, objectives, and branching narrative paths.',
-                status: 'draft',
-                tags: ['quests', 'narrative'],
-                data: { content: '# Quest Design\n\n## Main Quest Chain\n- Primary story objectives\n\n## Side Quests\n- Optional content\n\n## Branching Paths\n- Player choice consequences' },
-            },
-            {
-                title: 'Persona Mask System',
-                type: ArtifactType.MagicSystem,
-                summary: 'Character class/archetype mechanics unique to Dustland.',
-                status: 'draft',
-                tags: ['personas', 'classes'],
-            },
-            {
-                title: 'NPC Database',
-                type: ArtifactType.Character,
-                summary: 'Non-player characters with dialogue, quests, and relationships.',
-                status: 'draft',
-                tags: ['npc', 'characters'],
-            },
-            {
-                title: 'Item Catalog',
-                type: ArtifactType.Wiki,
-                summary: 'Weapons, artifacts, consumables with stats and lore.',
-                status: 'draft',
-                tags: ['items', 'loot'],
-                data: { content: '# Item Catalog\n\n## Weapons\n- Name, stats, special properties\n\n## Artifacts\n- Unique items with lore\n\n## Consumables\n- Potions, scrolls, temporary buffs' },
-            },
-            {
-                title: 'Tileset & Asset List',
-                type: ArtifactType.Wiki,
-                summary: 'Visual assets, environmental pieces, and sprite requirements.',
-                status: 'idea',
-                tags: ['assets', 'art'],
-                data: { content: '# Tileset & Assets\n\n## Environment Tiles\n- Dungeon, town, wilderness\n\n## Character Sprites\n- Player and NPC art requirements\n\n## Special Effects\n- Magic, combat, environmental' },
-            },
-            {
-                title: 'Build Tracker',
-                type: ArtifactType.Release,
-                summary: 'Version history, feature milestones, and build notes.',
-                status: 'draft',
-                tags: ['builds', 'releases'],
-            },
-            {
-                title: 'Mechanics Glossary',
-                type: ArtifactType.MagicSystem,
-                summary: 'Catalog resources, ability cooldowns, and failure states.',
-                status: 'idea',
-                tags: ['mechanics'],
-            },
-            {
-                title: 'Playtest Feedback Backlog',
-                type: ArtifactType.Task,
-                summary: 'Triage insights from the latest playtest into actionable follow-ups.',
-                status: 'in-progress',
-                tags: ['playtest'],
-                data: { state: TASK_STATE.InProgress } as TaskData,
-            },
-            {
-                title: 'Design Log',
-                type: ArtifactType.Wiki,
-                summary: 'Chronicle key decisions, questions, and experiments.',
-                status: 'draft',
-                tags: ['journal'],
-                data: { content: '## Decisions\n- Note major pivots here\n\n## Open Questions\n- Capture follow-ups from playtests' },
-            },
-        ],
-    },
-    {
-        id: 'world-wiki-launchpad',
-        name: 'World Wiki Launchpad',
-        description: 'Knowledge base scaffolding for lore-heavy worlds and collaborative wikis.',
-        recommendedFor: ['Tamenzut', 'Sacred Truth'],
-        relatedCategoryIds: ['tamenzut', 'sacred-truth'],
-        projectTags: ['wiki', 'lore'],
-        artifacts: [
-            {
-                title: 'World Encyclopedia',
-                type: ArtifactType.Wiki,
-                summary: 'Master index for timelines, factions, and canon checkpoints.',
-                status: 'draft',
-                tags: ['index'],
-                data: { content: '# World Encyclopedia\n\n## Overview\n- Establish tone and era\n\n## Canon Queue\n- Pending lore to verify' },
-            },
-            {
-                title: 'Starting Region Profile',
-                type: ArtifactType.Location,
-                summary: 'Describe the primary hub with landmarks, cultures, and conflicts.',
-                status: 'draft',
-                tags: ['location', 'hub'],
-                data: {
-                    description: 'Sketch the climate, sensory beats, and why this region matters to newcomers.',
-                    features: [
-                        { id: 'tmpl-feature-1', name: 'Beacon Market', description: 'Central plaza where rumors and quests surface.' },
-                    ],
-                },
-            },
-            {
-                title: 'Faction Briefs Backlog',
-                type: ArtifactType.Task,
-                summary: 'List the organizations you still need to document and their urgency.',
-                status: 'todo',
-                tags: ['factions', 'backlog'],
-            },
-        ],
-    },
-    {
-        id: 'sacred-truth-vampires',
-        name: 'Sacred Truth (Vampires)',
-        description: 'Episodic investigation toolkit for supernatural detective stories.',
-        recommendedFor: ['Sacred Truth'],
-        relatedCategoryIds: ['sacred-truth'],
-        projectTags: ['vampires', 'mystery', 'supernatural'],
-        artifacts: [
-            {
-                title: 'Episode Outline',
-                type: ArtifactType.Chapter,
-                summary: 'Structure acts, reveals, and cliffhangers for a single episode.',
-                status: 'draft',
-                tags: ['episode', 'structure'],
-            },
-            {
-                title: 'Case File Template',
-                type: ArtifactType.Wiki,
-                summary: 'Document investigations, suspects, evidence, and supernatural elements.',
-                status: 'draft',
-                tags: ['investigation', 'case'],
-                data: { content: '# Case File\n\n## Victim/Incident\n- Details TBD\n\n## Suspects\n- List key suspects\n\n## Evidence\n- Physical and supernatural\n\n## Resolution\n- Notes on how this case resolves' },
-            },
-            {
-                title: 'Monster Codex',
-                type: ArtifactType.Wiki,
-                summary: 'Catalog vampires, supernatural entities, and their rules/weaknesses.',
-                status: 'draft',
-                tags: ['monsters', 'lore'],
-                data: { content: '# Monster Codex\n\n## Vampire Types\n- Classical vs Modern\n\n## Powers & Weaknesses\n- Document supernatural abilities\n\n## Historical Notes\n- Ancient lineages and conflicts' },
-            },
-            {
-                title: 'Cathedral Asset Reference',
-                type: ArtifactType.Location,
-                summary: 'Detail the cathedral setting, its secrets, and recurring locations.',
-                status: 'draft',
-                tags: ['location', 'cathedral'],
-                data: {
-                    description: 'The ancient cathedral serves as both sanctuary and crime scene.',
-                    features: [
-                        { id: 'sacred-feature-1', name: 'Crypt', description: 'Underground chambers holding dark secrets.' },
-                        { id: 'sacred-feature-2', name: 'Bell Tower', description: 'Observation point and refuge.' },
-                    ],
-                },
-            },
-        ],
-    },
-];
-
-const getDefaultDataForType = (type: ArtifactType, title?: string): Artifact['data'] => {
-    if (type === ArtifactType.Scene || isNarrativeArtifactType(type) || type === ArtifactType.Conlang) {
-        return [];
-    }
-
-    switch (type) {
-        case ArtifactType.Task:
-            return { state: TASK_STATE.Todo } as TaskData;
-        case ArtifactType.Character:
-            return { bio: '', traits: [] };
-        case ArtifactType.Wiki:
-            return { content: `# ${title ?? 'Untitled'}\n\n` };
-        case ArtifactType.Location:
-            return { description: '', features: [] };
-        case ArtifactType.Timeline:
-            return { events: [] };
-        case ArtifactType.MagicSystem:
-            return createBlankMagicSystemData(title);
-        default:
-            return {};
-    }
-};
-
-const milestoneRoadmap: Milestone[] = [
-    {
-        id: 'm1',
-        title: 'M1 — MVP',
-        timeline: 'Weeks 1–4',
-        focus: 'Ship the graph-native core so ideas can be captured, linked, and exported.',
-        objectives: [
-            {
-                id: 'm1-core-graph',
-                description: 'Core graph model, Projects/Artifacts/Relations',
-                metric: 'graph-core',
-            },
-            {
-                id: 'm1-seed-capture',
-                description: 'Seed capture, Table view, basic Graph view',
-                metric: 'view-engagement',
-            },
-            {
-                id: 'm1-csv-flows',
-                description: 'CSV import/export (artifacts, relations)',
-                metric: 'csv-flows',
-            },
-            {
-                id: 'm1-github-import',
-                description: 'GitHub read-only import (repos/issues/releases)',
-                metric: 'github-import',
-            },
-        ],
-    },
-    {
-        id: 'm2',
-        title: 'M2 — Editors & Gamification',
-        timeline: 'Weeks 5–8',
-        focus: 'Deepen creation flows with rich editors and playful progression loops.',
-        objectives: [
-            {
-                id: 'm2-rich-editors',
-                description: 'Conlang table editor; Storyboard; Kanban',
-                metric: 'rich-editors',
-            },
-            {
-                id: 'm2-progression',
-                description: 'XP/Streaks/Quests + Achievements',
-                metric: 'progression-loops',
-            },
-            {
-                id: 'm2-markdown',
-                description: 'Markdown bundle export',
-                metric: 'markdown-export',
-            },
-        ],
-    },
-    {
-        id: 'm3',
-        title: 'M3 — Publishing & Integrations',
-        timeline: 'Weeks 9–12',
-        focus: 'Publish worlds outward with search, release tooling, and static sites.',
-        objectives: [
-            {
-                id: 'm3-static-site',
-                description: 'Static site exporter (Wikis/Docs)',
-                metric: 'static-site',
-            },
-            {
-                id: 'm3-release-bard',
-                description: 'Release notes generator',
-                metric: 'release-notes',
-            },
-            {
-                id: 'm3-search',
-                description: 'Search (Meilisearch), advanced filters',
-                metric: 'search-filters',
-            },
-        ],
-    },
-    {
-        id: 'm4',
-        title: 'M4 — Polish & Extensibility',
-        timeline: 'Weeks 13–16',
-        focus: 'Open the universe with plugins, theming, and offline-friendly polish.',
-        objectives: [
-            {
-                id: 'm4-plugin-api',
-                description: 'Plugin API + 3 sample plugins (conlang, webcomic, ai prompts)',
-                metric: 'plugin-api',
-            },
-            {
-                id: 'm4-theming-offline',
-                description: 'Theming, keyboard palette, offline cache (light)',
-                metric: 'theming-offline',
-            },
-        ],
-    },
-    {
-        id: 'm5',
-        title: 'M5 — World Simulation Layer',
-        timeline: 'Weeks 17–20',
-        focus: 'Codify physics, chart era drift, and map faction memory.',
-        objectives: [
-            {
-                id: 'm5-magic-constraints',
-                description: 'Magic system codex with constraint annotations',
-                metric: 'magic-systems',
-            },
-            {
-                id: 'm5-world-age',
-                description: 'World age progression and continuity span heatmap',
-                metric: 'world-age',
-            },
-            {
-                id: 'm5-faction-conflicts',
-                description: 'Faction tension grid with rivalries and alliances logged',
-                metric: 'faction-conflicts',
-            },
-            {
-                id: 'm5-npc-memory',
-                description: 'NPC memory map linking cast appearances across artifacts',
-                metric: 'npc-memory',
-            },
-        ],
-    },
-];
-
-const aiAssistants: AIAssistant[] = [
-    {
-        id: 'lore-weaver',
-        name: 'Lore Weaver',
-        description: 'Expands summaries, suggests links, and weaves conflict matrices so the universe feels alive.',
-        focus: 'Narrative expansion & connective tissue',
-        promptSlots: [
-            'synth_outline(projectId, artifactId, tone, constraints)',
-            'link_matrix(projectId, focusArtifactId)',
-            'conflict_web(projectId)',
-        ],
-    },
-    {
-        id: 'conlang-smith',
-        name: 'Conlang Smith',
-        description: 'Batches lexemes, paradigm tables, and example sentences to grow fictional languages fast.',
-        focus: 'Language design & lexicon growth',
-        promptSlots: [
-            'lexeme_seed(conlangId, phonotactics, needed_pos)',
-            'paradigm_table(conlangId, partOfSpeech)',
-            'example_sentences(conlangId, register)',
-        ],
-    },
-    {
-        id: 'story-doctor',
-        name: 'Story Doctor',
-        description: 'Diagnoses beats, tension curves, and recommends comp titles for strong narrative pacing.',
-        focus: 'Story health & pacing diagnostics',
-        promptSlots: [
-            'beat_diagnostic(projectId, artifactId)',
-            'tension_graph(projectId, artifactId)',
-            'comp_titles(genre, wordcount)',
-        ],
-    },
-    {
-        id: 'release-bard',
-        name: 'Release Bard',
-        description: 'Turns changelogs into narrative release notes and scripts launch trailers.',
-        focus: 'Publishing voice & launch storytelling',
-        promptSlots: [
-            'patch_notes(repo, tag_range, audience)',
-            'release_story(projectId, milestoneId, tone)',
-            'trailer_script(projectId, duration)',
-        ],
-    },
-    {
-        id: 'muse-of-sparks',
-        name: 'Muse of Sparks',
-        description: 'Combines inspiration cards into scene seeds, tone shifts, and sensory palettes on demand.',
-        focus: 'Prompt alchemy & vibe modulation',
-        promptSlots: [
-            'blend_prompts(cardIds, desired_mood)',
-            'sensory_palette(setting, emotion)',
-            'surprise_twist(characterId, constraint)',
-        ],
-    },
-    {
-        id: 'canon-warden',
-        name: 'Canon Warden',
-        description: 'Cross-checks continuity monitor warnings and proposes fixes before contradictions land on the page.',
-        focus: 'Continuity & canon defense',
-        promptSlots: [
-            'continuity_audit(projectId)',
-            'timeline_harmonizer(timelineId)',
-            'character_return_plan(characterId, urgency)',
-        ],
-    },
-    {
-        id: 'arc-archivist',
-        name: 'Arc Archivist',
-        description: 'Tracks character beats across scenes to recommend callbacks and memory sync checkpoints.',
-        focus: 'Arc tracking & memory syncing',
-        promptSlots: [
-            'arc_outline(characterId, beats)',
-            'memory_sync(planId)',
-            'callback_recommendations(sceneId)',
-        ],
-    },
-];
-
-
-
-
 
 export default function App() {
   const {
@@ -1374,11 +199,6 @@ export default function App() {
   const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'graph' | 'kanban'>('table');
-  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
-  const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
   const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
@@ -1688,20 +508,6 @@ export default function App() {
   }, [selectedProjectId, updateProjectActivity]);
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      return;
-    }
-    markSelectedProjectActivity({ usedSearch: true });
-  }, [searchTerm, markSelectedProjectActivity]);
-
-  useEffect(() => {
-    if (artifactTypeFilter === 'ALL' && statusFilter === 'ALL') {
-      return;
-    }
-    markSelectedProjectActivity({ usedFilters: true });
-  }, [artifactTypeFilter, statusFilter, markSelectedProjectActivity]);
-
-  useEffect(() => {
     if (!profile) return;
     const unlocked = achievements.filter(achievement => achievement.isUnlocked(artifacts, projects)).map(achievement => achievement.id);
     const missing = unlocked.filter(id => !profile.achievementsUnlocked.includes(id));
@@ -1873,6 +679,54 @@ export default function App() {
     () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
     [artifacts, selectedProjectId],
   );
+  const handleViewModeAnalytics = useCallback(
+    (mode: 'table' | 'graph' | 'kanban') => {
+      if (mode === 'graph') {
+        markSelectedProjectActivity({ viewedGraph: true });
+      }
+      if (mode === 'kanban') {
+        markSelectedProjectActivity({ viewedKanban: true });
+      }
+    },
+    [markSelectedProjectActivity],
+  );
+
+  const {
+    viewMode,
+    setViewMode,
+    artifactTypeFilter,
+    setArtifactTypeFilter,
+    statusFilter,
+    setStatusFilter,
+    activeTagFilters,
+    searchTerm,
+    setSearchTerm,
+    filteredArtifacts,
+    availableStatuses,
+    availableTagFilters,
+    hasActiveFilters,
+    resetFilters,
+    toggleTagFilter,
+    isSelectedArtifactHidden,
+  } = useArtifactFilters(projectArtifacts, {
+    initialViewMode: 'table',
+    onViewModeChange: handleViewModeAnalytics,
+  });
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      return;
+    }
+    markSelectedProjectActivity({ usedSearch: true });
+  }, [searchTerm, markSelectedProjectActivity]);
+
+  useEffect(() => {
+    if (artifactTypeFilter === 'ALL' && statusFilter === 'ALL') {
+      return;
+    }
+    markSelectedProjectActivity({ usedFilters: true });
+  }, [artifactTypeFilter, statusFilter, markSelectedProjectActivity]);
+
   const quickFacts = useMemo(() => {
     if (!selectedProjectId) {
       return [];
@@ -2023,10 +877,7 @@ export default function App() {
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     setSelectedArtifactId(null);
-    setArtifactTypeFilter('ALL');
-    setStatusFilter('ALL');
-    setActiveTagFilters([]);
-    setSearchTerm('');
+    resetFilters();
   };
 
   useEffect(() => {
@@ -2558,45 +1409,6 @@ export default function App() {
     }
     return timestamp.toLocaleString();
   }, [selectedProjectPublishRecord]);
-  const availableStatuses = useMemo(
-    () => Array.from(new Set(projectArtifacts.map((artifact) => artifact.status))).sort(),
-    [projectArtifacts],
-  );
-  const availableTagFilters = useMemo(() => {
-    const seen = new Map<string, string>();
-
-    for (const artifact of projectArtifacts) {
-      for (const rawTag of artifact.tags) {
-        const trimmed = rawTag.trim();
-        if (!trimmed) {
-          continue;
-        }
-
-        const key = trimmed.toLowerCase();
-        if (!seen.has(key)) {
-          seen.set(key, trimmed);
-        }
-      }
-    }
-
-    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
-  }, [projectArtifacts]);
-  const normalizedActiveTagFilters = useMemo(
-    () => activeTagFilters.map((tag) => tag.toLowerCase()),
-    [activeTagFilters],
-  );
-
-  useEffect(() => {
-    setActiveTagFilters((previous) => {
-      if (previous.length === 0) {
-        return previous;
-      }
-
-      const available = new Set(availableTagFilters.map((tag) => tag.toLowerCase()));
-      const next = previous.filter((tag) => available.has(tag.toLowerCase()));
-      return next.length === previous.length ? previous : next;
-    });
-  }, [availableTagFilters]);
   const emptyActivity = useMemo(() => createProjectActivity(), []);
   const selectedProjectActivity = useMemo(() => {
     if (!selectedProjectId) {
@@ -2640,40 +1452,7 @@ export default function App() {
     updateProfile(updates);
   }, [updateProfile]);
 
-  const filteredArtifacts = useMemo(() => {
-    const normalizedQuery = searchTerm.trim().toLowerCase();
-
-    return projectArtifacts.filter((artifact) => {
-      if (artifactTypeFilter !== 'ALL' && artifact.type !== artifactTypeFilter) {
-        return false;
-      }
-
-      if (statusFilter !== 'ALL' && artifact.status !== statusFilter) {
-        return false;
-      }
-
-      if (normalizedActiveTagFilters.length > 0) {
-        const artifactTagSet = new Set(artifact.tags.map((tag) => tag.toLowerCase()));
-        const matchesAllTags = normalizedActiveTagFilters.every((tag) => artifactTagSet.has(tag));
-        if (!matchesAllTags) {
-          return false;
-        }
-      }
-
-      if (normalizedQuery) {
-        const haystack = `${artifact.title} ${artifact.summary} ${artifact.tags.join(' ')}`.toLowerCase();
-        if (!haystack.includes(normalizedQuery)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [projectArtifacts, artifactTypeFilter, statusFilter, normalizedActiveTagFilters, searchTerm]);
-
-  const hasActiveFilters =
-    artifactTypeFilter !== 'ALL' || statusFilter !== 'ALL' || searchTerm.trim() !== '' || activeTagFilters.length > 0;
-  const filteredSelectedArtifactHidden = Boolean(selectedArtifact && !filteredArtifacts.some(artifact => artifact.id === selectedArtifact.id));
+  const filteredSelectedArtifactHidden = isSelectedArtifactHidden(selectedArtifactId);
 
   const handleUpdateProject = useCallback(
     (projectId: string, updates: Partial<Project>) => {
@@ -2689,26 +1468,13 @@ export default function App() {
     updateProfile({ questlinesClaimed: [questlineId] });
   }, [profile, addXp, updateProfile]);
 
-  const handleResetFilters = () => {
-    setArtifactTypeFilter('ALL');
-    setStatusFilter('ALL');
-    setActiveTagFilters([]);
-    setSearchTerm('');
-  };
+  const handleResetFilters = useCallback(() => {
+    resetFilters();
+  }, [resetFilters]);
 
   const handleToggleTagFilter = useCallback((tag: string) => {
-    setActiveTagFilters((previous) => {
-      const normalized = tag.toLowerCase();
-      const isActive = previous.some((item) => item.toLowerCase() === normalized);
-      if (isActive) {
-        return previous.filter((item) => item.toLowerCase() !== normalized);
-      }
-
-      const next = [...previous, tag];
-      next.sort((a, b) => a.localeCompare(b));
-      return next;
-    });
-  }, []);
+    toggleTagFilter(tag);
+  }, [toggleTagFilter]);
 
   const handleExportArtifacts = useCallback(
     async (format: 'csv' | 'tsv') => {
@@ -2832,13 +1598,7 @@ export default function App() {
 
   const handleViewModeChange = useCallback((mode: 'table' | 'graph' | 'kanban') => {
     setViewMode(mode);
-    if (mode === 'graph') {
-      markSelectedProjectActivity({ viewedGraph: true });
-    }
-    if (mode === 'kanban') {
-      markSelectedProjectActivity({ viewedKanban: true });
-    }
-  }, [markSelectedProjectActivity]);
+  }, [setViewMode]);
 
   if (!profile) {
     return <DashboardShellPlaceholder loading={loading} />;
