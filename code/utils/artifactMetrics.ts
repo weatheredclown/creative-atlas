@@ -1,16 +1,16 @@
-import type {
-  Artifact,
+import {
   ArtifactType,
-  CharacterData,
-  ConlangLexeme,
-  TimelineData,
-  WikiData,
-  Project,
-  ProjectStatus,
-  TaskData,
-  TaskState,
+  TASK_STATE,
+  type Artifact,
+  type CharacterData,
+  type ConlangLexeme,
+  type TimelineData,
+  type WikiData,
+  type Project,
+  type ProjectStatus,
+  type TaskData,
+  type TaskState,
 } from '../types';
-import { TASK_STATE } from '../types';
 
 export const countArtifactsByType = (artifacts: Artifact[], type: ArtifactType) =>
   artifacts.filter((artifact) => artifact.type === type).length;
