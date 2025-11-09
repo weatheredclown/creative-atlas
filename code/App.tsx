@@ -25,8 +25,7 @@ import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
 import { achievements } from './src/data/achievements';
 import { milestoneRoadmap } from './src/data/milestones';
-import { questlines, selectDailyQuestsForDate } from './src/data/quests';
-import { getCurrentDateKey } from './utils/date';
+import { getCurrentDateKey, questlines, selectDailyQuestsForDate } from './src/data/quests';
 import {
   QUICK_FACT_TAG,
   deriveQuickFactTitle,

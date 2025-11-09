@@ -404,83 +404,88 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 Project settings
               </button>
               {isSettingsOpen ? (
-                <div
-                  ref={settingsPanelRef}
-                  className="absolute left-1/2 top-full z-30 mt-3 w-screen max-w-3xl -translate-x-1/2 px-4 sm:px-0"
-                >
-                  <div className="space-y-6 rounded-2xl border border-slate-700/70 bg-slate-950/95 p-6 shadow-2xl shadow-slate-900/60 backdrop-blur">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-slate-100">Project details</h3>
-                      <form className="space-y-4" onSubmit={handleSaveProjectDetails}>
-                        <div className="space-y-1.5">
-                          <label htmlFor="project-title-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Project name
-                          </label>
-                          <input
-                            id="project-title-input"
-                            value={titleDraft}
-                            onChange={(event) => {
-                              setTitleDraft(event.target.value);
-                              if (titleError) {
-                                setTitleError(null);
-                              }
-                            }}
-                            className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                          {titleError ? <p className="text-xs text-rose-300">{titleError}</p> : null}
-                        </div>
-                        <div className="space-y-1.5">
-                          <label htmlFor="project-summary-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Summary
-                          </label>
-                          <textarea
-                            id="project-summary-input"
-                            value={summaryDraft}
-                            onChange={(event) => {
-                              setSummaryDraft(event.target.value);
-                              if (summaryError) {
-                                setSummaryError(null);
-                              }
-                            }}
-                            rows={3}
-                            className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                          {summaryError ? <p className="text-xs text-rose-300">{summaryError}</p> : null}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="submit"
-                            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-cyan-500"
-                          >
-                            Save changes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleResetProjectDetails}
-                            className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
-                          >
-                            Reset form
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsSettingsOpen(false)}
-                            className="inline-flex items-center gap-2 rounded-md border border-slate-700/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:text-white"
-                          >
-                            Close
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                    <ProjectSettingsPanel
-                      settings={visibilitySettings}
-                      onToggle={onToggleVisibility}
-                      onReset={onResetVisibility}
-                      className="border-slate-800/70 bg-slate-900/80"
-                    />
+                <div className="fixed inset-0 z-40 flex items-center justify-center px-4 py-8 sm:px-6">
+                  <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
+                  <div
+                    ref={settingsPanelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/95 shadow-2xl shadow-slate-900/60 backdrop-blur"
+                  >
+                    <div className="max-h-[85vh] space-y-6 overflow-y-auto p-6">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-slate-100">Project details</h3>
+                        <form className="space-y-4" onSubmit={handleSaveProjectDetails}>
+                          <div className="space-y-1.5">
+                            <label htmlFor="project-title-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              Project name
+                            </label>
+                            <input
+                              id="project-title-input"
+                              value={titleDraft}
+                              onChange={(event) => {
+                                setTitleDraft(event.target.value);
+                                if (titleError) {
+                                  setTitleError(null);
+                                }
+                              }}
+                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                            {titleError ? <p className="text-xs text-rose-300">{titleError}</p> : null}
+                          </div>
+                          <div className="space-y-1.5">
+                            <label htmlFor="project-summary-input" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              Summary
+                            </label>
+                            <textarea
+                              id="project-summary-input"
+                              value={summaryDraft}
+                              onChange={(event) => {
+                                setSummaryDraft(event.target.value);
+                                if (summaryError) {
+                                  setSummaryError(null);
+                                }
+                              }}
+                              rows={3}
+                              className="w-full rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                            {summaryError ? <p className="text-xs text-rose-300">{summaryError}</p> : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-cyan-500"
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResetProjectDetails}
+                              className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
+                            >
+                              Reset form
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsSettingsOpen(false)}
+                              className="inline-flex items-center gap-2 rounded-md border border-slate-700/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:text-white"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                      <ProjectSettingsPanel
+                        settings={visibilitySettings}
+                        onToggle={onToggleVisibility}
+                        onReset={onResetVisibility}
+                        className="border-slate-800/70 bg-slate-900/80"
+                      />
                     </div>
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+            </div>
             </div>
         </header>
 
