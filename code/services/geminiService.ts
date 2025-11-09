@@ -1,7 +1,8 @@
 
 import { GoogleGenAI, Type } from '@google/genai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
-import { ArtifactType } from '../types';
+import { ArtifactType, TASK_STATE } from '../types';
+import { createBlankMagicSystemData } from '../utils/magicSystem';
 
 const apiKey = import.meta.env.VITE_API_KEY;
 
@@ -252,11 +253,13 @@ export const generateProjectFromDescription = async (
       ? sanitizeGeneratedArtifacts(parsed.artifacts)
       : [];
 
+    const enhancedArtifacts = await enhanceGeneratedArtifacts(artifacts);
+
     return {
       title,
       summary,
       tags,
-      artifacts,
+      artifacts: enhancedArtifacts,
     };
   } catch (error) {
     console.error('Error generating project blueprint with Gemini:', error);
@@ -330,6 +333,225 @@ const sanitizeGeneratedArtifacts = (artifacts: TemplateArtifactBlueprint[]): Tem
   return sanitized;
 };
 
+const STOP_WORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'from',
+  'this',
+  'into',
+  'their',
+  'have',
+  'will',
+  'about',
+  'over',
+  'after',
+  'before',
+  'through',
+  'while',
+  'between',
+  'whose',
+  'where',
+  'your',
+  'they',
+  'them',
+  'been',
+  'also',
+  'story',
+  'world',
+  'each',
+  'under',
+  'across',
+  'only',
+  'other',
+]);
+
+const deriveKeywords = (text: string, max: number = 3): string[] => {
+  if (!text) {
+    return ['concept'];
+  }
+
+  const normalized = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ') // collapse whitespace
+    .trim();
+
+  const words = normalized
+    .split(' ')
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 4 && !STOP_WORDS.has(word));
+
+  const counts = new Map<string, number>();
+  for (const word of words) {
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+
+  const sorted = Array.from(counts.entries()).sort((a, b) => {
+    if (b[1] === a[1]) {
+      return a[0].localeCompare(b[0]);
+    }
+    return b[1] - a[1];
+  });
+
+  const keywords = sorted.slice(0, max).map(([word]) => word);
+
+  if (keywords.length < max) {
+    const fallbackWords = normalized
+      .split(' ')
+      .map((word) => word.trim())
+      .filter((word) => word.length >= 4 && !keywords.includes(word));
+
+    for (const word of fallbackWords) {
+      if (!STOP_WORDS.has(word)) {
+        keywords.push(word);
+      }
+      if (keywords.length === max) {
+        break;
+      }
+    }
+  }
+
+  if (keywords.length === 0) {
+    keywords.push('concept');
+  }
+
+  return keywords;
+};
+
+const titleCase = (value: string): string => {
+  if (!value) {
+    return '';
+  }
+  return value
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+};
+
+const slugify = (value: string): string => {
+  if (!value) {
+    return 'artifact';
+  }
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+  return slug.length > 0 ? slug : 'artifact';
+};
+
+const buildArtifactDataSkeleton = (
+  blueprint: TemplateArtifactBlueprint,
+  summary: string,
+): TemplateArtifactBlueprint['data'] | undefined => {
+  const keywords = deriveKeywords(summary);
+  const baseSlug = slugify(blueprint.title);
+
+  switch (blueprint.type) {
+    case ArtifactType.Character:
+      return {
+        bio: summary,
+        traits: keywords.map((keyword, index) => ({
+          id: `${baseSlug}-trait-${index + 1}`,
+          key: titleCase(keyword),
+          value: `Explore how ${blueprint.title} embodies ${keyword} across the narrative.`,
+        })),
+      };
+    case ArtifactType.Location:
+      return {
+        description: summary,
+        features: keywords.map((keyword, index) => ({
+          id: `${baseSlug}-feature-${index + 1}`,
+          name: `${titleCase(keyword)} Landmark`,
+          description: `Describe the ${keyword} aspect that defines ${blueprint.title}.`,
+        })),
+      };
+    case ArtifactType.Wiki: {
+      const sections = keywords
+        .map((keyword) => `## ${titleCase(keyword)}\n- Capture the key lore beats connected to ${keyword}.`)
+        .join('\n\n');
+      return {
+        content: `# ${blueprint.title}\n\n${summary}\n\n${sections || '## Key Details\n- Flesh out the cornerstone facts for this project.'}`,
+      };
+    }
+    case ArtifactType.MagicSystem: {
+      const data = createBlankMagicSystemData(blueprint.title);
+      data.summary = summary;
+      data.principles = keywords.map((keyword, index) => ({
+        id: `${baseSlug}-principle-${index + 1}`,
+        title: `${titleCase(keyword)} Principle`,
+        focus: `Ways ${keyword} manifests in practice.`,
+        description: `Detail how ${keyword} shapes the limits and costs of this magic.`,
+        stability: index === 0 ? 'stable' : index === 1 ? 'volatile' : 'forbidden',
+      }));
+      data.sources = keywords.slice(0, 2).map((keyword, index) => ({
+        id: `${baseSlug}-source-${index + 1}`,
+        name: `${titleCase(keyword)} Source`,
+        resonance: `Resonates with ${keyword} energy.`,
+        capacity: 'Document how practitioners draw upon this source.',
+        tells: 'List the sensory tells that reveal its use.',
+      }));
+      data.rituals = keywords.slice(0, 2).map((keyword, index) => ({
+        id: `${baseSlug}-ritual-${index + 1}`,
+        name: `${titleCase(keyword)} Rite`,
+        tier: index === 0 ? 'Initiate' : 'Advanced',
+        cost: 'Outline the material or narrative cost to perform this ritual.',
+        effect: `Describe what ${keyword} accomplishes when invoked.`,
+        failure: 'Explain what failure looks like and who bears the risk.',
+      }));
+      data.taboos = keywords.slice(0, 1).map((keyword, index) => ({
+        id: `${baseSlug}-taboo-${index + 1}`,
+        rule: `Never twist ${keyword} for selfish gain.`,
+        consequence: 'Clarify the fallout when this taboo is broken.',
+        restoration: 'List the steps required to atone or set things right.',
+      }));
+      data.fieldNotes = [
+        'Catalog notable practitioners and how they bend the rules.',
+        `List mysteries that still surround ${blueprint.title}.`,
+      ];
+      return data;
+    }
+    case ArtifactType.Timeline: {
+      const events = keywords.map((keyword, index) => ({
+        id: `${baseSlug}-event-${index + 1}`,
+        date: '',
+        title: `${titleCase(keyword)} Turning Point`,
+        description: `Describe a pivotal moment tied to ${keyword}.`,
+      }));
+      if (events.length === 0) {
+        events.push({
+          id: `${baseSlug}-event-1`,
+          date: '',
+          title: 'Opening Beat',
+          description: 'Detail the first major event that sets this timeline in motion.',
+        });
+      }
+      return { events };
+    }
+    case ArtifactType.Task:
+      return { state: TASK_STATE.Todo };
+    default:
+      return undefined;
+  }
+};
+
+const createMockArtifactFromBlueprint = (blueprint: TemplateArtifactBlueprint): Artifact => ({
+  id: 'temp-artifact',
+  ownerId: 'temp-user',
+  projectId: 'temp-project',
+  type: blueprint.type,
+  title: blueprint.title,
+  summary: blueprint.summary,
+  status: blueprint.status ?? 'idea',
+  tags: blueprint.tags ?? [],
+  relations: [],
+  data: buildArtifactDataSkeleton(blueprint, blueprint.summary) ?? (Array.isArray(blueprint.data) ? blueprint.data : {}),
+});
+
 /**
  * Implements the "Lore Weaver" Atlas Intelligence guide.
  * Expands on a given summary for an artifact.
@@ -367,6 +589,44 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
         }
         throw new Error('An unknown error occurred while expanding the summary.');
     }
+};
+
+const enhanceGeneratedArtifacts = async (
+  artifacts: TemplateArtifactBlueprint[],
+): Promise<TemplateArtifactBlueprint[]> => {
+  const enhanced: TemplateArtifactBlueprint[] = [];
+
+  for (const blueprint of artifacts) {
+    const baseStatus = blueprint.status?.trim() ?? 'idea';
+    const baseTags = blueprint.tags ? Array.from(new Set(blueprint.tags)) : [];
+
+    let expandedSummary = blueprint.summary;
+    try {
+      const result = await expandSummary(createMockArtifactFromBlueprint(blueprint));
+      if (typeof result === 'string' && result.trim().length > 0) {
+        expandedSummary = result.trim();
+      }
+    } catch (error) {
+      console.warn('Failed to expand generated artifact summary:', error);
+    }
+
+    const skeletonData = buildArtifactDataSkeleton(blueprint, expandedSummary);
+
+    const enriched: TemplateArtifactBlueprint = {
+      ...blueprint,
+      summary: expandedSummary,
+      status: baseStatus,
+      tags: baseTags,
+    };
+
+    if (skeletonData !== undefined) {
+      enriched.data = skeletonData;
+    }
+
+    enhanced.push(enriched);
+  }
+
+  return enhanced;
 };
 
 interface GenerateReleaseNotesParams {
