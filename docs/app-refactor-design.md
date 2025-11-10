@@ -5,6 +5,10 @@
 - Encapsulate artifact filter and GitHub publishing logic inside reusable hooks.
 - Split the monolithic `App` view into a light-weight layout container and a focused project workspace component.
 
+## Progress Notes
+- Created `ProjectWorkspace` (under `code/components/workspace/`) to host artifact workflows, quick fact capture, and GitHub publish orchestration outside of `App.tsx`.
+- Upcoming focus: break down `ProjectWorkspaceContainer` into the planned hero, artifact panel, activity panel, and modal subcomponents to finish slimming the workspace layer.
+
 ## Proposed Structure
 
 ### Data Modules (`code/src/data/`)
