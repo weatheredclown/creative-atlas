@@ -86,7 +86,15 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
     <>
       <Stepper steps={tutorialSteps.map(step => step.title)} currentStep={currentStep} />
       <TutorialPopover referenceElement={referenceElement}>
-        <div className="space-y-4 text-slate-100">
+        <div className="relative space-y-4 text-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-0 top-0 -mr-2 -mt-2 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            aria-label="Close tutorial"
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
           <div>
             <h3 className="text-lg font-semibold text-slate-50">{currentTutorialStep.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">{currentTutorialStep.explanation}</p>
