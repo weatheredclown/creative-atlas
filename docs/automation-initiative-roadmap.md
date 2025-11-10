@@ -24,6 +24,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
   - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 - Deliver character arc tooling: add progression states and visualizations for characters, ensuring integration with the relationship graph.
+- Streamline artifact relation linking in the workspace: design and implement multi-select linking with grouped relation types to reduce repetitive scrolling.
 - Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
