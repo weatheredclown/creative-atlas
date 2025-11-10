@@ -117,15 +117,17 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
     );
   };
 
-  const fetchKey = useMemo(() => {
-    if (authLoading || isGuestMode || !user) {
-      return 'skip';
+  const userId = user?.uid ?? null;
+
+  const ownerId = useMemo(() => {
+    if (authLoading || isGuestMode) {
+      return null;
     }
-    return user.uid ?? 'authenticated';
-  }, [authLoading, isGuestMode, user]);
+    return userId;
+  }, [authLoading, isGuestMode, userId]);
 
   useEffect(() => {
-    if (fetchKey === 'skip') {
+    if (!ownerId) {
       setTimelines([]);
       setError(null);
       setLoading(false);
@@ -137,23 +139,23 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
     const load = async () => {
       setLoading(true);
       try {
-        const loadedTimelines = await fetchSimulatedHistoryTimelines();
+        const loadedTimelines = await fetchSimulatedHistoryTimelines(ownerId);
         if (!cancelled) {
           setTimelines(loadedTimelines);
           setError(null);
         }
       } catch (err) {
         if (isFirestorePermissionError(err)) {
-          console.warn('Timeline heatmap access requires elevated Firestore permissions. Falling back to local data.');
+          console.warn('Unable to load timeline heatmap snapshots for this account. Falling back to local data.');
           if (!cancelled) {
             setTimelines([]);
-            setError('Shared timeline snapshots require collaborator access. Showing local project data instead.');
+            setError('Showing the timelines from your current workspace.');
           }
         } else {
           console.error('Failed to load timeline heatmap data', err);
           if (!cancelled) {
             setTimelines([]);
-            setError('Unable to load shared timeline data. Showing local project data instead.');
+            setError('Unable to load additional timeline data right now. Showing your workspace timelines instead.');
           }
         }
       } finally {
@@ -168,7 +170,7 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [fetchKey]);
+  }, [ownerId]);
 
   const worldOptions = useMemo(() => toWorldOptions(timelines), [timelines]);
 
@@ -198,10 +200,19 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   const usingFirestore = timelines.length > 0;
 
   const artifactSource = useMemo(() => {
-    if (usingFirestore) {
-      return firestoreArtifacts;
+    const localTimelines = artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline);
+    if (!usingFirestore) {
+      return localTimelines;
     }
-    return artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline);
+
+    const merged = new Map<string, Artifact>();
+    localTimelines.forEach((artifact) => {
+      merged.set(artifact.id, artifact);
+    });
+    firestoreArtifacts.forEach((artifact) => {
+      merged.set(artifact.id, artifact);
+    });
+    return Array.from(merged.values());
   }, [artifacts, firestoreArtifacts, usingFirestore]);
 
   const baseHeatmap = useMemo<SimulatedHistoryHeatmapData>(() => {
@@ -250,9 +261,7 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
         </div>
       </header>
 
-      {loading && (
-        <p className="text-xs text-emerald-100/70">Loading shared timeline data…</p>
-      )}
+      {loading && <p className="text-xs text-emerald-100/70">Loading additional timeline data…</p>}
 
       {error && (
         <p className="text-xs text-emerald-100/70">{error}</p>
