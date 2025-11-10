@@ -114,8 +114,8 @@ export const assertArtifactContentCompliance = (
   assertModeratedTags(artifact.tags, { ...context, field: 'tags' });
 };
 
-export const sanitizeForExternalShare = <T extends Record<string, unknown>>(resource: T): T => {
-  const sanitized = { ...resource } as Record<string, unknown>;
+export const sanitizeForExternalShare = <T extends object>(resource: T): T => {
+  const sanitized = { ...(resource as Record<string, unknown>) };
   for (const field of compliancePolicies.privacy.redactedFieldsForShares) {
     if (!(field in sanitized)) {
       continue;
