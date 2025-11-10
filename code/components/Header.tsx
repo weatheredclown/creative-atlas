@@ -10,7 +10,14 @@ const getInitials = (name: string) => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 };
 
-const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number; onSignOut: () => void; onStartTutorial: () => void; }> = ({ profile, xpProgress, level, onSignOut, onStartTutorial }) => (
+const Header: React.FC<{
+  profile: UserProfile;
+  xpProgress: number;
+  level: number;
+  onSignOut: () => void;
+  onStartTutorial: () => void;
+  adminAction?: React.ReactNode;
+}> = ({ profile, xpProgress, level, onSignOut, onStartTutorial, adminAction }) => (
   <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
     <div className="flex items-center gap-3">
       <CubeIcon className="w-7 h-7 text-cyan-400" />
@@ -32,6 +39,7 @@ const Header: React.FC<{ profile: UserProfile; xpProgress: number; level: number
           {getInitials(profile.displayName)}
         </div>
       )}
+      {adminAction}
       <button
         onClick={onStartTutorial}
         className="px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800/70 hover:bg-slate-700 rounded-md border border-slate-600 transition-colors"
