@@ -17,13 +17,14 @@ This document tracks the multi-session automation initiative to deliver the full
 - Add a static analysis guard (custom ESLint rule or TypeScript check) that rejects `import type` usage for runtime enums like `ArtifactType` to prevent regressions similar to the recent production crash. (Hotfixed the immediate regression by switching `utils/artifactMetrics.ts` back to a value import; guard still needed.)
 
 ## Segment B — Feature Depth & Design Polish
-- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
-- Deliver character arc tooling: family tree visualizations are in place (duplicate child rendering fixed); next add progression state overlays and sync them with the relationship graph.
-- Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; next add progression state overlays and sync them with the relationship graph.
-- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
+- Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
+  - Draft the Firestore aggregation (REST endpoint or callable function) that buckets timeline events for consumption by the heatmap component.
+  - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
   - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
   - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
-- Deliver character arc tooling: add progression states and visualizations for characters, ensuring integration with the relationship graph.
+- Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
+  - Define the progression state schema (status enums, timestamps) shared between character sheets and the relationship graph data model.
+  - Render progression overlays within the family tree and ensure the relationship graph consumes the shared state without duplication.
 - Streamline artifact relation linking in the workspace: design and implement multi-select linking with grouped relation types to reduce repetitive scrolling.
 - Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
