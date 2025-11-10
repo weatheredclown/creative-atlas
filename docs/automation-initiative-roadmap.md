@@ -29,7 +29,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
-- App refactor: now that the workspace container and sidebar are extracted, move modal orchestration into focused components so `App.tsx` only coordinates global providers and high-level state.
+- App refactor: expanded `docs/app-refactor-design.md` with workspace composition, hook contracts, and migration plan so the next implementation pass can focus on moving modal orchestration and quick fact flows out of `App.tsx`.
 - Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.
 
 ## Segment C — Tutorial & Education Experience
