@@ -52,6 +52,12 @@ When the backend API is running (see below), expose its URL so CSV/Markdown impo
 VITE_DATA_API_BASE_URL=http://localhost:4000
 ```
 
+#### Simulated history heatmap data
+
+Signed-in collaborators automatically see additional timeline snapshots that have been published to Firestore for their account. The app queries the `timelineHeatmap` collection for documents where `ownerId` matches the viewer's UID; any matches are merged with the timelines already present in the workspace.
+
+To surface more history, publish timeline snapshots to Firestore with an `ownerId` for each collaborator who should see them. The default security rule (`allow read, write: if request.auth.uid == resource.data.ownerId;`) already authorizes those reads. See [`docs/firebase-timeline-heatmap-setup.md`](docs/firebase-timeline-heatmap-setup.md) for a lightweight data seeding guide.
+
 ### 3. Start the backend API (optional but recommended)
 
 The `server/` package exposes authenticated CRUD endpoints that wrap Firestore and handle bulk import/export work. Run it locally with:

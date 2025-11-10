@@ -4,6 +4,8 @@ import {
   getFirestore,
   QueryDocumentSnapshot,
   DocumentData,
+  query,
+  where,
 } from 'firebase/firestore';
 import firebaseApp from './firebaseApp';
 import { ArtifactType, TimelineData, TimelineEvent } from '../types';
@@ -172,13 +174,16 @@ const parseTimelineDocument = (
   return timelines;
 };
 
-export const fetchSimulatedHistoryTimelines = async (): Promise<FirestoreTimelineHeatmapTimeline[]> => {
+export const fetchSimulatedHistoryTimelines = async (
+  ownerId: string,
+): Promise<FirestoreTimelineHeatmapTimeline[]> => {
   const firestore = getFirestore(firebaseApp);
   const historyCollection = collection(
     firestore,
     ...HISTORY_HEATMAP_COLLECTION_SEGMENTS,
   );
-  const snapshot = await getDocs(historyCollection);
+  const historyQuery = query(historyCollection, where('ownerId', '==', ownerId));
+  const snapshot = await getDocs(historyQuery);
 
   const timelines: FirestoreTimelineHeatmapTimeline[] = [];
   snapshot.forEach((doc) => {
