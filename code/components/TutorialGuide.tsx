@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { TutorialStep } from '../types';
-import { tutorialSteps } from '../utils/tutorial';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { TutorialLanguage, TutorialStep } from '../types';
+import { DEFAULT_TUTORIAL_LANGUAGE, getTutorialSteps, tutorialLanguageOptions } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import Stepper from './Stepper';
 
@@ -10,6 +10,8 @@ interface TutorialGuideProps {
   initialStep?: number;
   onStepChange?: (step: number) => void;
   onComplete?: () => void;
+  language?: TutorialLanguage;
+  onLanguageChange?: (language: TutorialLanguage) => void;
 }
 
 const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) => {
@@ -20,18 +22,35 @@ const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLSe
   element.dispatchEvent(event);
 };
 
-const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0, onStepChange, onComplete }) => {
+const TutorialGuide: React.FC<TutorialGuideProps> = ({
+  onClose,
+  initialStep = 0,
+  onStepChange,
+  onComplete,
+  language = DEFAULT_TUTORIAL_LANGUAGE,
+  onLanguageChange,
+}) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const steps = useMemo(() => getTutorialSteps(language), [language]);
 
   useEffect(() => {
     setCurrentStep(initialStep);
   }, [initialStep]);
 
+  useEffect(() => {
+    setCurrentStep(previous => {
+      if (steps.length === 0) {
+        return 0;
+      }
+      return Math.min(previous, steps.length - 1);
+    });
+  }, [steps]);
+
   const handleNextStep = useCallback(() => {
     setCurrentStep((previousStep) => {
-      if (previousStep < tutorialSteps.length - 1) {
+      if (previousStep < steps.length - 1) {
         return previousStep + 1;
       }
 
@@ -42,7 +61,7 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0,
       }
       return previousStep;
     });
-  }, [onClose, onComplete]);
+  }, [onClose, onComplete, steps.length]);
 
   const handleCancelTutorial = useCallback(
     (event: KeyboardEvent) => {
@@ -62,8 +81,8 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0,
   }, [handleCancelTutorial]);
 
   useEffect(() => {
-    const step = tutorialSteps[currentStep];
-    if (step.target) {
+    const step = steps[currentStep];
+    if (step?.target) {
       const element = document.querySelector(step.target);
       setReferenceElement(element instanceof HTMLElement ? element : null);
       const eventType = step.advanceEvent ?? 'click';
@@ -87,16 +106,14 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0,
     }
 
     return () => {
-      const step = tutorialSteps[currentStep];
-      if (step.target) {
+      const step = steps[currentStep];
+      if (step?.target) {
         const element = document.querySelector(step.target);
-        if (element) {
-          const eventType = step.advanceEvent ?? 'click';
-          element.removeEventListener(eventType, handleNextStep);
-        }
+        const eventType = step.advanceEvent ?? 'click';
+        element?.removeEventListener(eventType, handleNextStep);
       }
     };
-  }, [currentStep, handleNextStep]);
+  }, [currentStep, handleNextStep, steps]);
 
   useEffect(() => {
     onStepChange?.(currentStep);
@@ -119,13 +136,25 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0,
     setCurrentStep(previous => (previous > 0 ? previous - 1 : previous));
   };
 
-  const currentTutorialStep: TutorialStep = tutorialSteps[currentStep];
-  const isLastStep = currentStep === tutorialSteps.length - 1;
+  const totalSteps = steps.length;
+  const currentTutorialStep: TutorialStep = steps[currentStep];
+  const isLastStep = currentStep === totalSteps - 1;
   const canGoBack = currentStep > 0;
+
+  const handleLanguageSelect = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onLanguageChange?.(event.target.value as TutorialLanguage);
+    },
+    [onLanguageChange],
+  );
+
+  if (!currentTutorialStep) {
+    return null;
+  }
 
   return (
     <>
-      <Stepper steps={tutorialSteps.map(step => step.title)} currentStep={currentStep} />
+      <Stepper steps={steps.map(step => step.title)} currentStep={currentStep} />
       <TutorialPopover referenceElement={referenceElement}>
         <div
           ref={contentRef}
@@ -140,9 +169,31 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0,
           >
             <span aria-hidden="true">&times;</span>
           </button>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-50">{currentTutorialStep.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-300">{currentTutorialStep.explanation}</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300" aria-live="polite" role="status">
+                Step {currentStep + 1} of {totalSteps}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-50">{currentTutorialStep.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">{currentTutorialStep.explanation}</p>
+            </div>
+            <div className="flex w-full flex-col gap-1 sm:w-44">
+              <label htmlFor="tutorial-language" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Language
+              </label>
+              <select
+                id="tutorial-language"
+                value={language}
+                onChange={handleLanguageSelect}
+                className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                {tutorialLanguageOptions.map(option => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3">
             <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Action</span>

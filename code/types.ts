@@ -393,6 +393,13 @@ export type ProjectFeatureGroup = 'summary' | 'analytics' | 'tracking' | 'distri
 
 export type ProjectVisibilitySettings = Record<ProjectComponentKey, boolean>;
 
+export type TutorialLanguage = 'en' | 'es';
+
+export interface TutorialLanguageOption {
+  code: TutorialLanguage;
+  label: string;
+}
+
 export interface TutorialStep {
   title: string;
   explanation: string;
