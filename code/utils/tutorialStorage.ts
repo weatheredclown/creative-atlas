@@ -1,9 +1,11 @@
-import { tutorialSteps } from './tutorial';
+import { TutorialLanguage } from '../types';
+import { DEFAULT_TUTORIAL_LANGUAGE, getTutorialSteps, tutorialLanguageOptions } from './tutorial';
 
 export interface TutorialProgressState {
   currentStep: number;
   hasCompleted: boolean;
   wasDismissed: boolean;
+  language: TutorialLanguage;
 }
 
 const STORAGE_KEY = 'creative-atlas:tutorial-progress';
@@ -12,6 +14,19 @@ const DEFAULT_PROGRESS: TutorialProgressState = {
   currentStep: 0,
   hasCompleted: false,
   wasDismissed: false,
+  language: DEFAULT_TUTORIAL_LANGUAGE,
+};
+
+const AVAILABLE_TUTORIAL_LANGUAGES = new Set<TutorialLanguage>(
+  tutorialLanguageOptions.map(option => option.code),
+);
+
+const parseLanguage = (value: unknown): TutorialLanguage => {
+  if (typeof value === 'string' && AVAILABLE_TUTORIAL_LANGUAGES.has(value as TutorialLanguage)) {
+    return value as TutorialLanguage;
+  }
+
+  return DEFAULT_TUTORIAL_LANGUAGE;
 };
 
 const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -32,14 +47,17 @@ export const loadTutorialProgress = (): TutorialProgressState => {
       return { ...DEFAULT_PROGRESS };
     }
 
+    const language = parseLanguage(parsed.language);
+    const steps = getTutorialSteps(language);
     const currentStep = Number.isFinite(parsed.currentStep)
-      ? Math.min(Math.max(parsed.currentStep ?? 0, 0), tutorialSteps.length - 1)
+      ? Math.min(Math.max(parsed.currentStep ?? 0, 0), steps.length - 1)
       : DEFAULT_PROGRESS.currentStep;
 
     return {
       currentStep,
       hasCompleted: Boolean(parsed.hasCompleted),
       wasDismissed: Boolean(parsed.wasDismissed),
+      language,
     };
   } catch (error) {
     console.warn('Failed to load tutorial progress from storage.', error);
