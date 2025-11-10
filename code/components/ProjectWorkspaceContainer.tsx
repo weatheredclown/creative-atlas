@@ -174,6 +174,8 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   canPublishToGitHub,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const detailSectionRef = useRef<HTMLDivElement | null>(null);
+  const previousSelectedArtifactIdRef = useRef<string | null>(null);
 
   const quickFacts = useMemo(
     () => projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency),
@@ -217,6 +219,31 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     },
     [markProjectActivity],
   );
+
+  useEffect(() => {
+    if (!selectedArtifactId) {
+      previousSelectedArtifactIdRef.current = null;
+      return;
+    }
+
+    if (previousSelectedArtifactIdRef.current === selectedArtifactId) {
+      return;
+    }
+
+    previousSelectedArtifactIdRef.current = selectedArtifactId;
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      detailSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [selectedArtifactId]);
 
   const {
     viewMode,
@@ -595,7 +622,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
                   <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={onUpdateArtifactData} />
                 )}
                 {selectedArtifact && (
-                  <div className="space-y-8">
+                  <div ref={detailSectionRef} className="space-y-8">
                     {filteredSelectedArtifactHidden && (
                       <div className="bg-amber-900/40 border border-amber-700/60 text-amber-200 text-sm px-4 py-3 rounded-lg">
                         This artifact is currently hidden by the active filters. Clear them to surface it in the list.
