@@ -10,6 +10,7 @@ import {
   fetchSimulatedHistoryTimelines,
   FirestoreTimelineHeatmapTimeline,
 } from '../../services/historyHeatmap';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SimulatedHistoryHeatmapProps {
   artifacts: Artifact[];
@@ -106,8 +107,23 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   const [eraFilter, setEraFilter] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading, isGuestMode } = useAuth();
+
+  const fetchKey = useMemo(() => {
+    if (authLoading || isGuestMode || !user) {
+      return 'skip';
+    }
+    return user.uid ?? 'authenticated';
+  }, [authLoading, isGuestMode, user]);
 
   useEffect(() => {
+    if (fetchKey === 'skip') {
+      setTimelines([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
@@ -136,7 +152,7 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchKey]);
 
   const worldOptions = useMemo(() => toWorldOptions(timelines), [timelines]);
 
