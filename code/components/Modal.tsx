@@ -8,9 +8,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidthClassName?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidthClassName = 'max-w-lg' }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     >
       <div
         ref={modalRef}
-        className="relative bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg m-4 transform transition-all"
+        className={`relative bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full ${maxWidthClassName} m-4 transform transition-all`}
       >
         <div className="flex justify-between items-center p-4 border-b border-slate-700">
           <h2 id="modal-title" className="text-lg font-semibold text-slate-100">{title}</h2>

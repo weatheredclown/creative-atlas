@@ -33,6 +33,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
+- Add a workspace section index navigation so creators can jump between hero, tracking, templates, and publishing panels without excessive scrolling.
 - App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; next, break the workspace container into the planned hero/activity/modals subcomponents.
 - Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.
   - ✅ Introduced a workspace content picker for Atlas Intelligence prompt slots so creators can insert project, artifact, and milestone IDs without leaving the flow.

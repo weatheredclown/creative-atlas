@@ -46,8 +46,7 @@ import CharacterArcTracker from './CharacterArcTracker';
 import MilestoneTracker from './MilestoneTracker';
 import GitHubImportPanel from './GitHubImportPanel';
 import ReleaseNotesGenerator from './ReleaseNotesGenerator';
-import TemplateGallery from './TemplateGallery';
-import ProjectTemplatePicker from './ProjectTemplatePicker';
+import TemplateWorkspace from './TemplateWorkspace';
 import InspirationDeck from './InspirationDeck';
 import NarrativeHealthPanel from './NarrativeHealthPanel';
 import ContinuityMonitor from './ContinuityMonitor';
@@ -67,9 +66,6 @@ import TimelineEditor from './TimelineEditor';
 import RevealDepthToggle from './RevealDepthToggle';
 import {
   ArrowUpTrayIcon,
-  BuildingStorefrontIcon,
-  GitHubIcon,
-  GlobeAltIcon,
   PlusIcon,
   ShareIcon,
   SparklesIcon,
@@ -77,6 +73,8 @@ import {
   ViewColumnsIcon,
   IntelligenceLogo,
 } from './Icons';
+import PublishingPanel from './PublishingPanel';
+import BackToTopButton from './BackToTopButton';
 import { aiAssistants } from '../src/data/aiAssistants';
 import { projectTemplates, templateLibrary } from '../src/data/templates';
 
@@ -807,114 +805,89 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div>
+      <section id="distribution" className="space-y-6">
+        <div className="space-y-1">
           <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.distribution.title}</h2>
           <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.distribution.description}</p>
         </div>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-4">
-            {visibilitySettings.templates && (
-              <div className="space-y-6 xl:col-span-2">
-                <ProjectTemplatePicker
-                  templates={projectTemplates}
-                  categories={templateLibrary}
-                  activeProjectTitle={project.title}
-                  onApplyTemplate={onApplyProjectTemplate}
-                  isApplyDisabled={false}
-                />
-                <TemplateGallery
-                  categories={templateLibrary}
-                  projectTemplates={projectTemplates}
-                  activeProjectTitle={project.title}
-                  onSelectTemplate={onSelectTemplate}
-                />
-              </div>
-            )}
-            {visibilitySettings.githubImport && (
-              <GitHubImportPanel
-                projectId={project.id}
-                ownerId={profile.uid}
-                existingArtifacts={projectArtifacts}
-                onArtifactsImported={onGitHubArtifactsImported}
-                addXp={addXp}
-              />
-            )}
-            {visibilitySettings.releaseWorkflows && (
-              <div className="space-y-6 xl:col-span-2">
-                <ReleaseNotesGenerator
-                  projectId={project.id}
-                  projectTitle={project.title}
-                  artifacts={projectArtifacts}
-                  addXp={addXp}
-                  onDraftGenerated={() => markProjectActivity({ generatedReleaseNotes: true })}
-                />
-                <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 space-y-4 shadow-lg shadow-slate-950/20">
-                  <header className="space-y-1">
-                    <h3 className="text-lg font-semibold text-slate-100">Publishing actions</h3>
-                    <p className="text-sm text-slate-400">Ship updates whenever you are ready to share new lore.</p>
-                  </header>
-                  {publishHistoryRecord ? (
-                    <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-3">
-                          <GlobeAltIcon className="h-5 w-5 flex-shrink-0 text-cyan-200" />
-                          <div className="space-y-1">
-                            <p className="font-semibold text-cyan-100">Latest GitHub Pages site</p>
-                            <p className="text-xs text-cyan-100/80">
-                              {publishHistoryRecord.repository}
-                              {publishHistoryRecord.publishDirectory ? ` · ${publishHistoryRecord.publishDirectory}` : ''}
-                              {lastPublishedAtLabel ? ` · Published ${lastPublishedAtLabel}` : ''}
-                            </p>
-                            <a
-                              href={publishHistoryRecord.pagesUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block break-all text-xs font-medium text-cyan-50 underline"
-                            >
-                              {publishHistoryRecord.pagesUrl}
-                            </a>
-                          </div>
-                        </div>
-                        <a
-                          href={publishHistoryRecord.pagesUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-cyan-50 transition-colors hover:bg-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                        >
-                          Visit live site
-                        </a>
+        <div className="space-y-10">
+          {visibilitySettings.templates && (
+            <TemplateWorkspace
+              projectTitle={project.title}
+              projectTemplates={projectTemplates}
+              templateCategories={templateLibrary}
+              onApplyTemplate={onApplyProjectTemplate}
+              onSelectTemplate={onSelectTemplate}
+            />
+          )}
+          {(visibilitySettings.releaseWorkflows || visibilitySettings.githubImport) && (
+            <div
+              className={`grid gap-6 ${
+                visibilitySettings.releaseWorkflows ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'xl:grid-cols-1'
+              }`}
+            >
+              <div className="space-y-6">
+                {visibilitySettings.releaseWorkflows && (
+                  <section
+                    id="release-bard"
+                    className="space-y-6 rounded-3xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/20"
+                  >
+                    <header className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">
+                        <SparklesIcon className="h-4 w-4 text-amber-300" />
+                        Release Bard highlights
                       </div>
-                    </div>
-                  ) : null}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={onPublishProject}
-                      className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-                      type="button"
-                    >
-                      <BuildingStorefrontIcon className="h-5 w-5" />
-                      Publish Site
-                    </button>
-                    <button
-                      onClick={() => {
-                        void onStartGitHubPublish();
-                      }}
-                      className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                      type="button"
-                      disabled={!canPublishToGitHub}
-                      title={canPublishToGitHub ? 'Publish to GitHub Pages' : 'Sign in and connect the data API to publish to GitHub.'}
-                    >
-                      <GitHubIcon className="h-5 w-5" />
-                      Publish to GitHub
-                    </button>
-                  </div>
-                </section>
+                      <p className="text-sm text-slate-400">
+                        Spin up narrative release notes, then hand them off to the publishing panel so every release is ready for prime time.
+                      </p>
+                    </header>
+                    <ReleaseNotesGenerator
+                      projectId={project.id}
+                      projectTitle={project.title}
+                      artifacts={projectArtifacts}
+                      addXp={addXp}
+                      onDraftGenerated={() => markProjectActivity({ generatedReleaseNotes: true })}
+                    />
+                  </section>
+                )}
+                {visibilitySettings.githubImport && (
+                  <section
+                    id="import-export"
+                    className="space-y-4 rounded-3xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/20"
+                  >
+                    <header className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                        <ArrowUpTrayIcon className="h-4 w-4" />
+                        Import from GitHub
+                      </div>
+                      <p className="text-sm text-slate-400">
+                        Bring in README files, quests, or lore straight from your repository to seed new artifacts without losing context.
+                      </p>
+                    </header>
+                    <GitHubImportPanel
+                      projectId={project.id}
+                      ownerId={profile.uid}
+                      existingArtifacts={projectArtifacts}
+                      onArtifactsImported={onGitHubArtifactsImported}
+                      addXp={addXp}
+                    />
+                  </section>
+                )}
               </div>
-            )}
-          </div>
+              {visibilitySettings.releaseWorkflows && (
+                <PublishingPanel
+                  publishHistoryRecord={publishHistoryRecord}
+                  lastPublishedAtLabel={lastPublishedAtLabel}
+                  canPublishToGitHub={canPublishToGitHub}
+                  onPublishProject={onPublishProject}
+                  onStartGitHubPublish={onStartGitHubPublish}
+                />
+              )}
+            </div>
+          )}
         </div>
       </section>
+      <BackToTopButton />
     </>
   );
 };
