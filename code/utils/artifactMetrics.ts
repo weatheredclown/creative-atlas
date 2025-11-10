@@ -7,7 +7,7 @@ import {
   type TimelineData,
   type WikiData,
   type Project,
-  type ProjectStatus,
+  ProjectStatus,
   type TaskData,
   type TaskState,
 } from '../types';
