@@ -5,6 +5,20 @@ const MODEL_NAME = 'gemini-2.5-flash';
 const DEFAULT_TEMPERATURE = 0.85;
 const MAX_OUTPUT_TOKENS = 768;
 
+const applySubstitutions = (input: string, substitutions?: Record<string, string>): string => {
+  if (!substitutions || Object.keys(substitutions).length === 0) {
+    return input;
+  }
+
+  return Object.entries(substitutions).reduce((result, [token, replacement]) => {
+    if (!token) {
+      return result;
+    }
+
+    return result.split(token).join(replacement);
+  }, input);
+};
+
 const buildFallbackResponse = (prompt: string): string => {
   const cleaned = prompt.replace(/\s+/g, ' ').trim();
 
@@ -37,16 +51,22 @@ const buildFallbackResponse = (prompt: string): string => {
   ].join('\n');
 };
 
-export async function generateText(prompt: string): Promise<string> {
+export interface GenerateTextOptions {
+  substitutions?: Record<string, string>;
+}
+
+export async function generateText(prompt: string, options: GenerateTextOptions = {}): Promise<string> {
   const trimmedPrompt = prompt.trim();
 
   if (!trimmedPrompt) {
     throw new Error('Provide a prompt before calling Atlas Intelligence.');
   }
 
+  const finalPrompt = applySubstitutions(trimmedPrompt, options.substitutions);
+
   try {
     const text = (await requestGeminiText({
-      prompt: trimmedPrompt,
+      prompt: finalPrompt,
       model: MODEL_NAME,
       config: {
         temperature: DEFAULT_TEMPERATURE,
@@ -61,5 +81,5 @@ export async function generateText(prompt: string): Promise<string> {
     console.error('Failed to generate text with Gemini:', error);
   }
 
-  return buildFallbackResponse(trimmedPrompt);
+  return buildFallbackResponse(finalPrompt);
 }
