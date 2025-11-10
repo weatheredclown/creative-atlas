@@ -1,5 +1,10 @@
 import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, CharacterData } from '../types';
+import {
+  ArcStageId,
+  CharacterArcEvaluation,
+  evaluateCharacterArc,
+} from '../utils/characterProgression';
 import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
 
 type FamilyTreeToolsProps = {
@@ -68,7 +73,8 @@ const extractCharacterDescriptor = (artifact: Artifact): string | undefined => {
 };
 
 const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCharacter, onCreateCharacter }) => {
-  const { characters, familyUnits, partnerClusters, independentCharacters, relationSummaries, stats } = useMemo(() => {
+  const { characters, familyUnits, partnerClusters, independentCharacters, relationSummaries, stats, progressionMap } = useMemo(() => {
+    const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const characters = artifacts
       .filter((artifact) => artifact.type === ArtifactType.Character)
       .sort((a, b) => a.title.localeCompare(b.title));
@@ -225,7 +231,20 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       relationshipCount: parentEdges.size + partnerEdges.size + siblingEdges.size,
     };
 
-    return { characters, familyUnits, partnerClusters, independentCharacters, relationSummaries, stats };
+    const progressionMap = new Map<string, CharacterArcEvaluation>();
+    characters.forEach((character) => {
+      progressionMap.set(character.id, evaluateCharacterArc(character, artifactLookup));
+    });
+
+    return {
+      characters,
+      familyUnits,
+      partnerClusters,
+      independentCharacters,
+      relationSummaries,
+      stats,
+      progressionMap,
+    };
   }, [artifacts]);
 
   if (characters.length === 0) {
@@ -277,6 +296,14 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     }
   };
 
+  const stagePillClassNames: Record<ArcStageId, string> = {
+    spark: 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200',
+    rising: 'border-violet-400/50 bg-violet-500/10 text-violet-200',
+    crisis: 'border-amber-400/50 bg-amber-500/10 text-amber-200',
+    transformation: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200',
+    legacy: 'border-pink-400/50 bg-pink-500/10 text-pink-200',
+  };
+
   const renderCharacterChip = (artifact: Artifact, variant: ChipVariant) => {
     const baseStyles =
       'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900';
@@ -290,11 +317,14 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
         'border-slate-500/40 bg-slate-500/10 text-slate-200 hover:border-slate-400 hover:text-slate-100 focus:ring-slate-400/60',
     };
 
+    const arc = progressionMap.get(artifact.id);
+
     return (
       <button
         type="button"
         onClick={() => handleSelect(artifact.id)}
         className={`${baseStyles} ${variantStyles[variant]}`}
+        title={arc ? `${artifact.title} — ${arc.stage.label}` : artifact.title}
       >
         {artifact.title}
       </button>
@@ -303,6 +333,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
 
   const renderCharacterDetail = (artifact: Artifact, variant: ChipVariant) => {
     const descriptor = extractCharacterDescriptor(artifact);
+    const arc = progressionMap.get(artifact.id);
 
     const accentStyles: Record<ChipVariant, string> = {
       parent: 'bg-cyan-500/10 text-cyan-300',
@@ -325,10 +356,24 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
             {descriptor && <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{descriptor}</p>}
             {artifact.summary && <p className="text-xs text-slate-400 line-clamp-2">{artifact.summary}</p>}
           </div>
-          <div className={`rounded-full p-2 ${accentStyles[variant]}`}>
-            <LinkIcon className="h-4 w-4" />
+          <div className="flex flex-col items-end gap-2">
+            <div className={`rounded-full p-2 ${accentStyles[variant]}`}>
+              <LinkIcon className="h-4 w-4" />
+            </div>
+            {arc && (
+              <span
+                className={`text-[10px] font-semibold uppercase tracking-wide rounded-full border px-2 py-0.5 ${stagePillClassNames[arc.stage.id]}`}
+              >
+                {arc.stage.label}
+              </span>
+            )}
           </div>
         </div>
+        {arc && (
+          <p className="mt-2 text-[11px] text-slate-500">
+            {arc.progressPercent}% toward {arc.nextStage ? arc.nextStage.label : 'Legacy'}
+          </p>
+        )}
       </div>
     );
   };
