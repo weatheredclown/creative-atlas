@@ -198,6 +198,34 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
 
   const hasPlaceholderSections = placeholderSections.length > 0;
 
+  const substitutionMap = useMemo(() => {
+    if (!hasPlaceholderSections) {
+      return {} as Record<string, string>;
+    }
+
+    const entries: [string, string][] = [];
+
+    for (const section of placeholderSections) {
+      if (!section.isResolved) {
+        continue;
+      }
+
+      const matchedOption = section.options.find((option) => option.value === section.currentValue);
+      if (!matchedOption) {
+        continue;
+      }
+
+      const parts = [matchedOption.label];
+      if (matchedOption.description) {
+        parts.push(matchedOption.description);
+      }
+
+      entries.push([matchedOption.value, parts.join(' — ')]);
+    }
+
+    return Object.fromEntries(entries) as Record<string, string>;
+  }, [hasPlaceholderSections, placeholderSections]);
+
   const insertValueAtCursor = (value: string) => {
     if (!value) {
       return;
@@ -282,7 +310,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
     setIsLoading(true);
     setError(null);
     try {
-      const generatedText = await generateText(prompt);
+      const generatedText = await generateText(prompt, { substitutions: substitutionMap });
       setGeneratedPreview(generatedText);
       onGenerate?.(generatedText);
     } catch (err) {
