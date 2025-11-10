@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FirebaseError } from 'firebase/app';
 import { Artifact, ArtifactType } from '../../types';
 import {
   buildSimulatedHistoryHeatmap,
@@ -109,6 +110,13 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, isGuestMode } = useAuth();
 
+  const isFirestorePermissionError = (error: unknown): error is FirebaseError => {
+    return (
+      error instanceof FirebaseError &&
+      (error.code === 'permission-denied' || error.code === 'unauthenticated')
+    );
+  };
+
   const fetchKey = useMemo(() => {
     if (authLoading || isGuestMode || !user) {
       return 'skip';
@@ -135,10 +143,18 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
           setError(null);
         }
       } catch (err) {
-        console.error('Failed to load timeline heatmap data', err);
-        if (!cancelled) {
-          setTimelines([]);
-          setError('Unable to load shared timeline data. Showing local project data instead.');
+        if (isFirestorePermissionError(err)) {
+          console.warn('Timeline heatmap access requires elevated Firestore permissions. Falling back to local data.');
+          if (!cancelled) {
+            setTimelines([]);
+            setError('Shared timeline snapshots require collaborator access. Showing local project data instead.');
+          }
+        } else {
+          console.error('Failed to load timeline heatmap data', err);
+          if (!cancelled) {
+            setTimelines([]);
+            setError('Unable to load shared timeline data. Showing local project data instead.');
+          }
         }
       } finally {
         if (!cancelled) {
