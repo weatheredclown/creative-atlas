@@ -414,7 +414,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6" id="artifact-relations-panel">
         <h4 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
           <LinkIcon className="w-5 h-5 text-slate-400" /> Relations
         </h4>

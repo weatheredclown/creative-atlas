@@ -38,7 +38,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.
 
 ## Segment C — Tutorial & Education Experience
-- Build interactive stepper tutorials covering world creation, project linking, publishing, and analytics, based on `docs/stepper-tutorial-design.md`.
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
 

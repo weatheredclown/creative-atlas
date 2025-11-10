@@ -37,7 +37,10 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ items }) => {
   }
 
   return (
-    <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6">
+    <section
+      id="milestone-tracker"
+      className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-6"
+    >
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <FlagIcon className="w-5 h-5 text-cyan-400" />

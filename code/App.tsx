@@ -41,6 +41,7 @@ import ProjectWorkspace from './components/workspace/ProjectWorkspace';
 import WorkspaceSidebar from './components/WorkspaceSidebar';
 import { getDefaultDataForType } from './utils/artifactDefaults';
 import { useGitHubPublish } from './hooks/useGitHubPublish';
+import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -106,7 +107,11 @@ export default function App() {
     () => loadProjectPublishHistory(),
   );
   const [isLoadingMoreProjects, setIsLoadingMoreProjects] = useState(false);
-  const [isTutorialVisible, setIsTutorialVisible] = useState(true);
+  const [tutorialProgress, setTutorialProgress] = useState<TutorialProgressState>(() => loadTutorialProgress());
+  const [isTutorialVisible, setIsTutorialVisible] = useState(() => {
+    const progress = loadTutorialProgress();
+    return !progress.hasCompleted && !progress.wasDismissed;
+  });
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -164,6 +169,10 @@ export default function App() {
   useEffect(() => {
     persistProjectPublishHistory(projectPublishHistory);
   }, [projectPublishHistory]);
+
+  useEffect(() => {
+    persistTutorialProgress(tutorialProgress);
+  }, [tutorialProgress]);
 
   const todaysDailyQuests = useMemo(
     () => selectDailyQuestsForDate(dailyQuestDayKey),
@@ -534,6 +543,25 @@ export default function App() {
     }
   }, [canLoadMoreProjects, loadMoreProjects]);
 
+  const handleTutorialDismiss = useCallback(() => {
+    setIsTutorialVisible(false);
+    setTutorialProgress(previous => ({ ...previous, wasDismissed: true }));
+  }, []);
+
+  const handleTutorialStepChange = useCallback((step: number) => {
+    setTutorialProgress(previous => ({ ...previous, currentStep: step }));
+  }, []);
+
+  const handleTutorialComplete = useCallback(() => {
+    setTutorialProgress(previous => ({ ...previous, hasCompleted: true, wasDismissed: false }));
+    setIsTutorialVisible(false);
+  }, []);
+
+  const handleStartTutorial = useCallback(() => {
+    setTutorialProgress({ currentStep: 0, hasCompleted: false, wasDismissed: false });
+    setIsTutorialVisible(true);
+  }, []);
+
   if (!profile) {
     return <DashboardShellPlaceholder loading={loading} />;
   }
@@ -547,7 +575,12 @@ export default function App() {
       <div className="min-h-screen flex flex-col">
       {isTutorialVisible && (
         <ErrorBoundary>
-          <TutorialGuide onClose={() => setIsTutorialVisible(false)} />
+          <TutorialGuide
+            initialStep={tutorialProgress.currentStep}
+            onClose={handleTutorialDismiss}
+            onStepChange={handleTutorialStepChange}
+            onComplete={handleTutorialComplete}
+          />
         </ErrorBoundary>
       )}
       <Header
@@ -555,7 +588,7 @@ export default function App() {
         xpProgress={xpProgress}
         level={level}
         onSignOut={signOutUser}
-        onStartTutorial={() => setIsTutorialVisible(true)}
+        onStartTutorial={handleStartTutorial}
         adminAction={
           !isGuestMode ? (
             <Link

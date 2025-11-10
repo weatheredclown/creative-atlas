@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TutorialStep } from '../types';
 import { tutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
@@ -7,11 +7,27 @@ import Stepper from './Stepper';
 
 interface TutorialGuideProps {
   onClose: () => void;
+  initialStep?: number;
+  onStepChange?: (step: number) => void;
+  onComplete?: () => void;
 }
 
-const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) => {
+  const { set } = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value') ?? {};
+  set?.call(element, value);
+  const eventName = element instanceof HTMLSelectElement ? 'change' : 'input';
+  const event = new Event(eventName, { bubbles: true });
+  element.dispatchEvent(event);
+};
+
+const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose, initialStep = 0, onStepChange, onComplete }) => {
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setCurrentStep(initialStep);
+  }, [initialStep]);
 
   const handleNextStep = useCallback(() => {
     setCurrentStep((previousStep) => {
@@ -19,10 +35,14 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
         return previousStep + 1;
       }
 
-      onClose();
+      if (onComplete) {
+        onComplete();
+      } else {
+        onClose();
+      }
       return previousStep;
     });
-  }, [onClose]);
+  }, [onClose, onComplete]);
 
   const handleCancelTutorial = useCallback(
     (event: KeyboardEvent) => {
@@ -50,9 +70,13 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
 
       if (step.prefill) {
         Object.entries(step.prefill).forEach(([selector, value]) => {
-          const input = document.querySelector(selector) as HTMLInputElement;
-          if (input) {
-            input.value = value;
+          const input = document.querySelector(selector);
+          if (
+            input instanceof HTMLInputElement ||
+            input instanceof HTMLTextAreaElement ||
+            input instanceof HTMLSelectElement
+          ) {
+            setNativeValue(input, value);
           }
         });
       }
@@ -74,6 +98,23 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
     };
   }, [currentStep, handleNextStep]);
 
+  useEffect(() => {
+    onStepChange?.(currentStep);
+  }, [currentStep, onStepChange]);
+
+  useEffect(() => {
+    if (!referenceElement && contentRef.current) {
+      contentRef.current.focus();
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      contentRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [currentStep, referenceElement]);
+
   const handlePreviousStep = () => {
     setCurrentStep(previous => (previous > 0 ? previous - 1 : previous));
   };
@@ -86,7 +127,11 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({ onClose }) => {
     <>
       <Stepper steps={tutorialSteps.map(step => step.title)} currentStep={currentStep} />
       <TutorialPopover referenceElement={referenceElement}>
-        <div className="relative space-y-4 text-slate-100">
+        <div
+          ref={contentRef}
+          tabIndex={-1}
+          className="relative space-y-4 text-slate-100 focus:outline-none"
+        >
           <button
             type="button"
             onClick={onClose}
