@@ -27,7 +27,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - ✅ Family tree tools now display progression badges derived from shared arc analysis so stage overlays are consistent with the tracker.
-  - Surface the same progression badges in the relationship graph nodes and relationship summaries.
   - Define the progression state schema (status enums, timestamps) shared between character sheets and the relationship graph data model.
   - Render progression overlays within the family tree and ensure the relationship graph consumes the shared state without duplication.
 - Streamline artifact relation linking in the workspace: design and implement multi-select linking with grouped relation types to reduce repetitive scrolling.

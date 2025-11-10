@@ -70,6 +70,21 @@ export const ARC_STAGE_CONFIG: ArcStageConfig[] = [
 
 const ARC_STAGE_ORDER = ARC_STAGE_CONFIG.map((config) => config.id);
 
+export const ARC_STAGE_BADGE_BASE_CLASSES =
+  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide';
+
+export const ARC_STAGE_BADGE_COLOR_CLASSES: Record<ArcStageId, string> = {
+  spark: 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200',
+  rising: 'border-violet-400/50 bg-violet-500/10 text-violet-200',
+  crisis: 'border-amber-400/50 bg-amber-500/10 text-amber-200',
+  transformation: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200',
+  legacy: 'border-pink-400/50 bg-pink-500/10 text-pink-200',
+};
+
+export const getArcStageBadgeClassName = (stageId: ArcStageId): string => {
+  return `${ARC_STAGE_BADGE_BASE_CLASSES} ${ARC_STAGE_BADGE_COLOR_CLASSES[stageId]}`;
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const safeWordCount = (text?: string | null) => {
