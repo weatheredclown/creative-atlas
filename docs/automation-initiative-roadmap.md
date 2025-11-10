@@ -43,7 +43,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
 
 ## Segment D — Compliance & Operations
-- Formalize data retention, moderation, and privacy policies with enforcement hooks in backend services.
 - Integrate analytics & monitoring: instrument key flows, set up alerting, and document operational runbooks.
 
 ## Segment E — Research & Sequencing Queue

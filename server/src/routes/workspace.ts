@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import type { DocumentSnapshot, QueryDocumentSnapshot, Timestamp, WriteResult } from 'firebase-admin/firestore';
 import { firestore } from '../firebaseAdmin.js';
@@ -17,8 +18,28 @@ import {
   timestampToIso,
 } from '../utils/importExport.js';
 import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types.js';
+import {
+  assertArtifactContentCompliance,
+  assertProjectContentCompliance,
+  ComplianceError,
+  enforceShareLinkRetention,
+  sanitizeForExternalShare,
+} from '../compliance/enforcement.js';
 
 const router = Router();
+
+const respondWithComplianceError = (res: Response, error: unknown): error is ComplianceError => {
+  if (error instanceof ComplianceError) {
+    const status = error.violation === 'retention' ? 410 : 422;
+    res.status(status).json({
+      error: error.message,
+      violation: error.violation,
+      context: error.context ?? {},
+    });
+    return true;
+  }
+  return false;
+};
 
 const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
   const data = doc.data() ?? {};
@@ -98,6 +119,17 @@ router.get(
       return;
     }
 
+    try {
+      await enforceShareLinkRetention(shareSnapshot, async () => {
+        await shareSnapshot.ref.delete();
+      });
+    } catch (error) {
+      if (respondWithComplianceError(res, error)) {
+        return;
+      }
+      throw error;
+    }
+
     const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
     const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
     const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
@@ -124,8 +156,10 @@ router.get(
       .where('projectId', '==', projectId)
       .get();
 
-    const project = mapProject(projectSnapshot, ownerId);
-    const artifacts = artifactsSnapshot.docs.map((doc) => mapArtifact(doc, ownerId));
+    const project = sanitizeForExternalShare(mapProject(projectSnapshot, ownerId));
+    const artifacts = artifactsSnapshot.docs.map((doc) =>
+      sanitizeForExternalShare(mapArtifact(doc, ownerId)),
+    );
 
     res.json({ project, artifacts });
   }),
@@ -597,6 +631,19 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
     ? firestore.collection('projects').doc(parsed.id)
     : firestore.collection('projects').doc();
 
+  try {
+    assertProjectContentCompliance(parsed, {
+      actorId: uid,
+      projectId: docRef.id,
+      action: 'create-project',
+    });
+  } catch (error) {
+    if (respondWithComplianceError(res, error)) {
+      return;
+    }
+    throw error;
+  }
+
   if (parsed.id) {
     const existing = await docRef.get();
     if (existing.exists) {
@@ -704,6 +751,27 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
   if (parsed.summary !== undefined) update.summary = parsed.summary;
   if (parsed.status !== undefined) update.status = parsed.status;
   if (parsed.tags !== undefined) update.tags = parsed.tags;
+  if (parsed.type !== undefined) update.type = parsed.type;
+
+  try {
+    assertProjectContentCompliance(
+      {
+        title: update.title ?? snapshot.get('title'),
+        summary: update.summary ?? snapshot.get('summary'),
+        tags: update.tags ?? snapshot.get('tags'),
+      },
+      {
+        actorId: uid,
+        projectId: docRef.id,
+        action: 'update-project',
+      },
+    );
+  } catch (error) {
+    if (respondWithComplianceError(res, error)) {
+      return;
+    }
+    throw error;
+  }
 
   await docRef.set(update, { merge: true });
   const updated = await docRef.get();
@@ -792,6 +860,20 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
         return res.status(409).json({ error: `Artifact already exists: ${artifactId}` });
       }
     }
+
+    try {
+      assertArtifactContentCompliance(entry.input, {
+        actorId: uid,
+        projectId,
+        artifactId,
+        action: 'create-artifact',
+      });
+    } catch (error) {
+      if (respondWithComplianceError(res, error)) {
+        return;
+      }
+      throw error;
+    }
   }
 
   const created: Artifact[] = [];
@@ -852,6 +934,29 @@ router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedReq
   if (parsed.relations !== undefined) update.relations = parsed.relations;
   if (parsed.data !== undefined) update.data = parsed.data;
 
+  try {
+    const existing = snapshot.data() as Partial<Artifact> | undefined;
+    assertArtifactContentCompliance(
+      {
+        title: update.title ?? existing?.title,
+        summary: update.summary ?? existing?.summary,
+        tags: update.tags ?? existing?.tags,
+        type: parsed.type ?? existing?.type,
+      },
+      {
+        actorId: uid,
+        projectId: snapshot.get('projectId'),
+        artifactId: docRef.id,
+        action: 'update-artifact',
+      },
+    );
+  } catch (error) {
+    if (respondWithComplianceError(res, error)) {
+      return;
+    }
+    throw error;
+  }
+
   await docRef.set(update, { merge: true });
   const updated = await docRef.get();
   res.json(mapArtifact(updated, uid));
@@ -904,6 +1009,20 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
         return res.status(403).json({ error: 'Forbidden' });
       }
       return res.status(409).json({ error: `Artifact already exists: ${artifact.id}` });
+    }
+
+    try {
+      assertArtifactContentCompliance(artifact, {
+        actorId: uid,
+        projectId,
+        artifactId: artifact.id,
+        action: 'import-artifact',
+      });
+    } catch (error) {
+      if (respondWithComplianceError(res, error)) {
+        return;
+      }
+      throw error;
     }
   }
 
