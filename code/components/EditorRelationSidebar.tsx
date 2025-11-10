@@ -158,16 +158,17 @@ const EditorRelationSidebar: React.FC<EditorRelationSidebarProps> = ({
                       <p className="font-medium text-cyan-200">{target?.title ?? 'Unknown artifact'}</p>
                       <p className="text-xs text-slate-400">{target?.type ?? relation.toId}</p>
                     </div>
-                    {showDetailedFields && (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveRelation(artifact.id, index)}
-                        className="ml-auto text-slate-500 hover:text-red-400"
-                        aria-label={`Remove ${label} relation to ${target?.title ?? relation.toId}`}
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveRelation(artifact.id, index)}
+                      className={`ml-auto text-slate-500 hover:text-red-400 transition ${
+                        showDetailedFields ? '' : 'opacity-80 hover:opacity-100 focus-visible:opacity-100'
+                      }`}
+                      aria-label={`Remove ${label} relation to ${target?.title ?? relation.toId}`}
+                      title="Remove relation"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
                   </div>
                 );
               })
