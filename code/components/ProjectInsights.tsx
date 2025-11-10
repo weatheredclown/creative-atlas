@@ -72,7 +72,10 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ artifacts }) => {
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 space-y-6">
+    <div
+      id="project-insights-panel"
+      className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 space-y-6"
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700/60">
           <div className="flex items-center justify-between text-sm text-slate-400">

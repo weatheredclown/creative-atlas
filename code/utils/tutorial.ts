@@ -4,75 +4,91 @@ export const tutorialSteps: TutorialStep[] = [
   {
     title: 'Welcome to Creative Atlas!',
     explanation:
-      "This tutorial will guide you through creating your first project. Let's start by creating a new project.",
-    action: 'Create a New Project',
+      "This guided tour will help you spin up your first world, link its lore, and publish it for collaborators.",
+    action: 'Open the create project menu',
     target: '#create-new-project-button',
     showNextButton: true,
   },
   {
-    title: 'Creating Your Project',
+    title: 'Name your world',
     explanation:
-      "Every great story starts with a project. Give your project a name and a brief description. For our tutorial, we'll use the world of Aethelgard.",
-    action: 'Fill in project details',
+      "Give your world a title and summary. We prefilled the Aethelgard example so you can review the fields before submitting.",
+    action: 'Review and create the project',
     target: '#create-project-form',
     advanceEvent: 'submit',
     prefill: {
       '#project-title': 'Aethelgard',
-      '#project-summary': 'A world of magic and adventure.',
+      '#project-summary':
+        'Aethelgard is a realm where fading magic collides with clockwork ingenuity. Use this tutorial project as your sandbox.',
     },
   },
   {
-    title: 'Your Project Dashboard',
+    title: 'Tour the world hub',
     explanation:
-      "This is your project dashboard, where you can manage all your artifacts. Let's add your first artifact: a world-building wiki.",
-    action: 'Add a New Artifact',
+      "The hero panel summarizes tags, XP, and quick stats. Use these badges to understand the health of your world at a glance.",
+    action: 'Explore the hero stats below',
+    target: '#project-hero-panel',
+    showNextButton: true,
+  },
+  {
+    title: 'Seed your first artifact',
+    explanation:
+      "Artifacts store the stories, locations, mechanics, and relationships that define your world. Start by adding a wiki seed.",
+    action: 'Open the new artifact modal',
     target: '#add-new-artifact-button',
   },
   {
-    title: 'Adding a Wiki',
+    title: 'Draft the wiki entry',
     explanation:
-      "A wiki is a great way to organize your world's lore. Give your wiki a title and a short description.",
-    action: 'Fill in wiki details',
+      "Every artifact can include summaries, tags, and structured data. Create the starter wiki entry to hold Aethelgard’s lore.",
+    action: 'Create the wiki seed',
     target: '#create-artifact-form',
     advanceEvent: 'submit',
     prefill: {
       '#artifact-title': 'Aethelgard Wiki',
-      '#artifact-summary': 'The official wiki for the world of Aethelgard.',
+      '#artifact-summary':
+        'Collect major factions, legendary locations, and timelines that chart the realm’s shift from arcane power to clockwork.',
+      '#artifact-type': 'Wiki',
     },
   },
   {
-    title: 'Adding Content to Your Wiki',
+    title: 'Link your lore',
     explanation:
-      "Now, let's add your first wiki entry. You can create articles for characters, locations, and historical events.",
-    action: 'Create a new wiki article',
-    target: '#create-new-wiki-article-button',
+      "Relations connect artifacts so timelines, characters, and mechanics reinforce one another. Use Add Relation to weave links.",
+    action: 'Open the relation tools and connect an artifact',
+    target: '#artifact-relations-panel',
+    showNextButton: true,
   },
   {
-    title: 'Connecting Projects',
+    title: 'Track momentum with milestones',
     explanation:
-      "Creative Atlas allows you to connect your projects. Let's add a web comic and link it to your wiki.",
-    action: 'Add a new web comic project and link it to a wiki article',
-    target: '#add-web-comic-button',
+      "The milestone tracker measures readiness using objectives like graph coverage, exports, and publishing. Watch completion rise as you work.",
+    action: 'Review the milestone tracker',
+    target: '#milestone-tracker',
+    showNextButton: true,
   },
   {
-    title: 'Setting Milestones',
+    title: 'Publish your atlas',
     explanation:
-      "Milestones help you track your progress. Let's set a milestone for completing the first chapter of your web comic.",
-    action: 'Create a new milestone',
-    target: '#create-milestone-button',
-  },
-  {
-    title: 'Publishing Your World',
-    explanation:
-      "Ready to share your world? You can publish it to the Creative Atlas community. Let's publish your world.",
-    action: 'Publish your world',
+      "When you are ready to share progress, publish the atlas for collaborators or connect GitHub to deploy a static site.",
+    action: 'Trigger a publish when you are ready',
     target: '#publish-world-button',
+    showNextButton: true,
   },
   {
-    title: 'Congratulations!',
+    title: 'Study your analytics',
     explanation:
-      "Congratulations! You've created and published your first world. You can continue to build your world and share your progress with the community.",
+      "Insights highlight linked artifact coverage, quest completion, and lexicon depth so you can see where to focus next.",
+    action: 'Scan the analytics cards',
+    target: '#project-insights-panel',
+    showNextButton: true,
+  },
+  {
+    title: 'Congratulations! You built your first world.',
+    explanation:
+      "Keep adding lore, linking artifacts, and publishing updates. Restart this tutorial anytime from the header if you need a refresher.",
     action: 'Finish',
-    target: '#finish-tutorial-button',
+    target: '#project-hero-panel',
+    showNextButton: true,
   },
 ];

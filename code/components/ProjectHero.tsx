@@ -83,7 +83,10 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   const hasQuickFacts = quickFacts.length > 0;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-8 text-slate-100 shadow-xl">
+    <section
+      id="project-hero-panel"
+      className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-8 text-slate-100 shadow-xl"
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_55%)]" aria-hidden />
       <div className="relative grid gap-8 lg:grid-cols-[1.75fr,1fr]">
         <div className="space-y-6">
@@ -137,6 +140,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             <button
               type="button"
               onClick={onPublishProject}
+              id="publish-world-button"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
             >
               <BuildingStorefrontIcon className="h-4 w-4" />

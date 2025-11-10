@@ -51,6 +51,8 @@ const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, chi
         left: x ?? 0,
         width: 'max-content',
       }}
+      role="dialog"
+      aria-modal="false"
       className="z-50 rounded-xl border border-slate-800/80 bg-slate-950/95 px-5 py-4 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur"
     >
       {children}
