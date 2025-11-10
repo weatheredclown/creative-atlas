@@ -49,7 +49,7 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
     return (
       <div
         key={template.id}
-        className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-5 space-y-4 hover:border-cyan-500/50 transition-colors"
+        className="flex h-full flex-col justify-between space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 transition-colors hover:border-cyan-500/50"
       >
         <header className="flex items-start justify-between gap-4">
           <div className="space-y-2">
@@ -101,10 +101,10 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
           type="button"
           onClick={() => onApplyTemplate(template)}
           disabled={isApplyDisabled}
-          className={`flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-semibold rounded-md transition-colors border
+          className={`flex items-center justify-center gap-2 w-full rounded-md border px-4 py-2 text-sm font-semibold transition-colors
           ${isApplyDisabled
-            ? 'cursor-not-allowed text-slate-500 bg-slate-800/80 border-slate-700'
-            : 'text-cyan-100 bg-cyan-600/80 hover:bg-cyan-500 border-cyan-500/60'
+            ? 'cursor-not-allowed border-slate-700 bg-slate-800/80 text-slate-500'
+            : 'border-cyan-500/60 bg-cyan-600/80 text-cyan-100 hover:bg-cyan-500'
           }`}
         >
           <FolderPlusIcon className="w-4 h-4" />
@@ -152,7 +152,7 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
         {recommended.length > 0 && (
           <div className="space-y-4">
             <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
-            <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
               {recommended.map((template) => renderTemplateCard(template, true))}
             </div>
           </div>
@@ -162,10 +162,12 @@ const ProjectTemplatePicker: React.FC<ProjectTemplatePickerProps> = ({
           {recommended.length > 0 && (
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More kits</div>
           )}
-          <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
             {others.map((template) => renderTemplateCard(template, false))}
             {recommended.length === 0 && others.length === 0 && (
-              <p className="text-sm text-slate-500">No project templates match that search just yet. Try a different keyword.</p>
+              <p className="col-span-full text-sm text-slate-500">
+                No project templates match that search just yet. Try a different keyword.
+              </p>
             )}
           </div>
         </div>

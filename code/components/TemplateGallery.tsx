@@ -86,7 +86,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
     return (
       <div
         key={category.id}
-        className="bg-slate-900/50 border border-slate-700/60 rounded-xl p-4 space-y-3 hover:border-cyan-500/60 transition-colors"
+        className="flex h-full flex-col justify-between space-y-3 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 transition-colors hover:border-cyan-500/60"
       >
         <button
           type="button"
@@ -213,7 +213,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         {recommended.length > 0 && (
           <div className="space-y-4">
             <div className="text-xs font-semibold text-cyan-300 uppercase tracking-wide">Tailored for {activeProjectTitle}</div>
-            <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
               {recommended.map((category) => renderCategoryCard(category, true))}
             </div>
           </div>
@@ -223,10 +223,12 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           {recommended.length > 0 && (
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">More creative kits</div>
           )}
-          <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
             {others.map((category) => renderCategoryCard(category, false))}
             {recommended.length === 0 && others.length === 0 && (
-              <p className="text-sm text-slate-500">No templates match that search just yet. Try a different keyword.</p>
+              <p className="col-span-full text-sm text-slate-500">
+                No templates match that search just yet. Try a different keyword.
+              </p>
             )}
           </div>
         </div>
