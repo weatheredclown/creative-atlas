@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Artifact,
   ArtifactType,
@@ -1141,7 +1142,23 @@ export default function App() {
           <TutorialGuide onClose={() => setIsTutorialVisible(false)} />
         </ErrorBoundary>
       )}
-      <Header profile={profile} xpProgress={xpProgress} level={level} onSignOut={signOutUser} onStartTutorial={() => setIsTutorialVisible(true)} />
+      <Header
+        profile={profile}
+        xpProgress={xpProgress}
+        level={level}
+        onSignOut={signOutUser}
+        onStartTutorial={() => setIsTutorialVisible(true)}
+        adminAction={
+          !isGuestMode ? (
+            <Link
+              to="/admin/timeline-heatmap"
+              className="px-3 py-1.5 text-xs font-semibold text-cyan-200 border border-cyan-500/60 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+            >
+              Publish timelines
+            </Link>
+          ) : null
+        }
+      />
       {error && (
         <div className="px-4 sm:px-8 mt-4">
           <ErrorBanner message={error} onDismiss={clearError} />

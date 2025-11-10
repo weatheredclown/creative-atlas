@@ -11,6 +11,7 @@ import AuthGate from './components/AuthGate';
 import GitHubCallback from './components/GitHubCallback';
 import TermsOfService from './pages/TermsOfService';
 import SharedProjectPage from './pages/SharedProjectPage';
+import AdminTimelineHeatmapPublisher from './pages/AdminTimelineHeatmapPublisher';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -36,6 +37,14 @@ root.render(
             element={(
               <Protected>
                 <GitHubCallback />
+              </Protected>
+            )}
+          />
+          <Route
+            path="/admin/timeline-heatmap"
+            element={(
+              <Protected>
+                <AdminTimelineHeatmapPublisher />
               </Protected>
             )}
           />

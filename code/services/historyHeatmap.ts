@@ -1,10 +1,14 @@
 import {
   collection,
+  deleteDoc,
+  doc,
+  DocumentData,
   getDocs,
   getFirestore,
   QueryDocumentSnapshot,
-  DocumentData,
   query,
+  serverTimestamp,
+  setDoc,
   where,
 } from 'firebase/firestore';
 import firebaseApp from './firebaseApp';
@@ -23,6 +27,25 @@ export interface FirestoreTimelineHeatmapTimeline {
   timelineId: string;
   timelineTitle: string;
   events: FirestoreTimelineHeatmapEvent[];
+}
+
+export type TimelineHeatmapTimelinePayload = Omit<
+  FirestoreTimelineHeatmapTimeline,
+  'worldId' | 'worldTitle'
+>;
+
+export interface TimelineHeatmapSnapshotPayload {
+  ownerId: string;
+  worldId: string;
+  worldTitle: string;
+  timelines: TimelineHeatmapTimelinePayload[];
+}
+
+export interface TimelineHeatmapSnapshotDocument
+  extends TimelineHeatmapSnapshotPayload {
+  id: string;
+  parsedTimelines: FirestoreTimelineHeatmapTimeline[];
+  updatedAt?: unknown;
 }
 
 const HISTORY_HEATMAP_COLLECTION_SEGMENTS = ['timelineHeatmap'];
@@ -172,6 +195,172 @@ const parseTimelineDocument = (
   });
 
   return timelines;
+};
+
+const sanitizeDocumentSegment = (value: string): string => {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 120);
+};
+
+export const getTimelineHeatmapDocumentId = (
+  ownerId: string,
+  worldId: string,
+): string => {
+  const ownerSegment = sanitizeDocumentSegment(ownerId) || 'owner';
+  const worldSegment = sanitizeDocumentSegment(worldId) || 'world';
+  return `${ownerSegment}__${worldSegment}`;
+};
+
+const normalizeTimelinePayload = (
+  timeline: TimelineHeatmapTimelinePayload,
+  index: number,
+): TimelineHeatmapTimelinePayload => {
+  const timelineId = toStringSafe(timeline.timelineId) ?? `timeline-${index + 1}`;
+  const timelineTitle =
+    toStringSafe(timeline.timelineTitle) ?? `Timeline ${index + 1}`;
+
+  const events: FirestoreTimelineHeatmapEvent[] = Array.isArray(timeline.events)
+    ? timeline.events.map((event, eventIndex) => {
+        const title = toStringSafe(event.title) ?? `Event ${eventIndex + 1}`;
+        const description = toStringSafe(event.description);
+        const date = toStringSafe(event.date);
+        const id =
+          toStringSafe(event.id) ??
+          toStringSafe(event.title) ??
+          `${timelineId}-event-${eventIndex + 1}`;
+
+        const normalizedEvent: FirestoreTimelineHeatmapEvent = {
+          id,
+          title,
+        };
+
+        if (description) {
+          normalizedEvent.description = description;
+        }
+
+        if (date) {
+          normalizedEvent.date = date;
+        }
+
+        return normalizedEvent;
+      })
+    : [];
+
+  return {
+    timelineId,
+    timelineTitle,
+    events,
+  } satisfies TimelineHeatmapTimelinePayload;
+};
+
+export const publishTimelineHeatmapSnapshot = async (
+  snapshot: TimelineHeatmapSnapshotPayload,
+): Promise<string> => {
+  const firestore = getFirestore(firebaseApp);
+  const documentId = getTimelineHeatmapDocumentId(
+    snapshot.ownerId,
+    snapshot.worldId,
+  );
+  const documentRef = doc(
+    firestore,
+    ...HISTORY_HEATMAP_COLLECTION_SEGMENTS,
+    documentId,
+  );
+
+  const timelines = snapshot.timelines.map(normalizeTimelinePayload);
+
+  await setDoc(documentRef, {
+    ownerId: snapshot.ownerId,
+    worldId: snapshot.worldId,
+    worldTitle: snapshot.worldTitle,
+    timelines,
+    updatedAt: serverTimestamp(),
+  });
+
+  return documentId;
+};
+
+export const deleteTimelineHeatmapSnapshot = async (
+  documentId: string,
+): Promise<void> => {
+  const firestore = getFirestore(firebaseApp);
+  const documentRef = doc(
+    firestore,
+    ...HISTORY_HEATMAP_COLLECTION_SEGMENTS,
+    documentId,
+  );
+  await deleteDoc(documentRef);
+};
+
+const getSnapshotWorldMeta = (
+  doc: QueryDocumentSnapshot<DocumentData>,
+) => {
+  const data = doc.data();
+  const worldId =
+    toStringSafe(data.worldId) ??
+    toStringSafe(data.projectId) ??
+    doc.id;
+  const worldTitle =
+    toStringSafe(data.worldTitle) ??
+    toStringSafe(data.worldName) ??
+    toStringSafe(data.projectTitle) ??
+    worldId;
+
+  return { worldId, worldTitle };
+};
+
+export const fetchTimelineHeatmapSnapshotsForOwners = async (
+  ownerIds: string[],
+): Promise<TimelineHeatmapSnapshotDocument[]> => {
+  const firestore = getFirestore(firebaseApp);
+  const historyCollection = collection(
+    firestore,
+    ...HISTORY_HEATMAP_COLLECTION_SEGMENTS,
+  );
+
+  const normalizedOwners = Array.from(
+    new Set(
+      ownerIds
+        .map((owner) => owner.trim())
+        .filter((owner): owner is string => owner.length > 0),
+    ),
+  );
+
+  const documents: TimelineHeatmapSnapshotDocument[] = [];
+
+  for (const ownerId of normalizedOwners) {
+    const ownerQuery = query(historyCollection, where('ownerId', '==', ownerId));
+    const snapshot = await getDocs(ownerQuery);
+    snapshot.forEach((docSnapshot) => {
+      const parsedTimelines = parseTimelineDocument(docSnapshot);
+      const { worldId, worldTitle } = getSnapshotWorldMeta(docSnapshot);
+      const data = docSnapshot.data();
+      const rawTimelines = Array.isArray(data.timelines)
+        ? data.timelines.map((timeline, index) =>
+            normalizeTimelinePayload(
+              timeline as TimelineHeatmapTimelinePayload,
+              index,
+            ),
+          )
+        : [];
+
+      documents.push({
+        id: docSnapshot.id,
+        ownerId,
+        worldId,
+        worldTitle,
+        timelines: rawTimelines,
+        parsedTimelines,
+        updatedAt: data.updatedAt,
+      });
+    });
+  }
+
+  return documents;
 };
 
 export const fetchSimulatedHistoryTimelines = async (
