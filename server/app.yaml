@@ -10,3 +10,4 @@ env_variables:
   CA_GITHUB_CLIENT_SECRET: "placeholder"
   APP_BASE_URL: "placeholder"
   SESSION_SECRET: "replace_me"
+  GEMINI_API_KEY: "placeholder"

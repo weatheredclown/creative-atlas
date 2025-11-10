@@ -76,7 +76,9 @@ Set `ALLOWED_ORIGINS` (comma-separated) so deployed environments return the prop
 ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.web.app
 ```
 
-For App Engine deployments, mirror the same value in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variable automatically.
+Atlas Intelligence features now proxy Gemini requests through the backend. Provide a `GEMINI_API_KEY` in `server/.env` (and mirror it in your deployment secrets) so the Express API can authorize calls without exposing the key to the browser.
+
+For App Engine deployments, mirror these values in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variables automatically.
 
 Grant the App Engine runtime service account (by default `<project-id>@appspot.gserviceaccount.com`) the **Cloud Datastore User** and **Firebase Admin** roles so `firebase-admin` can verify ID tokens and reach Firestore. Missing permissions manifest as 5xx responses from the API; with the new error banner in the UI you will now see a warning immediately if the backend credentials need attention.
 

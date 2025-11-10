@@ -1,24 +1,9 @@
 
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
-
-const apiKey = import.meta.env.VITE_API_KEY;
-
-let cachedClient: GoogleGenAI | null = null;
-
-const getClient = (): GoogleGenAI => {
-  if (!apiKey) {
-    throw new Error('VITE_API_KEY environment variable not set');
-  }
-
-  if (!cachedClient) {
-    cachedClient = new GoogleGenAI({ apiKey });
-  }
-
-  return cachedClient;
-};
+import { requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
   type: Type.OBJECT,
@@ -151,12 +136,8 @@ export const generateLexemes = async (
   `;
 
   try {
-    const response = await getClient().models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        role: 'user',
-        parts: [{ text: prompt }],
-      },
+    const jsonText = (await requestGeminiText({
+      prompt,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -165,9 +146,7 @@ export const generateLexemes = async (
         },
         temperature: 0.8,
       },
-    });
-
-    const jsonText = response.text.trim();
+    })).trim();
     const generatedItems = JSON.parse(jsonText) as Omit<ConlangLexeme, 'id'>[];
     
     if (!Array.isArray(generatedItems)) {
@@ -210,20 +189,14 @@ export const generateProjectFromDescription = async (
   `;
 
   try {
-    const response = await getClient().models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        role: 'user',
-        parts: [{ text: prompt }],
-      },
+    const jsonText = (await requestGeminiText({
+      prompt,
       config: {
         responseMimeType: 'application/json',
         responseSchema: projectBlueprintSchema,
         temperature: 0.6,
       },
-    });
-
-    const jsonText = response.text?.trim();
+    })).trim();
     if (!jsonText) {
       throw new Error('AI response was empty.');
     }
@@ -570,18 +543,14 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
     `;
 
     try {
-        const response = await getClient().models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: {
-                role: 'user',
-                parts: [{ text: prompt }],
-            },
+        const result = await requestGeminiText({
+            prompt,
             config: {
                 temperature: 0.7,
-            }
+            },
         });
 
-        return response.text.trim();
+        return result.trim();
     } catch (error) {
         console.error('Error expanding summary with Gemini:', error);
         if (error instanceof Error) {
@@ -659,18 +628,14 @@ export const generateReleaseNotes = async ({
     `;
 
     try {
-        const response = await getClient().models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: {
-                role: 'user',
-                parts: [{ text: prompt }],
-            },
+        const result = await requestGeminiText({
+            prompt,
             config: {
                 temperature: 0.75,
             },
         });
 
-        return response.text.trim();
+        return result.trim();
     } catch (error) {
         console.error('Error generating release notes with Gemini:', error);
         if (error instanceof Error) {

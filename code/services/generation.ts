@@ -1,25 +1,9 @@
 
-import { GoogleGenAI } from '@google/genai';
+import { requestGeminiText } from './aiProxy';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const DEFAULT_TEMPERATURE = 0.85;
 const MAX_OUTPUT_TOKENS = 768;
-
-let cachedClient: GoogleGenAI | null = null;
-
-const getClient = (): GoogleGenAI | null => {
-  const apiKey = import.meta.env.VITE_API_KEY ?? import.meta.env.VITE_GENAI_API_KEY;
-
-  if (!apiKey) {
-    return null;
-  }
-
-  if (!cachedClient) {
-    cachedClient = new GoogleGenAI({ apiKey });
-  }
-
-  return cachedClient;
-};
 
 const buildFallbackResponse = (prompt: string): string => {
   const cleaned = prompt.replace(/\s+/g, ' ').trim();
@@ -60,30 +44,21 @@ export async function generateText(prompt: string): Promise<string> {
     throw new Error('Provide a prompt before calling Atlas Intelligence.');
   }
 
-  const client = getClient();
+  try {
+    const text = (await requestGeminiText({
+      prompt: trimmedPrompt,
+      model: MODEL_NAME,
+      config: {
+        temperature: DEFAULT_TEMPERATURE,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      },
+    })).trim();
 
-  if (client) {
-    try {
-      const response = await client.models.generateContent({
-        model: MODEL_NAME,
-        contents: {
-          role: 'user',
-          parts: [{ text: trimmedPrompt }],
-        },
-        config: {
-          temperature: DEFAULT_TEMPERATURE,
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-        },
-      });
-
-      const text = response.text?.trim();
-
-      if (text) {
-        return text;
-      }
-    } catch (error) {
-      console.error('Failed to generate text with Gemini:', error);
+    if (text) {
+      return text;
     }
+  } catch (error) {
+    console.error('Failed to generate text with Gemini:', error);
   }
 
   return buildFallbackResponse(trimmedPrompt);
