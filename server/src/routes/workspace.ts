@@ -751,7 +751,6 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
   if (parsed.summary !== undefined) update.summary = parsed.summary;
   if (parsed.status !== undefined) update.status = parsed.status;
   if (parsed.tags !== undefined) update.tags = parsed.tags;
-  if (parsed.type !== undefined) update.type = parsed.type;
 
   try {
     assertProjectContentCompliance(
