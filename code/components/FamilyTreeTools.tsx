@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, CharacterData } from '../types';
 import {
-  ArcStageId,
   CharacterArcEvaluation,
   evaluateCharacterArc,
+  getArcStageBadgeClassName,
 } from '../utils/characterProgression';
 import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
 
@@ -296,14 +296,6 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     }
   };
 
-  const stagePillClassNames: Record<ArcStageId, string> = {
-    spark: 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200',
-    rising: 'border-violet-400/50 bg-violet-500/10 text-violet-200',
-    crisis: 'border-amber-400/50 bg-amber-500/10 text-amber-200',
-    transformation: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200',
-    legacy: 'border-pink-400/50 bg-pink-500/10 text-pink-200',
-  };
-
   const renderCharacterChip = (artifact: Artifact, variant: ChipVariant) => {
     const baseStyles =
       'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900';
@@ -362,7 +354,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
             </div>
             {arc && (
               <span
-                className={`text-[10px] font-semibold uppercase tracking-wide rounded-full border px-2 py-0.5 ${stagePillClassNames[arc.stage.id]}`}
+                className={getArcStageBadgeClassName(arc.stage.id)}
               >
                 {arc.stage.label}
               </span>
@@ -526,24 +518,30 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
             <span>Partners</span>
             <span>Siblings</span>
           </div>
-          {relationSummaries.map((summary) => (
-            <div
-              key={summary.character.id}
-              className="grid grid-cols-5 items-center gap-2 border-b border-slate-800/50 px-3 py-2 text-sm text-slate-200 last:border-b-0"
-            >
-              <button
-                type="button"
-                onClick={() => handleSelect(summary.character.id)}
-                className="text-left font-semibold text-slate-100 transition-colors hover:text-cyan-300"
+          {relationSummaries.map((summary) => {
+            const arc = progressionMap.get(summary.character.id);
+            return (
+              <div
+                key={summary.character.id}
+                className="grid grid-cols-5 items-center gap-2 border-b border-slate-800/50 px-3 py-2 text-sm text-slate-200 last:border-b-0"
               >
-                {summary.character.title}
-              </button>
-              <span>{summary.parents}</span>
-              <span>{summary.children}</span>
-              <span>{summary.partners}</span>
-              <span>{summary.siblings}</span>
-            </div>
-          ))}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(summary.character.id)}
+                    className="text-left font-semibold text-slate-100 transition-colors hover:text-cyan-300"
+                  >
+                    {summary.character.title}
+                  </button>
+                  {arc && <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>}
+                </div>
+                <span>{summary.parents}</span>
+                <span>{summary.children}</span>
+                <span>{summary.partners}</span>
+                <span>{summary.siblings}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
