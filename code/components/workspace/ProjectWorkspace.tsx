@@ -722,6 +722,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
       >
         <QuickFactForm
           projectTitle={project.title}
+          artifacts={projectArtifacts}
           onSubmit={handleQuickFactSubmit}
           onCancel={() => {
             if (!isSavingQuickFact) {

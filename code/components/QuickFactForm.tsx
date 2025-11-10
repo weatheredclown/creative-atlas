@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import type { Artifact } from '../types';
+import { generateQuickFactInspiration } from '../services/geminiService';
 import { SparklesIcon } from './Icons';
 
 interface QuickFactFormProps {
   projectTitle: string;
+  artifacts: Artifact[];
   onSubmit: (input: { fact: string; detail?: string }) => Promise<void> | void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -14,7 +17,7 @@ interface FactPrompt {
   spark: string;
 }
 
-const FACT_PROMPTS: readonly FactPrompt[] = [
+const FALLBACK_FACT_PROMPTS: readonly FactPrompt[] = [
   {
     id: 'leyline-beacon',
     prompt: 'A dormant leyline beacon beneath headquarters pulses once at dusk, hinting that old wards are waking up.',
@@ -47,15 +50,24 @@ const FACT_PROMPTS: readonly FactPrompt[] = [
   },
 ];
 
-const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, onCancel, isSubmitting }) => {
+const QuickFactForm: React.FC<QuickFactFormProps> = ({
+  projectTitle,
+  artifacts,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}) => {
   const [fact, setFact] = useState('');
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [promptIndex, setPromptIndex] = useState(() =>
-    FACT_PROMPTS.length > 0 ? Math.floor(Math.random() * FACT_PROMPTS.length) : 0,
+  const [fallbackIndex, setFallbackIndex] = useState(() =>
+    FALLBACK_FACT_PROMPTS.length > 0 ? Math.floor(Math.random() * FALLBACK_FACT_PROMPTS.length) : 0,
   );
-
-  const surprisePrompt = useMemo(() => FACT_PROMPTS[promptIndex] ?? FACT_PROMPTS[0] ?? null, [promptIndex]);
+  const [surprisePrompt, setSurprisePrompt] = useState<FactPrompt | null>(
+    FALLBACK_FACT_PROMPTS[fallbackIndex] ?? null,
+  );
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [surpriseError, setSurpriseError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -79,20 +91,78 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
     }
   };
 
+  const getNextFallbackPrompt = useCallback((): FactPrompt | null => {
+    if (FALLBACK_FACT_PROMPTS.length === 0) {
+      return null;
+    }
+
+    let selected: FactPrompt | null = null;
+    setFallbackIndex((current) => {
+      const nextIndex = (current + 1) % FALLBACK_FACT_PROMPTS.length;
+      selected = FALLBACK_FACT_PROMPTS[nextIndex];
+      return nextIndex;
+    });
+
+    return selected ?? FALLBACK_FACT_PROMPTS[0] ?? null;
+  }, []);
+
+  const summonQuickFactPrompt = useCallback(async () => {
+    setIsGeneratingPrompt(true);
+    setSurpriseError(null);
+
+    try {
+      const inspiration = await generateQuickFactInspiration({ projectTitle, artifacts });
+      const generatedFact = inspiration.fact.trim();
+      if (!generatedFact) {
+        throw new Error('Atlas Intelligence returned an empty fact.');
+      }
+
+      const generatedSpark = inspiration.spark?.trim() ?? '';
+      const generatedPrompt: FactPrompt = {
+        id: `ai-${Date.now()}`,
+        prompt: generatedFact,
+        spark: generatedSpark,
+      };
+
+      setSurprisePrompt(generatedPrompt);
+      setFact(generatedFact);
+      setDetail('');
+      setError(null);
+    } catch (err) {
+      console.error('Failed to generate quick fact inspiration', err);
+      const fallback = getNextFallbackPrompt();
+      if (fallback) {
+        setSurprisePrompt(fallback);
+        setFact(fallback.prompt);
+        setDetail('');
+        setError(null);
+        setSurpriseError(
+          'Atlas Intelligence was unavailable, so we surfaced a saved prompt instead.',
+        );
+      } else {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Atlas Intelligence could not propose a quick fact right now.';
+        setSurpriseError(message);
+      }
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
+  }, [artifacts, getNextFallbackPrompt, projectTitle]);
+
   const handleSurpriseMe = () => {
-    if (FACT_PROMPTS.length === 0) {
+    if (isGeneratingPrompt) {
       return;
     }
-    const nextIndex = (promptIndex + 1) % FACT_PROMPTS.length;
-    setPromptIndex(nextIndex);
-    setFact(FACT_PROMPTS[nextIndex].prompt);
-    setError(null);
+    void summonQuickFactPrompt();
   };
 
   const handleCancel = () => {
     setFact('');
     setDetail('');
     setError(null);
+    setSurpriseError(null);
     onCancel();
   };
 
@@ -114,6 +184,9 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
             setFact(event.target.value);
             if (error) {
               setError(null);
+            }
+            if (surpriseError) {
+              setSurpriseError(null);
             }
           }}
           rows={3}
@@ -146,14 +219,23 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({ projectTitle, onSubmit, o
         <button
           type="button"
           onClick={handleSurpriseMe}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-amber-300 hover:text-amber-200"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-amber-300 hover:text-amber-200 disabled:cursor-not-allowed disabled:text-amber-200/60"
           aria-label="Use a surprise prompt"
+          disabled={isGeneratingPrompt}
         >
           <SparklesIcon className="h-4 w-4" />
-          Surprise me
+          {isGeneratingPrompt ? 'Summoning…' : 'Surprise me'}
         </button>
-        <p className="text-xs text-slate-500">Need inspiration? Tap Surprise me to drop in a prompt.</p>
+        <p className="text-xs text-slate-500">
+          Need inspiration? Tap Surprise me to ask Atlas Intelligence for a prompt rooted in your
+          artifacts.
+        </p>
       </div>
+      {surpriseError && (
+        <p className="text-xs text-amber-200" aria-live="polite">
+          {surpriseError}
+        </p>
+      )}
 
       <div className="flex justify-end gap-3">
         <button

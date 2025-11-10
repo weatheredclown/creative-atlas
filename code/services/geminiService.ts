@@ -110,6 +110,28 @@ const projectBlueprintSchema = {
   required: ['title', 'summary'],
 };
 
+const quickFactInspirationSchema = {
+  type: Type.OBJECT,
+  properties: {
+    fact: {
+      type: Type.STRING,
+      description:
+        'A concise quick fact (1-2 sentences) that can be saved directly into the project lore.',
+    },
+    spark: {
+      type: Type.STRING,
+      description:
+        'An optional follow-up note that suggests how to elaborate on or apply the fact inside the atlas.',
+    },
+  },
+  required: ['fact'],
+};
+
+export interface QuickFactInspiration {
+  fact: string;
+  spark?: string;
+}
+
 /**
  * Implements the "Conlang Smith" Atlas Intelligence guide.
  * Generates a batch of lexemes for a constructed language based on a theme.
@@ -304,6 +326,160 @@ const sanitizeGeneratedArtifacts = (artifacts: TemplateArtifactBlueprint[]): Tem
   }
 
   return sanitized;
+};
+
+const MAX_QUICK_FACT_ARTIFACTS = 12;
+const QUICK_FACT_TAG_SLUG = 'fact';
+const QUICK_FACT_SUMMARY_LIMIT = 180;
+
+const truncateForPrompt = (value: string, maxLength: number): string => {
+  if (!value) {
+    return '';
+  }
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength - 1).trimEnd()}\u2026`;
+};
+
+const isLikelyQuickFactArtifact = (artifact: Artifact): boolean => {
+  if (artifact.type !== ArtifactType.Wiki) {
+    return false;
+  }
+  return artifact.tags.some((tag) => tag.toLowerCase() === QUICK_FACT_TAG_SLUG);
+};
+
+const formatArtifactForQuickFactPrompt = (artifact: Artifact): string | null => {
+  const title = typeof artifact.title === 'string' ? artifact.title.trim() : '';
+  const summary = typeof artifact.summary === 'string' ? truncateForPrompt(artifact.summary.trim(), QUICK_FACT_SUMMARY_LIMIT) : '';
+  const tags = Array.isArray(artifact.tags)
+    ? artifact.tags
+        .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+        .filter((tag) => tag.length > 0)
+        .slice(0, 3)
+    : [];
+
+  const segments: string[] = [];
+  const typeLabel = artifact.type ?? ArtifactType.Wiki;
+  segments.push(`[${typeLabel}] ${title || 'Untitled Artifact'}`);
+
+  if (summary) {
+    segments.push(`Summary: ${summary}`);
+  }
+
+  if (tags.length > 0) {
+    segments.push(`Tags: ${tags.join(', ')}`);
+  }
+
+  return segments.join(' — ');
+};
+
+const buildQuickFactArtifactContext = (artifacts: Artifact[]): string[] => {
+  if (artifacts.length === 0) {
+    return [];
+  }
+
+  const prioritized = [...artifacts].sort((a, b) => {
+    const aIsQuickFact = isLikelyQuickFactArtifact(a);
+    const bIsQuickFact = isLikelyQuickFactArtifact(b);
+    if (aIsQuickFact !== bIsQuickFact) {
+      return aIsQuickFact ? 1 : -1;
+    }
+    return a.title.localeCompare(b.title);
+  });
+
+  const seen = new Set<string>();
+  const context: string[] = [];
+
+  for (const artifact of prioritized) {
+    const line = formatArtifactForQuickFactPrompt(artifact);
+    if (!line) {
+      continue;
+    }
+
+    const key = `${artifact.type}:${artifact.title}`.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    context.push(line);
+    seen.add(key);
+
+    if (context.length === MAX_QUICK_FACT_ARTIFACTS) {
+      break;
+    }
+  }
+
+  return context;
+};
+
+export const generateQuickFactInspiration = async ({
+  projectTitle,
+  artifacts,
+}: {
+  projectTitle: string;
+  artifacts: Artifact[];
+}): Promise<QuickFactInspiration> => {
+  const safeTitle = projectTitle.trim().length > 0 ? projectTitle.trim() : 'Untitled Atlas Project';
+  const artifactContext = buildQuickFactArtifactContext(artifacts);
+  const formattedArtifacts =
+    artifactContext.length > 0
+      ? artifactContext.map((line, index) => `${index + 1}. ${line}`).join('\n')
+      : 'No artifacts yet. Propose a fact that would kickstart this world-building effort.';
+
+  const prompt = [
+    'You are Quick Fact Scribe, an Atlas Intelligence guide who studies a creator\'s project artifacts.',
+    'Using the context below, draft a concise quick fact that extends, deepens, or connects existing lore without contradicting it.',
+    'Each quick fact should feel like a fresh beat of world knowledge the creator can drop into their atlas.',
+    '',
+    `Project Title: ${safeTitle}`,
+    'Existing Artifacts:',
+    formattedArtifacts,
+    '',
+    'Respond in JSON matching this schema:',
+    '{',
+    '  "fact": "1-2 sentence fact grounded in the artifacts.",',
+    '  "spark": "Optional follow-up action or note for elaboration."',
+    '}',
+    '',
+    'The fact should reference or build upon the supplied artifacts when possible. Keep the tone curious and inviting.',
+  ].join('\n');
+
+  try {
+    const jsonText = (await requestGeminiText({
+      prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: quickFactInspirationSchema,
+        temperature: 0.7,
+        maxOutputTokens: 256,
+      },
+    })).trim();
+
+    if (!jsonText) {
+      throw new Error('AI response was empty.');
+    }
+
+    const parsed = JSON.parse(jsonText) as Partial<QuickFactInspiration> | null;
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('AI response is not a valid object.');
+    }
+
+    const fact = typeof parsed.fact === 'string' ? parsed.fact.trim() : '';
+    if (!fact) {
+      throw new Error('AI response is missing a quick fact.');
+    }
+
+    const spark = typeof parsed.spark === 'string' ? parsed.spark.trim() : undefined;
+
+    return {
+      fact,
+      spark: spark && spark.length > 0 ? spark : undefined,
+    };
+  } catch (error) {
+    console.error('Error generating quick fact inspiration with Gemini:', error);
+    throw new Error('Atlas Intelligence could not propose a quick fact right now.');
+  }
 };
 
 const STOP_WORDS = new Set([
