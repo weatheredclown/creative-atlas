@@ -1,167 +1,30 @@
 import React, { useMemo } from 'react';
-import { Artifact, ArtifactType, CharacterData, isNarrativeArtifactType } from '../types';
+import { Artifact, ArtifactType } from '../types';
+import { ArcStageId, CharacterArcEvaluation, evaluateCharacterArc } from '../utils/characterProgression';
 import { FlagIcon, ShareIcon, SparklesIcon } from './Icons';
 
 interface CharacterArcTrackerProps {
   artifacts: Artifact[];
 }
 
-type ArcStageId = 'spark' | 'rising' | 'crisis' | 'transformation' | 'legacy';
-
-interface ArcStageConfig {
-  id: ArcStageId;
-  label: string;
-  minScore: number;
-  description: string;
-  recommendation: string;
-  badgeClass: string;
-  borderClass: string;
-}
-
-interface CharacterArcEntry {
+interface CharacterArcEntry extends CharacterArcEvaluation {
   character: Artifact;
-  stage: ArcStageConfig;
-  nextStage: ArcStageConfig | null;
-  progressRatio: number;
-  progressPercent: number;
-  traitCount: number;
-  bioWordCount: number;
-  summaryWordCount: number;
-  narrativeLinks: Artifact[];
-  timelineLinks: Artifact[];
-  questLinks: Artifact[];
-  suggestions: string[];
-  score: number;
 }
 
-const ARC_STAGE_CONFIG: ArcStageConfig[] = [
-  {
-    id: 'spark',
-    label: 'Spark',
-    minScore: 0,
-    description: 'A character seed is planted. Their voice exists, but the first crucible is waiting.',
-    recommendation: 'Capture an inciting beat or relationship hook to ignite their journey.',
-    badgeClass: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/60',
-    borderClass: 'border-cyan-500/40',
-  },
-  {
-    id: 'rising',
-    label: 'Rising Stakes',
-    minScore: 3.5,
-    description: 'The cast member is threaded through early beats. Stakes and contradictions surface.',
-    recommendation: 'Layer new complications or alliances that test their primary drive.',
-    badgeClass: 'bg-violet-500/20 text-violet-200 border-violet-400/60',
-    borderClass: 'border-violet-500/40',
-  },
-  {
-    id: 'crisis',
-    label: 'Crisis Point',
-    minScore: 7,
-    description: 'They collide with the arc’s core dilemma. Turning points demand irreversible choices.',
-    recommendation: 'Outline a failure or sacrifice beat that redefines their trajectory.',
-    badgeClass: 'bg-amber-500/20 text-amber-200 border-amber-400/60',
-    borderClass: 'border-amber-500/40',
-  },
-  {
-    id: 'transformation',
-    label: 'Transformation',
-    minScore: 10.5,
-    description: 'The character evolves in response to conflict. Relationships and abilities shift visibly.',
-    recommendation: 'Document the aftermath—new abilities, scars, or alliances born from the crisis.',
-    badgeClass: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/60',
-    borderClass: 'border-emerald-500/40',
-  },
-  {
-    id: 'legacy',
-    label: 'Legacy Echo',
-    minScore: 14,
-    description: 'Their choices ripple outward. Continuity, memory, and world systems adjust around them.',
-    recommendation: 'Author canon notes or exports so future modules respect their impact.',
-    badgeClass: 'bg-pink-500/20 text-pink-200 border-pink-400/60',
-    borderClass: 'border-pink-500/40',
-  },
-];
-
-const ARC_STAGE_ORDER = ARC_STAGE_CONFIG.map((config) => config.id);
-
-const selectStageForScore = (score: number): ArcStageConfig => {
-  for (let index = ARC_STAGE_CONFIG.length - 1; index >= 0; index -= 1) {
-    const config = ARC_STAGE_CONFIG[index];
-    if (score >= config.minScore) {
-      return config;
-    }
-  }
-  return ARC_STAGE_CONFIG[0];
+const stageBadgeClassNames: Record<ArcStageId, string> = {
+  spark: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/60',
+  rising: 'bg-violet-500/20 text-violet-200 border-violet-400/60',
+  crisis: 'bg-amber-500/20 text-amber-200 border-amber-400/60',
+  transformation: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/60',
+  legacy: 'bg-pink-500/20 text-pink-200 border-pink-400/60',
 };
 
-const getNextStage = (currentStage: ArcStageConfig): ArcStageConfig | null => {
-  const currentIndex = ARC_STAGE_ORDER.indexOf(currentStage.id);
-  if (currentIndex < 0 || currentIndex >= ARC_STAGE_CONFIG.length - 1) {
-    return null;
-  }
-  return ARC_STAGE_CONFIG[currentIndex + 1];
-};
-
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-const safeWordCount = (text?: string | null) => {
-  if (!text) {
-    return 0;
-  }
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  return words.length;
-};
-
-const deriveStatusScore = (status: string | undefined) => {
-  if (!status) {
-    return 0.5;
-  }
-  const normalized = status.toLowerCase();
-  if (normalized.includes('final') || normalized.includes('complete') || normalized.includes('publish')) {
-    return 3.5;
-  }
-  if (normalized.includes('revise') || normalized.includes('edit') || normalized.includes('polish')) {
-    return 2.75;
-  }
-  if (normalized.includes('progress') || normalized.includes('draft')) {
-    return 2;
-  }
-  if (normalized.includes('idea') || normalized.includes('concept')) {
-    return 1;
-  }
-  return 1.25;
-};
-
-const buildSuggestions = (
-  entry: Pick<
-    CharacterArcEntry,
-    'stage' | 'traitCount' | 'bioWordCount' | 'summaryWordCount' | 'narrativeLinks' | 'timelineLinks'
-  >,
-): string[] => {
-  const suggestions = new Set<string>();
-  suggestions.add(entry.stage.recommendation);
-
-  if (entry.narrativeLinks.length < 2) {
-    suggestions.add('Link them to additional scenes or chapters to showcase escalation.');
-  }
-
-  if (entry.timelineLinks.length === 0) {
-    suggestions.add('Anchor at least one timeline beat so continuity can track the change.');
-  }
-
-  if (entry.traitCount < 3) {
-    suggestions.add('Document three or more defining traits so their evolution is explicit.');
-  }
-
-  if (entry.bioWordCount < 120) {
-    suggestions.add('Expand the biography with emotional stakes or formative scars.');
-  }
-
-  if (entry.summaryWordCount < 40) {
-    suggestions.add('Refresh the summary with the current objective or internal conflict.');
-  }
-
-  return Array.from(suggestions).slice(0, 3);
+const stageBorderClassNames: Record<ArcStageId, string> = {
+  spark: 'border-cyan-500/40',
+  rising: 'border-violet-500/40',
+  crisis: 'border-amber-500/40',
+  transformation: 'border-emerald-500/40',
+  legacy: 'border-pink-500/40',
 };
 
 const CharacterArcTracker: React.FC<CharacterArcTrackerProps> = ({ artifacts }) => {
@@ -170,69 +33,10 @@ const CharacterArcTracker: React.FC<CharacterArcTrackerProps> = ({ artifacts }) 
   const entries = useMemo<CharacterArcEntry[]>(() => {
     return artifacts
       .filter((artifact) => artifact.type === ArtifactType.Character)
-      .map((character) => {
-        const data = (character.data as CharacterData | undefined) ?? { bio: '', traits: [] };
-        const traits = Array.isArray(data.traits) ? data.traits : [];
-        const traitCount = traits.length;
-        const bioWordCount = safeWordCount(data.bio);
-        const summaryWordCount = safeWordCount(character.summary);
-
-        const relatedArtifacts = character.relations
-          .map((relation) => lookup.get(relation.toId))
-          .filter((related): related is Artifact => Boolean(related));
-
-        const narrativeLinks = relatedArtifacts.filter(
-          (related) =>
-            isNarrativeArtifactType(related.type) ||
-            related.type === ArtifactType.Scene ||
-            related.type === ArtifactType.Chapter,
-        );
-        const timelineLinks = relatedArtifacts.filter((related) => related.type === ArtifactType.Timeline);
-        const questLinks = relatedArtifacts.filter(
-          (related) => related.type === ArtifactType.Task || related.type === ArtifactType.GameModule,
-        );
-
-        const statusScore = deriveStatusScore(character.status);
-        const traitScore = traitCount * 1.25;
-        const bioScore = Math.min(3, bioWordCount / 80);
-        const summaryScore = Math.min(2, summaryWordCount / 60);
-        const narrativeScore = narrativeLinks.length * 1.8;
-        const timelineScore = timelineLinks.length * 1.5;
-        const questScore = questLinks.length * 0.75;
-
-        const score = Number(
-          (statusScore + traitScore + bioScore + summaryScore + narrativeScore + timelineScore + questScore).toFixed(2),
-        );
-
-        const stage = selectStageForScore(score);
-        const nextStage = getNextStage(stage);
-        const nextThreshold = nextStage ? nextStage.minScore : stage.minScore + 4;
-        const progressRatio = nextStage
-          ? clamp((score - stage.minScore) / (nextThreshold - stage.minScore || 1), 0, 1)
-          : 1;
-        const progressPercent = Math.round(progressRatio * 100);
-
-        const baseEntry: CharacterArcEntry = {
-          character,
-          stage,
-          nextStage,
-          progressRatio,
-          progressPercent,
-          traitCount,
-          bioWordCount,
-          summaryWordCount,
-          narrativeLinks,
-          timelineLinks,
-          questLinks,
-          suggestions: [],
-          score,
-        };
-
-        return {
-          ...baseEntry,
-          suggestions: buildSuggestions(baseEntry),
-        };
-      })
+      .map((character) => ({
+        character,
+        ...evaluateCharacterArc(character, lookup),
+      }))
       .sort((a, b) => b.score - a.score);
   }, [artifacts, lookup]);
 
@@ -306,7 +110,7 @@ const CharacterArcTracker: React.FC<CharacterArcTrackerProps> = ({ artifacts }) 
           return (
             <article
               key={entry.character.id}
-              className={`bg-slate-950/60 border ${entry.stage.borderClass} rounded-2xl p-4 space-y-4`}
+              className={`bg-slate-950/60 border ${stageBorderClassNames[entry.stage.id]} rounded-2xl p-4 space-y-4`}
             >
               <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -314,7 +118,9 @@ const CharacterArcTracker: React.FC<CharacterArcTrackerProps> = ({ artifacts }) 
                   <p className="text-sm text-slate-400">{entry.character.summary || 'No summary provided yet.'}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${entry.stage.badgeClass}`}>
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${stageBadgeClassNames[entry.stage.id]}`}
+                  >
                     {entry.stage.label}
                   </span>
                   <span className="text-xs text-slate-500">Score: {entry.score.toFixed(1)}</span>
