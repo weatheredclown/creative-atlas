@@ -429,8 +429,9 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                     <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
                     <button
                       onClick={() => handleRemoveRelation(index)}
-                      className="ml-auto p-1 text-slate-400 hover:text-red-400"
+                      className="ml-auto p-1 text-slate-400 hover:text-red-400 transition"
                       aria-label={`Remove relation ${rel.kind} to ${target?.title ?? rel.toId}`}
+                      title="Remove relation"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -491,8 +492,18 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   const target = projectArtifacts.find((a) => a.id === rel.toId);
                   return (
                     <li key={`${rel.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
-                      <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
-                      <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(rel.kind)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
+                        <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(rel.kind)}</span>
+                        <button
+                          onClick={() => handleRemoveRelation(index)}
+                          className="ml-auto text-slate-500 hover:text-red-400 transition"
+                          aria-label={`Remove relation ${rel.kind} to ${target?.title ?? rel.toId}`}
+                          title="Remove relation"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
