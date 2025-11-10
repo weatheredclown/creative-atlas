@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { AIAssistant } from '../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AIAssistant, Artifact, ArtifactType, Project } from '../types';
 import { IntelligenceLogo, BookOpenIcon } from './Icons';
 import { generateText } from '../services/generation';
+import { useUserData } from '../contexts/UserDataContext';
+import { milestoneRoadmap } from '../src/data/milestones';
 
 interface AICopilotPanelProps {
   assistants: AIAssistant[];
@@ -11,7 +13,143 @@ interface AICopilotPanelProps {
 const EMPTY_PANEL_MESSAGE =
   'Atlas Intelligence is not configured yet. Add a guide in your workspace settings to unlock creative prompts.';
 
+interface PromptStructure {
+  name: string;
+  args: string[];
+}
+
+interface PlaceholderOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+interface PlaceholderContext {
+  projects: Project[];
+  artifacts: Artifact[];
+  projectMap: Map<string, Project>;
+}
+
+interface PlaceholderSection {
+  placeholder: string;
+  index: number;
+  options: PlaceholderOption[];
+  currentValue: string;
+  isResolved: boolean;
+}
+
+const placeholderLabels: Record<string, string> = {
+  projectId: 'Project',
+  artifactId: 'Artifact',
+  focusArtifactId: 'Focus Artifact',
+  conlangId: 'Conlang',
+  milestoneId: 'Milestone',
+  characterId: 'Character',
+  timelineId: 'Timeline',
+  sceneId: 'Scene',
+  planId: 'Plan',
+};
+
+const parsePromptStructure = (input: string): PromptStructure | null => {
+  const match = input.match(/^([a-z0-9_]+)\s*\((.*)\)\s*$/i);
+  if (!match) {
+    return null;
+  }
+  const [, name, argsPart] = match;
+  const rawArgs = argsPart.split(',').map((argument) => argument.trim());
+  const args = rawArgs.length === 1 && rawArgs[0] === '' ? [] : rawArgs;
+  return { name, args };
+};
+
+const formatArtifactType = (type: ArtifactType): string => type.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+const createProjectOptions = (projects: Project[]): PlaceholderOption[] =>
+  projects
+    .map((project) => ({
+      value: project.id,
+      label: project.title,
+      description: project.summary,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+const createArtifactOptions = (
+  artifacts: Artifact[],
+  projectMap: Map<string, Project>,
+  filter?: (artifact: Artifact) => boolean,
+): PlaceholderOption[] =>
+  artifacts
+    .filter((artifact) => (filter ? filter(artifact) : true))
+    .map((artifact) => {
+      const project = projectMap.get(artifact.projectId);
+      const projectLabel = project ? project.title : artifact.projectId;
+      const typeLabel = formatArtifactType(artifact.type);
+      const summary = artifact.summary?.trim();
+      const descriptionParts = [`Project: ${projectLabel}`];
+      if (summary) {
+        descriptionParts.push(summary);
+      }
+      return {
+        value: artifact.id,
+        label: `${artifact.title} — ${typeLabel}`,
+        description: descriptionParts.join(' • '),
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+const milestoneOptions: PlaceholderOption[] = milestoneRoadmap
+  .map((milestone) => ({
+    value: milestone.id,
+    label: milestone.title,
+    description: milestone.focus,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+const getPlaceholderOptions = (placeholder: string, context: PlaceholderContext): PlaceholderOption[] => {
+  switch (placeholder) {
+    case 'projectId':
+      return createProjectOptions(context.projects);
+    case 'artifactId':
+    case 'focusArtifactId':
+      return createArtifactOptions(context.artifacts, context.projectMap);
+    case 'conlangId':
+      return createArtifactOptions(
+        context.artifacts,
+        context.projectMap,
+        (artifact) => artifact.type === ArtifactType.Conlang,
+      );
+    case 'characterId':
+      return createArtifactOptions(
+        context.artifacts,
+        context.projectMap,
+        (artifact) => artifact.type === ArtifactType.Character,
+      );
+    case 'timelineId':
+      return createArtifactOptions(
+        context.artifacts,
+        context.projectMap,
+        (artifact) => artifact.type === ArtifactType.Timeline,
+      );
+    case 'sceneId':
+      return createArtifactOptions(
+        context.artifacts,
+        context.projectMap,
+        (artifact) => artifact.type === ArtifactType.Scene,
+      );
+    case 'planId':
+      return createArtifactOptions(
+        context.artifacts,
+        context.projectMap,
+        (artifact) => artifact.type === ArtifactType.Task,
+      );
+    case 'milestoneId':
+      return milestoneOptions;
+    default:
+      return [];
+  }
+};
+
 const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate }) => {
+  const { projects, artifacts } = useUserData();
   const [activeId, setActiveId] = useState<string>(assistants[0]?.id ?? '');
   const activeAssistant = useMemo(
     () => assistants.find((assistant) => assistant.id === activeId) ?? assistants[0],
@@ -22,6 +160,95 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
   const [promptInput, setPromptInput] = useState(activeAssistant?.promptSlots[0] ?? '');
   const [error, setError] = useState<string | null>(null);
   const [generatedPreview, setGeneratedPreview] = useState('');
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+  const slotTemplate = activeAssistant?.promptSlots[selectedPromptIndex] ?? '';
+  const templateStructure = useMemo(() => parsePromptStructure(slotTemplate), [slotTemplate]);
+  const currentStructure = useMemo(() => parsePromptStructure(promptInput), [promptInput]);
+  const placeholderSections = useMemo(() => {
+    if (!templateStructure || !currentStructure) {
+      return [] as PlaceholderSection[];
+    }
+
+    if (
+      templateStructure.name !== currentStructure.name ||
+      templateStructure.args.length !== currentStructure.args.length
+    ) {
+      return [] as PlaceholderSection[];
+    }
+
+    return templateStructure.args
+      .map<PlaceholderSection | null>((placeholder, index) => {
+        const options = getPlaceholderOptions(placeholder, { projects, artifacts, projectMap });
+        if (options.length === 0) {
+          return null;
+        }
+        const currentValue = currentStructure.args[index] ?? placeholder;
+        const isResolved = currentValue !== placeholder;
+        return {
+          placeholder,
+          index,
+          options,
+          currentValue,
+          isResolved,
+        };
+      })
+      .filter((section): section is PlaceholderSection => section !== null);
+  }, [templateStructure, currentStructure, projects, artifacts, projectMap]);
+
+  const hasPlaceholderSections = placeholderSections.length > 0;
+
+  const insertValueAtCursor = (value: string) => {
+    if (!value) {
+      return;
+    }
+    const textarea = promptTextareaRef.current;
+    const fallbackPosition = promptInput.length;
+    const selectionStart = textarea?.selectionStart ?? fallbackPosition;
+    const selectionEnd = textarea?.selectionEnd ?? fallbackPosition;
+
+    setPromptInput((current) => {
+      const before = current.slice(0, selectionStart);
+      const after = current.slice(selectionEnd);
+      return `${before}${value}${after}`;
+    });
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const target = promptTextareaRef.current;
+        if (target) {
+          const newPosition = selectionStart + value.length;
+          target.selectionStart = newPosition;
+          target.selectionEnd = newPosition;
+          target.focus();
+        }
+      });
+    }
+  };
+
+  const handlePlaceholderOptionChange = (section: PlaceholderSection, nextValue: string) => {
+    if (!templateStructure) {
+      insertValueAtCursor(nextValue);
+      return;
+    }
+
+    const parsed = parsePromptStructure(promptInput);
+    if (!parsed || parsed.name !== templateStructure.name || parsed.args.length !== templateStructure.args.length) {
+      insertValueAtCursor(nextValue);
+      return;
+    }
+
+    const nextArgs = [...parsed.args];
+    nextArgs[section.index] = nextValue;
+    setPromptInput(`${parsed.name}(${nextArgs.join(', ')})`);
+    setTimeout(() => {
+      promptTextareaRef.current?.focus();
+    }, 0);
+  };
+
+  const handlePlaceholderReset = (section: PlaceholderSection) => {
+    handlePlaceholderOptionChange(section, section.placeholder);
+  };
 
   useEffect(() => {
     setSelectedPromptIndex(0);
@@ -144,12 +371,76 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
                 </label>
                 <textarea
                   id="atlas-intelligence-custom-prompt"
+                  ref={promptTextareaRef}
                   value={promptInput}
                   onChange={(event) => setPromptInput(event.target.value)}
                   className="w-full min-h-[120px] rounded-lg border border-slate-700/60 bg-slate-950/70 p-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   placeholder="Describe what you want Atlas Intelligence to generate."
                 />
               </div>
+              {hasPlaceholderSections && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Browse your workspace
+                  </p>
+                  {placeholderSections.map((section) => {
+                    const friendlyLabel = placeholderLabels[section.placeholder] ?? section.placeholder;
+                    return (
+                      <div
+                        key={`${section.placeholder}-${section.index}`}
+                        className="space-y-3 rounded-lg border border-slate-800/60 bg-slate-900/70 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-100">{friendlyLabel}</p>
+                            <p className="text-xs text-slate-400">
+                              Insert a {friendlyLabel.toLowerCase()} reference into the prompt.
+                            </p>
+                          </div>
+                          {section.isResolved && (
+                            <span className="rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-xs font-mono text-cyan-200">
+                              {section.currentValue}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid max-h-52 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                          {section.options.map((option) => {
+                            const isActive = section.currentValue === option.value;
+                            return (
+                              <button
+                                type="button"
+                                key={option.value}
+                                onClick={() => handlePlaceholderOptionChange(section, option.value)}
+                                className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                                  isActive
+                                    ? 'border-cyan-500/70 bg-cyan-600/20 text-cyan-100 shadow-inner shadow-cyan-900/20'
+                                    : 'border-slate-700/60 bg-slate-900/40 text-slate-200 hover:border-cyan-400/60 hover:text-cyan-100'
+                                }`}
+                              >
+                                <span className="text-sm font-semibold">{option.label}</span>
+                                {option.description && (
+                                  <span className="mt-1 block text-xs text-slate-400">{option.description}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {section.isResolved && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handlePlaceholderReset(section)}
+                              className="text-xs text-slate-400 transition-colors hover:text-slate-200"
+                            >
+                              Reset selection
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {error && <p className="text-sm text-rose-300">{error}</p>}
             </div>
             <div className="mt-4">

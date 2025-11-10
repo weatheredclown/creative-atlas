@@ -73,7 +73,7 @@ const WikiEditor: React.FC<WikiEditorProps> = ({ artifact, onUpdateArtifactData,
           <div
             role="region"
             aria-labelledby="wiki-live-preview-label"
-            className="w-full h-[500px] bg-slate-900/70 border border-slate-700 rounded-md p-3 text-slate-300 prose prose-sm prose-invert max-w-none"
+            className="w-full h-[500px] bg-slate-900/70 border border-slate-700 rounded-md p-3 text-slate-300 prose prose-sm prose-invert max-w-none overflow-y-auto break-words"
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         </div>
