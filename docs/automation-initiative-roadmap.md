@@ -17,6 +17,10 @@ This document tracks the multi-session automation initiative to deliver the full
 - Add a static analysis guard (custom ESLint rule or TypeScript check) that rejects `import type` usage for runtime enums like `ArtifactType` to prevent regressions similar to the recent production crash. (Hotfixed the immediate regression by switching `utils/artifactMetrics.ts` back to a value import; guard still needed.)
 
 ## Segment B — Feature Depth & Design Polish
+- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
+- Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed); next add progression state overlays and sync them with the relationship graph.
+- Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; next add progression state overlays and sync them with the relationship graph.
+- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
 - Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
   - Draft the Firestore aggregation (REST endpoint or callable function) that buckets timeline events for consumption by the heatmap component.
   - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
