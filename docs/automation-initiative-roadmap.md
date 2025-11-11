@@ -23,12 +23,11 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Kanban board normalizes missing task states so workspace cards stay visible when tasks lack a stored status.
 
 ## Segment B — Feature Depth & Design Polish
-- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
+- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
   - ✅ Expose an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
 - Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed); next add progression state overlays and sync them with the relationship graph.
 - Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
 - Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
-  - Draft the Firestore aggregation (REST endpoint or callable function) that buckets timeline events for consumption by the heatmap component.
   - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
   - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
   - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
