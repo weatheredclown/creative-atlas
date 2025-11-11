@@ -3,7 +3,7 @@ import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const DEFAULT_TEMPERATURE = 0.85;
-const MAX_OUTPUT_TOKENS = 768;
+const MAX_OUTPUT_TOKENS = 2048;
 
 const applySubstitutions = (input: string, substitutions?: Record<string, string>): string => {
   if (!substitutions || Object.keys(substitutions).length === 0) {
