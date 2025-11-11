@@ -4,6 +4,7 @@ import ArtifactDetail from '../ArtifactDetail';
 import ArtifactListItem from '../ArtifactListItem';
 import CharacterEditor from '../CharacterEditor';
 import ConlangLexiconEditor from '../ConlangLexiconEditor';
+import ErrorBoundary, { type ErrorBoundaryFallbackProps } from '../ErrorBoundary';
 import GraphView from '../GraphView';
 import KanbanBoard from '../KanbanBoard';
 import LocationEditor from '../LocationEditor';
@@ -76,6 +77,7 @@ interface WorkspaceArtifactPanelProps {
   onLoreJsonExport: () => void;
   canUseDataApi: boolean;
   detailSectionRef: React.MutableRefObject<HTMLDivElement | null>;
+  onWorkspaceError: (message: string) => void;
 }
 
 const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
@@ -120,6 +122,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   onLoreJsonExport,
   canUseDataApi,
   detailSectionRef,
+  onWorkspaceError,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -406,85 +409,131 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
         </div>
 
         {selectedArtifact ? (
-          <div ref={detailSectionRef} className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6">
-            {isSelectedArtifactHidden ? (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
-                This artifact is hidden by the current filters. Reset filters to keep it in view while editing.
-              </div>
-            ) : null}
-            <ArtifactDetail
-              project={project}
-              artifact={selectedArtifact}
-              allArtifacts={allArtifacts}
-              onUpdate={onUpdateArtifact}
-              onUpdateData={onUpdateArtifactData}
-              onDuplicate={onDuplicateArtifact}
-              onDelete={onDeleteArtifact}
-              onAddRelation={onAddRelation}
-              onRemoveRelation={onRemoveRelation}
-              onClose={() => onSelectArtifact(null)}
-            />
-            {selectedArtifact.type === ArtifactType.Conlang ? (
-              <ConlangLexiconEditor
+          <ErrorBoundary
+            resetKeys={[selectedArtifact.id]}
+            onError={() => {
+              const artifactLabel = selectedArtifact.title?.trim().length
+                ? selectedArtifact.title.trim()
+                : 'this artifact';
+              onWorkspaceError(
+                `We couldn't render ${artifactLabel}. Try closing it or refreshing your workspace before editing again.`,
+              );
+            }}
+            fallback={({ reset }: ErrorBoundaryFallbackProps) => {
+              const artifactLabel = selectedArtifact.title?.trim().length
+                ? selectedArtifact.title.trim()
+                : 'this artifact';
+              return (
+                <div
+                  ref={detailSectionRef}
+                  className="space-y-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-6 text-rose-100"
+                >
+                  <div className="space-y-2">
+                    <h4 className="text-lg font-semibold">We hit a snag while opening {artifactLabel}.</h4>
+                    <p className="text-sm text-rose-100/80">
+                      The rest of your workspace is safe. Try again or close this artifact before refreshing the page.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="rounded-md border border-rose-400/60 bg-rose-500/20 px-4 py-2 text-sm font-semibold text-rose-50 transition-colors hover:border-rose-300 hover:bg-rose-500/30"
+                    >
+                      Try again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSelectArtifact(null)}
+                      className="rounded-md border border-rose-400/30 px-4 py-2 text-sm font-semibold text-rose-100 transition-colors hover:border-rose-300/60 hover:text-rose-50"
+                    >
+                      Close artifact
+                    </button>
+                  </div>
+                </div>
+              );
+            }}
+          >
+            <div ref={detailSectionRef} className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6">
+              {isSelectedArtifactHidden ? (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                  This artifact is hidden by the current filters. Reset filters to keep it in view while editing.
+                </div>
+              ) : null}
+              <ArtifactDetail
+                project={project}
                 artifact={selectedArtifact}
-                conlangName={project.title}
-                onLexemesChange={(id, lexemes) => onUpdateArtifactData(id, lexemes)}
-                addXp={addXp}
-              />
-            ) : null}
-            {isNarrativeArtifactType(selectedArtifact.type) ? (
-              <StoryEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, scenes) => onUpdateArtifactData(id, scenes)}
-                projectArtifacts={projectArtifacts}
+                allArtifacts={allArtifacts}
+                onUpdate={onUpdateArtifact}
+                onUpdateData={onUpdateArtifactData}
+                onDuplicate={onDuplicateArtifact}
+                onDelete={onDeleteArtifact}
                 onAddRelation={onAddRelation}
                 onRemoveRelation={onRemoveRelation}
+                onClose={() => onSelectArtifact(null)}
               />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.Character ? (
-              <CharacterEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                projectArtifacts={projectArtifacts}
-                onAddRelation={onAddRelation}
-                onRemoveRelation={onRemoveRelation}
-              />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.Wiki ? (
-              <WikiEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                assistants={aiAssistants}
-              />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.Location ? (
-              <LocationEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                projectArtifacts={projectArtifacts}
-                onAddRelation={onAddRelation}
-                onRemoveRelation={onRemoveRelation}
-              />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.MagicSystem ? (
-              <MagicSystemBuilder
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-              />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.Task ? (
-              <TaskEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-              />
-            ) : null}
-            {selectedArtifact.type === ArtifactType.Timeline ? (
-              <TimelineEditor
-                artifact={selectedArtifact}
-                onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-              />
-            ) : null}
-          </div>
+              {selectedArtifact.type === ArtifactType.Conlang ? (
+                <ConlangLexiconEditor
+                  artifact={selectedArtifact}
+                  conlangName={project.title}
+                  onLexemesChange={(id, lexemes) => onUpdateArtifactData(id, lexemes)}
+                  addXp={addXp}
+                />
+              ) : null}
+              {isNarrativeArtifactType(selectedArtifact.type) ? (
+                <StoryEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, scenes) => onUpdateArtifactData(id, scenes)}
+                  projectArtifacts={projectArtifacts}
+                  onAddRelation={onAddRelation}
+                  onRemoveRelation={onRemoveRelation}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Character ? (
+                <CharacterEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  projectArtifacts={projectArtifacts}
+                  onAddRelation={onAddRelation}
+                  onRemoveRelation={onRemoveRelation}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Wiki ? (
+                <WikiEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  assistants={aiAssistants}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Location ? (
+                <LocationEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  projectArtifacts={projectArtifacts}
+                  onAddRelation={onAddRelation}
+                  onRemoveRelation={onRemoveRelation}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.MagicSystem ? (
+                <MagicSystemBuilder
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Task ? (
+                <TaskEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Timeline ? (
+                <TimelineEditor
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                />
+              ) : null}
+            </div>
+          </ErrorBoundary>
         ) : null}
       </div>
     </section>

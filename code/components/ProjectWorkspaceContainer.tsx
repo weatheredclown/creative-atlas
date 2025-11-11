@@ -79,6 +79,7 @@ interface ProjectWorkspaceContainerProps {
   upcomingMilestoneOverview: MilestoneProgressOverview | null;
   canUseDataApi: boolean;
   canPublishToGitHub: boolean;
+  onWorkspaceError: (message: string) => void;
 }
 
 type ProjectWorkspaceContainerComponent = React.FC<ProjectWorkspaceContainerProps>;
@@ -125,6 +126,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   upcomingMilestoneOverview,
   canUseDataApi,
   canPublishToGitHub,
+  onWorkspaceError,
 }) => {
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
   const previousSelectedArtifactIdRef = useRef<string | null>(null);
@@ -320,6 +322,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
             canUseDataApi={canUseDataApi}
             detailSectionRef={detailSectionRef}
             addXp={addXp}
+            onWorkspaceError={onWorkspaceError}
           />
         </div>
       </section>
