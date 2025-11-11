@@ -8,6 +8,7 @@ import {
   TaskData,
   TASK_STATE,
   CharacterData,
+  CHARACTER_PROGRESSION_STATUS,
   WikiData,
   TimelineData,
   MemorySyncConversation,
@@ -69,6 +70,23 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 't3', key: 'Burden', value: 'Haunted by the Dawn Gate sacrifice.' },
           { id: 't4', key: 'Signature Move', value: 'Threads spectral relic copies to bypass wards.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Drafting,
+          stageId: 'crisis',
+          statusChangedAt: '2024-03-12T15:30:00.000Z',
+          stageChangedAt: '2024-03-10T18:00:00.000Z',
+          updatedAt: '2024-03-12T15:30:00.000Z',
+          updatedBy: 'seed',
+          note: 'Escalated Dawn Gate fallout in chapter three.',
+          history: [
+            {
+              status: CHARACTER_PROGRESSION_STATUS.Exploring,
+              stageId: 'rising',
+              changedAt: '2024-02-01T12:00:00.000Z',
+              changedBy: 'seed',
+            },
+          ],
+        },
       } as CharacterData,
     },
     {
@@ -97,6 +115,23 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'li-trait-2', key: 'Conflict', value: 'Integrates Dustland tech into holy threadweaving rites.' },
           { id: 'li-trait-3', key: 'Promise', value: 'Will not let another protege pay the Dawn Gate price.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Revising,
+          stageId: 'transformation',
+          statusChangedAt: '2024-04-05T10:45:00.000Z',
+          stageChangedAt: '2024-04-04T09:00:00.000Z',
+          updatedAt: '2024-04-05T10:45:00.000Z',
+          updatedBy: 'seed',
+          note: 'Integrating Dustland resonance arcs into mentor scenes.',
+          history: [
+            {
+              status: CHARACTER_PROGRESSION_STATUS.Drafting,
+              stageId: 'crisis',
+              changedAt: '2024-03-18T08:20:00.000Z',
+              changedBy: 'seed',
+            },
+          ],
+        },
       } as CharacterData,
     },
     {
@@ -119,6 +154,22 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'av-trait-1', key: 'Age', value: '63' },
           { id: 'av-trait-2', key: 'Focus', value: 'Preserving the archive line without repeating past sacrifices.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Canonized,
+          stageId: 'legacy',
+          statusChangedAt: '2023-12-19T17:05:00.000Z',
+          stageChangedAt: '2023-12-01T09:30:00.000Z',
+          updatedAt: '2023-12-19T17:05:00.000Z',
+          updatedBy: 'seed',
+          history: [
+            {
+              status: CHARACTER_PROGRESSION_STATUS.Revising,
+              stageId: 'transformation',
+              changedAt: '2023-11-11T14:10:00.000Z',
+              changedBy: 'seed',
+            },
+          ],
+        },
       } as CharacterData,
     },
     {
@@ -141,6 +192,23 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'th-trait-1', key: 'Age', value: '65' },
           { id: 'th-trait-2', key: 'Specialty', value: 'Tactical threadweaving and negotiation.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Revising,
+          stageId: 'rising',
+          statusChangedAt: '2024-02-26T21:15:00.000Z',
+          stageChangedAt: '2024-02-12T16:00:00.000Z',
+          updatedAt: '2024-02-26T21:15:00.000Z',
+          updatedBy: 'seed',
+          note: 'Polishing diplomatic fallout sequences.',
+          history: [
+            {
+              status: CHARACTER_PROGRESSION_STATUS.Drafting,
+              stageId: 'spark',
+              changedAt: '2024-01-08T10:00:00.000Z',
+              changedBy: 'seed',
+            },
+          ],
+        },
       } as CharacterData,
     },
     {
@@ -163,6 +231,15 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'jo-trait-1', key: 'Age', value: '29' },
           { id: 'jo-trait-2', key: 'Role', value: 'Archive scout and anomaly cartographer.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Exploring,
+          stageId: 'spark',
+          statusChangedAt: '2024-03-02T13:05:00.000Z',
+          stageChangedAt: '2024-03-02T13:05:00.000Z',
+          updatedAt: '2024-03-12T11:00:00.000Z',
+          updatedBy: 'seed',
+          note: 'Gathering anomaly field notes from the Dustland breaches.',
+        },
       } as CharacterData,
     },
     {
@@ -184,6 +261,22 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'ma-trait-1', key: 'Age', value: '31' },
           { id: 'ma-trait-2', key: 'Expertise', value: 'Hybridizing Dustland resonators with archive wards.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Drafting,
+          stageId: 'rising',
+          statusChangedAt: '2024-01-22T07:45:00.000Z',
+          stageChangedAt: '2024-01-20T18:30:00.000Z',
+          updatedAt: '2024-02-15T19:15:00.000Z',
+          updatedBy: 'seed',
+          history: [
+            {
+              status: CHARACTER_PROGRESSION_STATUS.Concept,
+              stageId: 'spark',
+              changedAt: '2023-12-28T09:00:00.000Z',
+              changedBy: 'seed',
+            },
+          ],
+        },
       } as CharacterData,
     },
     {
@@ -205,6 +298,15 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           { id: 'ta-trait-1', key: 'Age', value: '7' },
           { id: 'ta-trait-2', key: 'Dream', value: 'Bridge the archive and Dustland schools without loss.' },
         ],
+        progression: {
+          status: CHARACTER_PROGRESSION_STATUS.Concept,
+          stageId: 'spark',
+          statusChangedAt: '2024-04-10T09:00:00.000Z',
+          stageChangedAt: '2024-04-10T09:00:00.000Z',
+          updatedAt: '2024-04-10T09:00:00.000Z',
+          updatedBy: 'seed',
+          note: 'Awaiting first spotlight chapter to push toward rising stakes.',
+        },
       } as CharacterData,
     },
     {
