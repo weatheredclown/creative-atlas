@@ -18,6 +18,7 @@
     "@floating-ui/react": "^0.27.16",
     "@floating-ui/react-dom": "^2.1.6",
     "@google/generative-ai": "^0.24.1",
+    "dagre": "^0.8.5",
     "firebase": "^12.4.0",
     "jspdf": "^3.0.3",
     "jszip": "^3.10.1",
