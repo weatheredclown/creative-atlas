@@ -1,6 +1,7 @@
-import React from 'react';
-import { Artifact, Project } from '../types';
+import React, { useMemo } from 'react';
+import { Artifact, Project, TutorialLanguage } from '../types';
 import { PlusIcon, SparklesIcon, BuildingStorefrontIcon } from './Icons';
+import { getSupportContent } from '../utils/supportContent';
 
 const formatNumber = (value: number): string =>
   new Intl.NumberFormat('en-US', { notation: value > 9999 ? 'compact' : 'standard' }).format(value);
@@ -28,6 +29,7 @@ interface ProjectHeroProps {
   onSelectQuickFact: (id: string) => void;
   level: number;
   xpProgress: number;
+  language: TutorialLanguage;
 }
 
 const StatPill: React.FC<{ label: string; value: number; tone?: 'default' | 'accent' }> = ({ label, value, tone = 'default' }) => (
@@ -79,8 +81,10 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   onSelectQuickFact,
   level,
   xpProgress,
+  language,
 }) => {
   const hasQuickFacts = quickFacts.length > 0;
+  const supportContent = useMemo(() => getSupportContent(language), [language]);
 
   return (
     <section
@@ -125,6 +129,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
               type="button"
               onClick={onCreateArtifact}
               className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+              title={supportContent.tooltips.newArtifact}
             >
               <PlusIcon className="h-4 w-4" />
               New artifact
@@ -133,6 +138,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
               type="button"
               onClick={onCaptureQuickFact}
               className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+              title={supportContent.tooltips.captureFact}
             >
               <SparklesIcon className="h-4 w-4" />
               Capture fact
@@ -142,6 +148,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
               onClick={onPublishProject}
               id="publish-world-button"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+              title={supportContent.tooltips.publishProject}
             >
               <BuildingStorefrontIcon className="h-4 w-4" />
               Publish atlas
@@ -180,6 +187,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                 type="button"
                 onClick={onCaptureQuickFact}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-500/20"
+                title={supportContent.tooltips.captureFact}
               >
                 <SparklesIcon className="h-3.5 w-3.5" />
                 Add your first fact

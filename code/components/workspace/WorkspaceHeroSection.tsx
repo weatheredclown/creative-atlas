@@ -9,6 +9,7 @@ import {
   type Project,
   type ProjectComponentKey,
   type ProjectVisibilitySettings,
+  TutorialLanguage,
 } from '../../types';
 import type { QuickFactModalOptions } from './types';
 
@@ -24,6 +25,7 @@ interface WorkspaceHeroSectionProps {
   showProjectOverview: boolean;
   showQuickFactsPanel: boolean;
   visibilitySettings: ProjectVisibilitySettings;
+  tutorialLanguage: TutorialLanguage;
   onOpenCreateArtifactModal: () => void;
   onOpenQuickFactModal: (options?: QuickFactModalOptions) => void;
   onPublishProject: () => void;
@@ -46,6 +48,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
   showProjectOverview,
   showQuickFactsPanel,
   visibilitySettings,
+  tutorialLanguage,
   onOpenCreateArtifactModal,
   onOpenQuickFactModal,
   onPublishProject,
@@ -69,6 +72,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         onSelectQuickFact={(artifactId) => onSelectArtifact(artifactId)}
         level={level}
         xpProgress={xpProgress}
+        language={tutorialLanguage}
       />
     ) : null}
     <ProjectSharePanel project={project} />

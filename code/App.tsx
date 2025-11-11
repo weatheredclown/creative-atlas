@@ -43,6 +43,9 @@ import WorkspaceSidebar from './components/WorkspaceSidebar';
 import { getDefaultDataForType } from './utils/artifactDefaults';
 import { useGitHubPublish } from './hooks/useGitHubPublish';
 import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
+import OnboardingBanner from './components/OnboardingBanner';
+
+const WORKSPACE_WELCOME_BANNER_ID = 'workspace-welcome';
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -564,12 +567,27 @@ export default function App() {
       hasCompleted: false,
       wasDismissed: false,
       language: previous.language,
+      dismissedBanners: previous.dismissedBanners,
     }));
     setIsTutorialVisible(true);
   }, []);
 
   const handleTutorialLanguageChange = useCallback((language: TutorialLanguage) => {
     setTutorialProgress(previous => ({ ...previous, language }));
+  }, []);
+
+  const hasDismissedWorkspaceBanner = tutorialProgress.dismissedBanners.includes(WORKSPACE_WELCOME_BANNER_ID);
+
+  const handleDismissWorkspaceBanner = useCallback(() => {
+    setTutorialProgress(previous => {
+      if (previous.dismissedBanners.includes(WORKSPACE_WELCOME_BANNER_ID)) {
+        return previous;
+      }
+      return {
+        ...previous,
+        dismissedBanners: [...previous.dismissedBanners, WORKSPACE_WELCOME_BANNER_ID],
+      };
+    });
   }, []);
 
   if (!profile) {
@@ -618,6 +636,12 @@ export default function App() {
         </div>
       )}
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
+        {!hasDismissedWorkspaceBanner && (
+          <OnboardingBanner
+            language={tutorialProgress.language}
+            onDismiss={handleDismissWorkspaceBanner}
+          />
+        )}
         <WorkspaceSidebar
           profile={profile}
           level={level}
@@ -644,6 +668,8 @@ export default function App() {
           onClaimQuestline={handleQuestlineClaim}
           achievements={achievements}
           artifacts={artifacts}
+          tutorialLanguage={tutorialProgress.language}
+          onStartTutorial={handleStartTutorial}
         />
 
         <section className="lg:col-span-9 space-y-10">
@@ -679,6 +705,7 @@ export default function App() {
               canUseDataApi={canUseDataApi}
               canPublishToGitHub={canPublishToGitHub}
               onStartGitHubPublish={startGitHubAuthorization}
+              tutorialLanguage={tutorialProgress.language}
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">

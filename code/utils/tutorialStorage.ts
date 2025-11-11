@@ -6,6 +6,7 @@ export interface TutorialProgressState {
   hasCompleted: boolean;
   wasDismissed: boolean;
   language: TutorialLanguage;
+  dismissedBanners: string[];
 }
 
 const STORAGE_KEY = 'creative-atlas:tutorial-progress';
@@ -15,6 +16,7 @@ const DEFAULT_PROGRESS: TutorialProgressState = {
   hasCompleted: false,
   wasDismissed: false,
   language: DEFAULT_TUTORIAL_LANGUAGE,
+  dismissedBanners: [],
 };
 
 const AVAILABLE_TUTORIAL_LANGUAGES = new Set<TutorialLanguage>(
@@ -52,12 +54,16 @@ export const loadTutorialProgress = (): TutorialProgressState => {
     const currentStep = Number.isFinite(parsed.currentStep)
       ? Math.min(Math.max(parsed.currentStep ?? 0, 0), steps.length - 1)
       : DEFAULT_PROGRESS.currentStep;
+    const dismissedBanners = Array.isArray(parsed.dismissedBanners)
+      ? parsed.dismissedBanners.filter((value): value is string => typeof value === 'string')
+      : DEFAULT_PROGRESS.dismissedBanners;
 
     return {
       currentStep,
       hasCompleted: Boolean(parsed.hasCompleted),
       wasDismissed: Boolean(parsed.wasDismissed),
       language,
+      dismissedBanners,
     };
   } catch (error) {
     console.warn('Failed to load tutorial progress from storage.', error);
