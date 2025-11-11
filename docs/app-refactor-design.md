@@ -7,7 +7,13 @@
 
 ## Progress Notes
 - Created `ProjectWorkspace` (under `code/components/workspace/`) to host artifact workflows, quick fact capture, and GitHub publish orchestration outside of `App.tsx`.
-- Upcoming focus: break down `ProjectWorkspaceContainer` into the planned hero, artifact panel, activity panel, and modal subcomponents to finish slimming the workspace layer.
+- Broke `ProjectWorkspaceContainer` into `WorkspaceHeroSection`, `WorkspaceArtifactPanel`, and `WorkspaceActivityPanel` presentation components within `code/components/workspace/`, keeping hook and data orchestration in the container while moving view markup into focused children.
+- Introduced `WorkspaceModals` to centralize the create-artifact, quick fact, and info modal rendering for `ProjectWorkspace`.
+
+### Follow-up Tasks
+- Evaluate remaining layout glue inside `ProjectWorkspaceContainer.tsx`—especially around the hook setup and derived state wiring—and trim anything the new presentation components can now own directly.
+- Consider splitting `WorkspaceArtifactPanel.tsx` into smaller editors or folders if upcoming changes continue to expand the artifact detail logic.
+- Backfill component-level tests covering artifact filters, activity panel toggles, and modal wiring so the new structure maintains regression protection.
 
 ## Proposed Structure
 

@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ProjectWorkspaceContainer from '../ProjectWorkspaceContainer';
-import Modal from '../Modal';
-import CreateArtifactForm from '../CreateArtifactForm';
-import QuickFactForm from '../QuickFactForm';
-import InfoModal from '../InfoModal';
+import WorkspaceModals from './WorkspaceModals';
+import { CreateArtifactInput, InfoModalState, QuickFactInput } from './types';
 
 import {
   type Artifact,
@@ -78,23 +76,6 @@ interface ProjectWorkspaceProps {
   canPublishToGitHub: boolean;
   onStartGitHubPublish: () => Promise<void>;
 }
-
-type CreateArtifactInput = {
-  title: string;
-  type: ArtifactType;
-  summary: string;
-  sourceArtifactId?: string | null;
-};
-
-type QuickFactInput = {
-  fact: string;
-  detail?: string;
-};
-
-type InfoModalState = {
-  title: string;
-  message: string;
-} | null;
 
 const DEFAULT_ARTIFACT_STATUS = 'idea';
 
@@ -623,6 +604,16 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     [addXp, createArtifact, project, projectArtifacts],
   );
 
+  const handleCloseQuickFactModal = useCallback(() => {
+    if (!isSavingQuickFact) {
+      setIsQuickFactModalOpen(false);
+    }
+  }, [isSavingQuickFact]);
+
+  const handleDismissInfoModal = useCallback(() => {
+    setInfoModalContent(null);
+  }, []);
+
   const handleCaptureInspirationCard = useCallback(
     async (card: InspirationCard) => {
       const suitTag = card.suit.toLowerCase().replace(/\s+/g, '-');
@@ -702,45 +693,22 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         canPublishToGitHub={canPublishToGitHub}
       />
 
-      <Modal isOpen={isCreateModalOpen} onClose={closeCreateArtifactModal} title="Seed a New Artifact">
-        <CreateArtifactForm
-          onCreate={handleCreateArtifact}
-          onClose={closeCreateArtifactModal}
-          sourceArtifactId={sourceArtifactId}
-          defaultType={defaultCreateArtifactType ?? undefined}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={isQuickFactModalOpen}
-        onClose={() => {
-          if (!isSavingQuickFact) {
-            setIsQuickFactModalOpen(false);
-          }
-        }}
-        title="Add One Fact"
-      >
-        <QuickFactForm
-          projectTitle={project.title}
-          artifacts={projectArtifacts}
-          onSubmit={handleQuickFactSubmit}
-          onCancel={() => {
-            if (!isSavingQuickFact) {
-              setIsQuickFactModalOpen(false);
-            }
-          }}
-          isSubmitting={isSavingQuickFact}
-        />
-      </Modal>
-
-      {infoModalContent ? (
-        <InfoModal
-          isOpen={true}
-          onClose={() => setInfoModalContent(null)}
-          title={infoModalContent.title}
-          message={infoModalContent.message}
-        />
-      ) : null}
+      <WorkspaceModals
+        isCreateModalOpen={isCreateModalOpen}
+        onCloseCreateModal={closeCreateArtifactModal}
+        onCreateArtifact={handleCreateArtifact}
+        sourceArtifactId={sourceArtifactId}
+        defaultCreateArtifactType={defaultCreateArtifactType}
+        isQuickFactModalOpen={isQuickFactModalOpen}
+        onCloseQuickFactModal={handleCloseQuickFactModal}
+        onSubmitQuickFact={handleQuickFactSubmit}
+        onCancelQuickFact={handleCloseQuickFactModal}
+        isSavingQuickFact={isSavingQuickFact}
+        projectTitle={project.title}
+        projectArtifacts={projectArtifacts}
+        infoModalContent={infoModalContent}
+        onDismissInfoModal={handleDismissInfoModal}
+      />
     </>
   );
 };
