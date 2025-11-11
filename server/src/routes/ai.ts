@@ -1,19 +1,43 @@
 import { Router } from 'express';
 import {
-  GoogleGenAI,
-  type GenerationConfig,
-  type GenerateContentResponse,  
-  HarmCategory,
+  GoogleGenerativeAI,
   HarmBlockThreshold,
-} from '@google/genai';
+  HarmCategory,
+  type EnhancedGenerateContentResponse,
+  type GenerateContentRequest,
+  type GenerationConfig,
+  type SafetySetting,
+} from '@google/generative-ai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = Router();
 
-let cachedClient: GoogleGenAI | null = null;
+let cachedClient: GoogleGenerativeAI | null = null;
 
-const getClient = (): GoogleGenAI => {
+const DEFAULT_SAFETY_SETTINGS = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+] as const satisfies ReadonlyArray<SafetySetting>;
+
+const getDefaultSafetySettings = (): SafetySetting[] =>
+  DEFAULT_SAFETY_SETTINGS.map((setting) => ({ ...setting }));
+
+const getClient = (): GoogleGenerativeAI => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -21,7 +45,7 @@ const getClient = (): GoogleGenAI => {
   }
 
   if (!cachedClient) {
-    cachedClient = new GoogleGenAI({ apiKey });
+    cachedClient = new GoogleGenerativeAI(apiKey);
   }
 
   return cachedClient;
@@ -44,13 +68,19 @@ const generateRequestSchema = z.object({
   config: generationConfigSchema.optional(),
 });
 
-const extractTextFromResponse = (response: GenerateContentResponse): string | null => {
-  const directText = typeof response.text === 'string' ? response.text.trim() : '';
-  if (directText) {
-    return directText;
+const extractTextFromResponse = (
+  response: EnhancedGenerateContentResponse,
+): string | null => {
+  try {
+    const directText = response.text().trim();
+    if (directText) {
+      return directText;
+    }
+  } catch (error) {
+    // Swallow errors from the helper if Gemini blocked the prompt or returned no text.
   }
 
-  const candidates = (response as { candidates?: unknown }).candidates;
+  const candidates = response.candidates;
   if (!Array.isArray(candidates)) {
     return null;
   }
@@ -60,7 +90,7 @@ const extractTextFromResponse = (response: GenerateContentResponse): string | nu
       continue;
     }
 
-    const parts = (candidate as { content?: { parts?: unknown } }).content?.parts;
+    const parts = candidate.content?.parts;
     if (!Array.isArray(parts)) {
       continue;
     }
@@ -104,7 +134,7 @@ router.post(
 
     const { model, prompt, config } = parsed.data;
 
-    let client: GoogleGenAI;
+    let client: GoogleGenerativeAI;
     try {
       client = getClient();
     } catch (error) {
@@ -122,37 +152,18 @@ router.post(
       },
     ];
 
-    const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-    ];
-
-    const payload: Parameters<typeof client.models.generateContent>[0] = {
-      model,
+    const payload: GenerateContentRequest = {
       contents,
-      safetySettings,
+      safetySettings: getDefaultSafetySettings(),
     };
 
     if (config) {
-      payload.config = config as GenerationConfig;
+      payload.generationConfig = config as GenerationConfig;
     }
 
     try {
-      const response = await client.models.generateContent(payload);
+      const modelClient = client.getGenerativeModel({ model });
+      const { response } = await modelClient.generateContent(payload);
       const text = extractTextFromResponse(response);
 
       if (!text) {
