@@ -44,6 +44,7 @@ import {
 } from '../../utils/export';
 import type { MilestoneProgressOverview } from '../../utils/milestoneProgress';
 import type { ProjectPublishRecord } from '../../utils/publishHistory';
+import { logAnalyticsEvent } from '../../services/analytics';
 
 interface ProjectWorkspaceProps {
   profile: UserProfile;
@@ -169,7 +170,12 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
   const handleWorkspaceError = useCallback((message: string) => {
     setWorkspaceErrorToast({ id: Date.now(), message });
-  }, []);
+    void logAnalyticsEvent('workspace_error', {
+      project_id: project.id,
+      severity: 'error',
+      message_length: Math.min(message.length, 250),
+    });
+  }, [project.id]);
 
   const dismissWorkspaceError = useCallback(() => {
     setWorkspaceErrorToast(null);

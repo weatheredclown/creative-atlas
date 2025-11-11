@@ -60,6 +60,17 @@ Signed-in collaborators automatically see additional timeline snapshots that hav
 
 To surface more history, publish timeline snapshots to Firestore with an `ownerId` for each collaborator who should see them. The default security rule (`allow read, write: if request.auth.uid == resource.data.ownerId;`) already authorizes those reads. See [`docs/firebase-timeline-heatmap-setup.md`](docs/firebase-timeline-heatmap-setup.md) for a lightweight data seeding guide.
 
+### Analytics & monitoring
+
+Creative Atlas now boots Firebase Analytics alongside the existing Firebase app and records a handful of product health events:
+
+* `workspace_view_mode_change` — fired whenever a creator switches between table, graph, and kanban views. Includes the project ID and selected mode.
+* `workspace_detail_toggle` — captures whether the artifact panel is showing the detailed or simplified field set.
+* `workspace_create_artifact_clicked`, `quick_fact_capture_started`, and `workspace_publish_clicked` — track hero panel actions so you can monitor funnel activity.
+* `workspace_error` — records when the workspace error toast triggers, tagging severity and the originating project so alerts can surface regressions quickly.
+
+No extra environment variables are required; Firebase Analytics reuses the configuration defined above. For alerting setup, dashboard ideas, and incident response steps, see the new [`docs/analytics-runbook.md`](docs/analytics-runbook.md).
+
 ### 3. Start the backend API (optional but recommended)
 
 The `server/` package exposes authenticated CRUD endpoints that wrap Firestore and handle bulk import/export work. Run it locally with:
