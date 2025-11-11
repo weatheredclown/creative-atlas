@@ -16,3 +16,8 @@ export type InfoModalState = {
   title: string;
   message: string;
 } | null;
+
+export interface WorkspaceFeatureGroup {
+  title: string;
+  description: string;
+}
