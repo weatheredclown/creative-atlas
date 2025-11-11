@@ -20,6 +20,7 @@ interface WorkspaceModalsProps {
   isSavingQuickFact: boolean;
   projectTitle: string;
   projectArtifacts: Artifact[];
+  quickFactSourceArtifact: Artifact | null;
   infoModalContent: InfoModalState;
   onDismissInfoModal: () => void;
 }
@@ -37,6 +38,7 @@ const WorkspaceModals: React.FC<WorkspaceModalsProps> = ({
   isSavingQuickFact,
   projectTitle,
   projectArtifacts,
+  quickFactSourceArtifact,
   infoModalContent,
   onDismissInfoModal,
 }) => (
@@ -57,6 +59,7 @@ const WorkspaceModals: React.FC<WorkspaceModalsProps> = ({
         onSubmit={onSubmitQuickFact}
         onCancel={onCancelQuickFact}
         isSubmitting={isSavingQuickFact}
+        sourceArtifact={quickFactSourceArtifact ?? undefined}
       />
     </Modal>
 

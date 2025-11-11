@@ -12,6 +12,10 @@ export interface QuickFactInput {
   detail?: string;
 }
 
+export interface QuickFactModalOptions {
+  sourceArtifactId?: string | null;
+}
+
 export type InfoModalState = {
   title: string;
   message: string;

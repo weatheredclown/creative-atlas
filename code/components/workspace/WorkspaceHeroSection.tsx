@@ -10,6 +10,7 @@ import {
   type ProjectComponentKey,
   type ProjectVisibilitySettings,
 } from '../../types';
+import type { QuickFactModalOptions } from './types';
 
 interface WorkspaceHeroSectionProps {
   project: Project;
@@ -24,7 +25,7 @@ interface WorkspaceHeroSectionProps {
   showQuickFactsPanel: boolean;
   visibilitySettings: ProjectVisibilitySettings;
   onOpenCreateArtifactModal: () => void;
-  onOpenQuickFactModal: () => void;
+  onOpenQuickFactModal: (options?: QuickFactModalOptions) => void;
   onPublishProject: () => void;
   onSelectArtifact: (artifactId: string) => void;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
@@ -63,7 +64,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         totalQuickFacts={totalQuickFacts}
         statusLabel={statusLabel}
         onCreateArtifact={onOpenCreateArtifactModal}
-        onCaptureQuickFact={onOpenQuickFactModal}
+        onCaptureQuickFact={() => onOpenQuickFactModal()}
         onPublishProject={onPublishProject}
         onSelectQuickFact={(artifactId) => onSelectArtifact(artifactId)}
         level={level}
@@ -87,7 +88,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         totalFacts={totalQuickFacts}
         projectTitle={project.title}
         onSelectFact={(artifactId) => onSelectArtifact(artifactId)}
-        onAddFact={onOpenQuickFactModal}
+        onAddFact={() => onOpenQuickFactModal()}
       />
     ) : null}
   </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { Artifact } from '../types';
 import { generateQuickFactInspiration } from '../services/geminiService';
 import { SparklesIcon } from './Icons';
@@ -9,6 +9,7 @@ interface QuickFactFormProps {
   onSubmit: (input: { fact: string; detail?: string }) => Promise<void> | void;
   onCancel: () => void;
   isSubmitting: boolean;
+  sourceArtifact?: Artifact;
 }
 
 interface FactPrompt {
@@ -56,6 +57,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
   onSubmit,
   onCancel,
   isSubmitting,
+  sourceArtifact,
 }) => {
   const [fact, setFact] = useState('');
   const [detail, setDetail] = useState('');
@@ -69,6 +71,13 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [surpriseError, setSurpriseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFact('');
+    setDetail('');
+    setError(null);
+    setSurpriseError(null);
+  }, [sourceArtifact?.id]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -141,12 +150,37 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
     onCancel();
   };
 
+  const sourceArtifactTitle = sourceArtifact ? sourceArtifact.title.trim() : '';
+  const sourceArtifactSummary = sourceArtifact ? sourceArtifact.summary.trim() : '';
+
+  const factPlaceholder = sourceArtifact
+    ? `What fresh detail about ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : 'this artifact'} do you want to log?`
+    : surprisePrompt?.prompt ?? 'Capture a small truth, rumor, or detail you can expand later.';
+
+  const detailPlaceholder = sourceArtifact
+    ? `Why does this matter for ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : 'this artifact'}?`
+    : 'Add a quick note about the impact, rumor source, or a follow-up thread.';
+
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
         <p className="font-semibold text-cyan-200">Add a single beat of lore to {projectTitle}.</p>
         <p>Think small: a rumor, detail, or truth you can expand later. We&apos;ll drop it straight into your wiki.</p>
       </div>
+
+      {sourceArtifact ? (
+        <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <p className="font-semibold">
+            Anchoring this fact to <span className="text-amber-50">{sourceArtifactTitle || 'Untitled artifact'}</span>.
+          </p>
+          <p className="mt-1 text-xs text-amber-100/80">
+            We&apos;ll relate the saved fact back to this artifact automatically so you can find it later.
+          </p>
+          {sourceArtifactSummary ? (
+            <p className="mt-2 text-xs text-amber-100/70 line-clamp-3">{sourceArtifactSummary}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <label htmlFor="quick-fact" className="block text-sm font-medium text-slate-200">
@@ -166,9 +200,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           }}
           rows={3}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          placeholder={
-            surprisePrompt?.prompt ?? 'Capture a small truth, rumor, or detail you can expand later.'
-          }
+          placeholder={factPlaceholder}
         />
         {error && <p className="text-xs text-rose-300">{error}</p>}
         {surprisePrompt?.spark && (
@@ -186,7 +218,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           onChange={(event) => setDetail(event.target.value)}
           rows={2}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          placeholder="Add a quick note about the impact, rumor source, or a follow-up thread."
+          placeholder={detailPlaceholder}
         />
       </div>
 
