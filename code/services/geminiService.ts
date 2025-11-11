@@ -3,7 +3,7 @@ import { Type } from '@google/genai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
-import { requestGeminiText } from './aiProxy';
+import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
   type: Type.OBJECT,
@@ -179,10 +179,8 @@ export const generateLexemes = async (
 
   } catch (error) {
     console.error('Error generating lexemes with Gemini:', error);
-    if (error instanceof Error) {
-        throw new Error(`Failed to generate lexemes. The AI model may be unavailable or the request was invalid. Details: ${error.message}`);
-    }
-    throw new Error('An unknown error occurred while generating lexemes.');
+    const message = getGeminiErrorMessage(error, 'Failed to generate lexemes.');
+    throw new Error(message);
   }
 };
 
@@ -258,12 +256,8 @@ export const generateProjectFromDescription = async (
     };
   } catch (error) {
     console.error('Error generating project blueprint with Gemini:', error);
-    if (error instanceof Error) {
-      throw new Error(
-        `Failed to generate project details. The AI model may be unavailable or the request was invalid. Details: ${error.message}`,
-      );
-    }
-    throw new Error('An unknown error occurred while generating project details.');
+    const message = getGeminiErrorMessage(error, 'Failed to generate project details.');
+    throw new Error(message);
   }
 };
 
@@ -478,7 +472,8 @@ export const generateQuickFactInspiration = async ({
     };
   } catch (error) {
     console.error('Error generating quick fact inspiration with Gemini:', error);
-    throw new Error('Atlas Intelligence could not propose a quick fact right now.');
+    const message = getGeminiErrorMessage(error, 'Atlas Intelligence could not propose a quick fact right now.');
+    throw new Error(message);
   }
 };
 
@@ -729,10 +724,8 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
         return result.trim();
     } catch (error) {
         console.error('Error expanding summary with Gemini:', error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to expand summary. The AI model may be unavailable or the request was invalid. Details: ${error.message}`);
-        }
-        throw new Error('An unknown error occurred while expanding the summary.');
+        const message = getGeminiErrorMessage(error, 'Failed to expand summary.');
+        throw new Error(message);
     }
 };
 
@@ -814,9 +807,7 @@ export const generateReleaseNotes = async ({
         return result.trim();
     } catch (error) {
         console.error('Error generating release notes with Gemini:', error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to generate release notes. ${error.message}`);
-        }
-        throw new Error('An unknown error occurred while generating release notes.');
+        const message = getGeminiErrorMessage(error, 'Failed to generate release notes.');
+        throw new Error(message);
     }
 };
