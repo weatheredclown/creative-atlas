@@ -24,8 +24,19 @@ declare module '@google/genai' {
     config?: GenerationConfig;
   }
 
+  export interface CandidateContent {
+    parts?: ContentPart[];
+    [key: string]: unknown;
+  }
+
+  export interface Candidate {
+    content?: CandidateContent;
+    [key: string]: unknown;
+  }
+
   export interface GenerateContentResponse {
     text?: string;
+    candidates?: Candidate[];
     [key: string]: unknown;
   }
 
