@@ -107,10 +107,28 @@ const createDefaultProfile = (
 };
 
 const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
-  projects.map((project) => ({ ...project, ownerId }));
+  projects.map((project) => ({
+    ...project,
+    ownerId: project.ownerId ?? ownerId,
+    tags: Array.isArray(project.tags)
+      ? project.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [],
+  }));
 
 const normalizeArtifacts = (artifacts: Artifact[], ownerId: string): Artifact[] =>
-  artifacts.map((artifact) => ({ ...artifact, ownerId }));
+  artifacts.map((artifact) => ({
+    ...artifact,
+    ownerId: artifact.ownerId ?? ownerId,
+    tags: Array.isArray(artifact.tags)
+      ? artifact.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [],
+    relations: Array.isArray(artifact.relations)
+      ? artifact.relations.filter(
+          (relation): relation is Artifact['relations'][number] =>
+            Boolean(relation) && typeof relation.toId === 'string' && typeof relation.kind === 'string',
+        )
+      : [],
+  }));
 
 const groupArtifactsByProject = (artifacts: Artifact[]): Record<string, Artifact[]> => {
   return artifacts.reduce<Record<string, Artifact[]>>((acc, artifact) => {
@@ -182,6 +200,14 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const artifacts = useMemo(() => Object.values(artifactsByProject).flat(), [artifactsByProject]);
 
+  const sanitizeArtifacts = useCallback(
+    (incoming: Artifact[]): Artifact[] => {
+      const ownerId = profile?.uid ?? user?.uid ?? 'unknown-owner';
+      return normalizeArtifacts(incoming, ownerId);
+    },
+    [profile?.uid, user?.uid],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -235,7 +261,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return;
         }
         setProfile(profileData);
-        setProjects(projectData.projects);
+        setProjects(normalizeProjects(projectData.projects, user.uid));
         setProjectPageToken(projectData.nextPageToken ?? null);
         setArtifactsByProject({});
         setArtifactPageTokens({});
@@ -287,9 +313,10 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await fetchProjectArtifacts(token, projectId, {
           pageToken: nextToken,
         });
+        const normalizedArtifacts = sanitizeArtifacts(response.artifacts);
         setArtifactsByProject((current) => {
           const existing = reset ? [] : current[projectId] ?? [];
-          const merged = mergeArtifactLists(existing, response.artifacts);
+          const merged = mergeArtifactLists(existing, normalizedArtifacts);
           return {
             ...current,
             [projectId]: merged,
@@ -307,7 +334,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
     },
-    [artifactPageTokens, getIdToken, isGuestMode, reportError],
+    [artifactPageTokens, getIdToken, isGuestMode, reportError, sanitizeArtifacts],
   );
 
   const ensureProjectArtifacts = useCallback(
@@ -361,7 +388,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         throw new Error('Data API is not available.');
       }
       const response = await fetchProjects(token, { pageToken: projectPageToken });
-      setProjects((current) => [...current, ...response.projects]);
+      const normalizedProjects = normalizeProjects(
+        response.projects,
+        user?.uid ?? profile?.uid ?? 'unknown-owner',
+      );
+      setProjects((current) => [...current, ...normalizedProjects]);
       setProjectPageToken(response.nextPageToken ?? null);
     } catch (error) {
       reportError(
@@ -370,24 +401,28 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         'We could not load more projects from the data service. Please try again later.',
       );
     }
-  }, [getIdToken, isGuestMode, projectPageToken, reportError]);
+  }, [getIdToken, isGuestMode, profile?.uid, projectPageToken, reportError, user?.uid]);
 
-  const mergeArtifacts = useCallback((projectId: string, incoming: Artifact[]) => {
-    if (incoming.length === 0) {
-      return;
-    }
-    setArtifactsByProject((current) => {
-      const existing = current[projectId] ?? [];
-      return {
+  const mergeArtifacts = useCallback(
+    (projectId: string, incoming: Artifact[]) => {
+      if (incoming.length === 0) {
+        return;
+      }
+      const normalizedIncoming = sanitizeArtifacts(incoming);
+      setArtifactsByProject((current) => {
+        const existing = current[projectId] ?? [];
+        return {
+          ...current,
+          [projectId]: mergeArtifactLists(existing, normalizedIncoming),
+        };
+      });
+      setArtifactPageTokens((current) => ({
         ...current,
-        [projectId]: mergeArtifactLists(existing, incoming),
-      };
-    });
-    setArtifactPageTokens((current) => ({
-      ...current,
-      [projectId]: current[projectId] ?? null,
-    }));
-  }, []);
+        [projectId]: current[projectId] ?? null,
+      }));
+    },
+    [sanitizeArtifacts],
+  );
 
   const updateMemorySuggestionStatus = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -597,8 +632,9 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           relations: draft.relations ?? [],
           data: draft.data ?? {},
         }));
-        mergeArtifacts(projectId, artifactsToAdd);
-        return artifactsToAdd;
+        const normalizedGuestArtifacts = sanitizeArtifacts(artifactsToAdd);
+        mergeArtifacts(projectId, normalizedGuestArtifacts);
+        return normalizedGuestArtifacts;
       }
 
       try {
@@ -607,8 +643,9 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           throw new Error('Missing authentication token.');
         }
         const created = await createArtifactsViaApi(token, projectId, drafts);
-        mergeArtifacts(projectId, created);
-        return created;
+        const normalizedCreated = sanitizeArtifacts(created);
+        mergeArtifacts(projectId, normalizedCreated);
+        return normalizedCreated;
       } catch (error) {
         reportError(
           'Failed to create artifacts',
@@ -618,7 +655,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [];
       }
     },
-    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid, reportError],
+    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid, reportError, sanitizeArtifacts],
   );
 
   const createArtifact = useCallback(
@@ -661,19 +698,20 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (updates.relations !== undefined) sanitized.relations = updates.relations;
         if (updates.data !== undefined) sanitized.data = updates.data;
         const updated = await updateArtifactViaApi(token, artifactId, sanitized);
+        const [normalizedUpdated] = sanitizeArtifacts([updated]);
         setArtifactsByProject((current) => {
           const next = { ...current };
           Object.keys(next).forEach((projectId) => {
             const list = next[projectId];
             if (list.some((artifact) => artifact.id === artifactId)) {
               next[projectId] = list.map((artifact) =>
-                artifact.id === artifactId ? updated : artifact,
+                artifact.id === artifactId ? normalizedUpdated : artifact,
               );
             }
           });
           return next;
         });
-        return updated;
+        return normalizedUpdated;
       } catch (error) {
         reportError(
           'Failed to update artifact',
@@ -683,7 +721,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [artifacts, getIdToken, isGuestMode, reportError],
+    [artifacts, getIdToken, isGuestMode, reportError, sanitizeArtifacts],
   );
 
   const deleteArtifact = useCallback(
