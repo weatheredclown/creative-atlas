@@ -25,7 +25,7 @@ import {
 import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
-import type { WorkspaceFeatureGroup } from './types';
+import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 
 interface WorkspaceArtifactPanelProps {
   featureGroup: WorkspaceFeatureGroup;
@@ -53,7 +53,7 @@ interface WorkspaceArtifactPanelProps {
   selectedArtifactId: string | null;
   isSelectedArtifactHidden: boolean;
   onSelectArtifact: (artifactId: string | null) => void;
-  onOpenQuickFactModal: () => void;
+  onOpenQuickFactModal: (options?: QuickFactModalOptions) => void;
   onOpenCreateArtifactModal: (options?: { defaultType?: ArtifactType | null; sourceId?: string | null }) => void;
   onUpdateArtifact: (artifactId: string, updates: Partial<Artifact>) => void;
   onUpdateArtifactData: (artifactId: string, data: Artifact['data']) => void;
@@ -535,7 +535,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={onOpenQuickFactModal}
+              onClick={() => onOpenQuickFactModal()}
               className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
               title="Capture a tiny lore beat."
             >
@@ -646,7 +646,9 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                     onSelect={() => onSelectArtifact(artifact.id)}
                     onDuplicate={() => onDuplicateArtifact(artifact.id)}
                     onDelete={() => onDeleteArtifact(artifact.id)}
-                    onOpenCreateQuickFact={onOpenQuickFactModal}
+                    onOpenCreateQuickFact={() =>
+                      onOpenQuickFactModal({ sourceArtifactId: artifact.id })
+                    }
                     onOpenCreateArtifact={() => onOpenCreateArtifactModal({ sourceId: artifact.id })}
                     quickFactPreview={quickFactPreview}
                     totalQuickFacts={totalQuickFacts}

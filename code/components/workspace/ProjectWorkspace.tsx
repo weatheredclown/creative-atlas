@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ProjectWorkspaceContainer from '../ProjectWorkspaceContainer';
 import WorkspaceModals from './WorkspaceModals';
-import { CreateArtifactInput, InfoModalState, QuickFactInput } from './types';
+import { CreateArtifactInput, InfoModalState, QuickFactInput, QuickFactModalOptions } from './types';
 import { XMarkIcon } from '../Icons';
 
 import {
@@ -120,6 +120,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [infoModalContent, setInfoModalContent] = useState<InfoModalState>(null);
   const [workspaceErrorToast, setWorkspaceErrorToast] = useState<{ id: number; message: string } | null>(null);
+  const [quickFactSourceArtifactId, setQuickFactSourceArtifactId] = useState<string | null>(null);
 
   const projectArtifactsById = useMemo(() => {
     const map = new Map<string, Artifact>();
@@ -128,6 +129,13 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     });
     return map;
   }, [projectArtifacts]);
+
+  const quickFactSourceArtifact = useMemo(() => {
+    if (!quickFactSourceArtifactId) {
+      return null;
+    }
+    return projectArtifactsById.get(quickFactSourceArtifactId) ?? null;
+  }, [projectArtifactsById, quickFactSourceArtifactId]);
 
   useEffect(() => {
     setSelectedArtifactId(null);
@@ -138,6 +146,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     setIsSavingQuickFact(false);
     setInfoModalContent(null);
     setWorkspaceErrorToast(null);
+    setQuickFactSourceArtifactId(null);
   }, [project.id]);
 
   useEffect(() => {
@@ -617,9 +626,14 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
           throw new Error('We could not save your fact. Please try again.');
         }
 
+        if (quickFactSourceArtifactId) {
+          handleAddRelation(created.id, quickFactSourceArtifactId, 'RELATES_TO');
+        }
+
         void addXp(3);
         setSelectedArtifactId(created.id);
         setIsQuickFactModalOpen(false);
+        setQuickFactSourceArtifactId(null);
       } catch (error) {
         console.error('Failed to save quick fact', error);
         if (error instanceof Error) {
@@ -630,12 +644,30 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         setIsSavingQuickFact(false);
       }
     },
-    [addXp, createArtifact, project, projectArtifacts],
+    [
+      addXp,
+      createArtifact,
+      handleAddRelation,
+      project.id,
+      project.title,
+      projectArtifacts,
+      quickFactSourceArtifactId,
+      setSelectedArtifactId,
+    ],
+  );
+
+  const handleOpenQuickFactModal = useCallback(
+    (options?: QuickFactModalOptions) => {
+      setQuickFactSourceArtifactId(options?.sourceArtifactId ?? null);
+      setIsQuickFactModalOpen(true);
+    },
+    [],
   );
 
   const handleCloseQuickFactModal = useCallback(() => {
     if (!isSavingQuickFact) {
       setIsQuickFactModalOpen(false);
+      setQuickFactSourceArtifactId(null);
     }
   }, [isSavingQuickFact]);
 
@@ -706,7 +738,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         selectedArtifactId={selectedArtifactId}
         onSelectArtifact={setSelectedArtifactId}
         onOpenCreateArtifactModal={openCreateArtifactModal}
-        onOpenQuickFactModal={() => setIsQuickFactModalOpen(true)}
+        onOpenQuickFactModal={handleOpenQuickFactModal}
         onUpdateProject={onUpdateProject}
         onDeleteProject={onDeleteProject}
         visibilitySettings={visibilitySettings}
@@ -754,6 +786,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         isSavingQuickFact={isSavingQuickFact}
         projectTitle={project.title}
         projectArtifacts={projectArtifacts}
+        quickFactSourceArtifact={quickFactSourceArtifact}
         infoModalContent={infoModalContent}
         onDismissInfoModal={handleDismissInfoModal}
       />

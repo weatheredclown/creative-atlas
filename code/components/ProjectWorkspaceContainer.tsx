@@ -35,6 +35,7 @@ import { useArtifactFilters } from '../hooks/useArtifactFilters';
 import BackToTopButton from './BackToTopButton';
 import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
+import type { QuickFactModalOptions } from './workspace/types';
 
 interface ProjectWorkspaceContainerProps {
   profile: UserProfile;
@@ -46,7 +47,7 @@ interface ProjectWorkspaceContainerProps {
   selectedArtifactId: string | null;
   onSelectArtifact: (artifactId: string | null) => void;
   onOpenCreateArtifactModal: (options?: { defaultType?: ArtifactType | null; sourceId?: string | null }) => void;
-  onOpenQuickFactModal: () => void;
+  onOpenQuickFactModal: (options?: QuickFactModalOptions) => void;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
   visibilitySettings: ProjectVisibilitySettings;
