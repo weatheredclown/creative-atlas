@@ -91,10 +91,14 @@ export const requestGeminiText = async (payload: GeminiProxyRequest): Promise<st
   }))) as GeminiProxyResponse;
 
   if (!response.ok) {
-    const message =
-      typeof data.error === 'string' && data.error.trim().length > 0
+    let message =
+      typeof data.error === 'string'
         ? data.error
         : `Gemini proxy request failed with status ${response.status}.`;
+
+    if (data.details) {
+      message += `\n${JSON.stringify(data.details, null, 2)}`;
+    }
     throw new GeminiProxyError(message, { status: response.status, details: data.details });
   }
 

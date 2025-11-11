@@ -387,12 +387,21 @@ router.post(
       const text = extractTextFromResponse(response);
 
       if (!text) {
+        const finishReason = response.candidates?.[0]?.finishReason;
+        const safetyRatings = response.candidates?.[0]?.safetyRatings;
+
         console.log(
-          'Gemini returned an empty text response. Full response object:',
-          JSON.stringify(response, null, 2),
+          'Gemini returned an empty text response.',
+          `Finish Reason: ${finishReason ?? 'N/A'}`,
+          'Safety Ratings:',
+          JSON.stringify(safetyRatings, null, 2),
         );
         res.status(502).json({
           error: 'Gemini returned an empty response.',
+          details: {
+            finishReason,
+            safetyRatings,
+          },
         });
         return;
       }
