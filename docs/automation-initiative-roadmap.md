@@ -42,7 +42,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
 - Add a workspace section index navigation so creators can jump between hero, tracking, templates, and publishing panels without excessive scrolling.
 - App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; hero, artifact, activity, and modal subcomponents now live under `code/components/workspace/`.
-  - Trim remaining layout glue in `ProjectWorkspaceContainer.tsx` now that presentation details live in child components.
   - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
   - Add component-level tests for artifact filters, activity panel toggles, and modal wiring to cover the new structure.
 - Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.

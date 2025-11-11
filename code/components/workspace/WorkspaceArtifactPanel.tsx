@@ -22,34 +22,13 @@ import {
   TableCellsIcon,
   ViewColumnsIcon,
 } from '../Icons';
-import {
-  type Artifact,
-  ArtifactType,
-  type Project,
-  type CharacterData,
-  type CharacterTrait,
-  type ConlangLexeme,
-  type LocationData,
-  type LocationFeature,
-  type MagicSystemData,
-  type Scene,
-  type TaskData,
-  type TimelineData,
-  type TimelineEvent,
-  type WikiData,
-  isNarrativeArtifactType,
-  TASK_STATE,
-} from '../../types';
+import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
-
-interface FeatureGroupMetadata {
-  title: string;
-  description: string;
-}
+import type { WorkspaceFeatureGroup } from './types';
 
 interface WorkspaceArtifactPanelProps {
-  featureGroup: FeatureGroupMetadata;
+  featureGroup: WorkspaceFeatureGroup;
   isVisible: boolean;
   project: Project;
   allArtifacts: Artifact[];
