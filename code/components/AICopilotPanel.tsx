@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AIAssistant, Artifact, ArtifactType, Project } from '../types';
 import { IntelligenceLogo, BookOpenIcon } from './Icons';
 import { generateText } from '../services/generation';
+import { buildAtlasIntelligencePrompt } from '../services/promptBuilder';
 import { useUserData } from '../contexts/UserDataContext';
 import { milestoneRoadmap } from '../src/data/milestones';
+import { formatArtifactType } from '../utils/artifactFormatting';
+import { parsePromptStructure } from '../utils/promptStructure';
 
 interface AICopilotPanelProps {
   assistants: AIAssistant[];
@@ -12,11 +15,6 @@ interface AICopilotPanelProps {
 
 const EMPTY_PANEL_MESSAGE =
   'Atlas Intelligence is not configured yet. Add a guide in your workspace settings to unlock creative prompts.';
-
-interface PromptStructure {
-  name: string;
-  args: string[];
-}
 
 interface PlaceholderOption {
   value: string;
@@ -49,19 +47,6 @@ const placeholderLabels: Record<string, string> = {
   sceneId: 'Scene',
   planId: 'Plan',
 };
-
-const parsePromptStructure = (input: string): PromptStructure | null => {
-  const match = input.match(/^([a-z0-9_]+)\s*\((.*)\)\s*$/i);
-  if (!match) {
-    return null;
-  }
-  const [, name, argsPart] = match;
-  const rawArgs = argsPart.split(',').map((argument) => argument.trim());
-  const args = rawArgs.length === 1 && rawArgs[0] === '' ? [] : rawArgs;
-  return { name, args };
-};
-
-const formatArtifactType = (type: ArtifactType): string => type.replace(/([a-z])([A-Z])/g, '$1 $2');
 
 const createProjectOptions = (projects: Project[]): PlaceholderOption[] =>
   projects
@@ -310,7 +295,13 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
     setIsLoading(true);
     setError(null);
     try {
-      const generatedText = await generateText(prompt, { substitutions: substitutionMap });
+      const preparedPrompt = buildAtlasIntelligencePrompt({
+        assistant: activeAssistant,
+        rawPrompt: prompt,
+        projects,
+        artifacts,
+      });
+      const generatedText = await generateText(preparedPrompt, { substitutions: substitutionMap });
       setGeneratedPreview(generatedText);
       onGenerate?.(generatedText);
     } catch (err) {
