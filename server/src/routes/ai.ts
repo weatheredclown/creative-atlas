@@ -11,6 +11,7 @@ import {
 } from '@google/generative-ai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
+import { extractTextFromResponse } from './geminiResponse.js';
 
 const router = Router();
 

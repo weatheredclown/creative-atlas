@@ -44,8 +44,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Atlas Intelligence fallback responses now replace workspace IDs with human-readable artifact and project labels so offline drafts stay readable.
   - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
-- Add server-side tests that exercise Gemini proxy candidate parsing so quick fact inspiration stays resilient to SDK response changes.
-  - ✅ Migrated the Gemini proxy to the `@google/generative-ai` SDK and reapplied the default safety settings so the build succeeds without manual request tweaks.
 
 ## Segment C — Tutorial & Education Experience
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
