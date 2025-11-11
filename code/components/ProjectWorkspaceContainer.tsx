@@ -34,8 +34,7 @@ import { ProjectPublishRecord } from '../utils/publishHistory';
 import { useArtifactFilters } from '../hooks/useArtifactFilters';
 import BackToTopButton from './BackToTopButton';
 import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
-import WorkspaceArtifactPanel from './workspace/WorkspaceArtifactPanel';
-import WorkspaceHeroSection from './workspace/WorkspaceHeroSection';
+import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
 
 interface ProjectWorkspaceContainerProps {
   profile: UserProfile;
@@ -251,108 +250,107 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     [toggleTagFilter],
   );
 
-  return (
-    <>
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-100">{PROJECT_FEATURE_GROUPS.summary.title}</h2>
-          <p className="text-sm text-slate-400">{PROJECT_FEATURE_GROUPS.summary.description}</p>
-        </div>
-        <div className="space-y-6">
-          <WorkspaceHeroSection
-            project={project}
-            projectHeroStats={projectHeroStats}
-            quickFactPreview={quickFactPreview}
-            totalQuickFacts={quickFacts.length}
-            level={level}
-            xpProgress={xpProgress}
-            statusLabel={formatStatusLabel(project.status)}
-            showProjectHero={visibilitySettings.projectHero}
-            showProjectOverview={visibilitySettings.projectOverview}
-            showQuickFactsPanel={visibilitySettings.quickFactsPanel}
-            visibilitySettings={visibilitySettings}
-            onOpenCreateArtifactModal={() => onOpenCreateArtifactModal()}
-            onOpenQuickFactModal={onOpenQuickFactModal}
-            onPublishProject={onPublishProject}
-            onSelectArtifact={(artifactId) => onSelectArtifact(artifactId)}
-            onUpdateProject={onUpdateProject}
-            onDeleteProject={onDeleteProject}
-            onToggleVisibility={onToggleVisibility}
-            onResetVisibility={onResetVisibility}
-          />
-          <WorkspaceArtifactPanel
-            featureGroup={PROJECT_FEATURE_GROUPS.summary}
-            isVisible={visibilitySettings.artifactExplorer}
-            project={project}
-            projectArtifacts={projectArtifacts}
-            filteredArtifacts={filteredArtifacts}
-            quickFactPreview={quickFactPreview}
-            totalQuickFacts={quickFacts.length}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            artifactTypeFilter={artifactTypeFilter}
-            setArtifactTypeFilter={setArtifactTypeFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            availableStatuses={availableStatuses}
-            availableTagFilters={availableTagFilters}
-            activeTagFilters={activeTagFilters}
-            hasActiveFilters={hasActiveFilters}
-            onResetFilters={handleResetFilters}
-            onToggleTagFilter={handleToggleTagFilter}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedArtifact={selectedArtifact}
-            selectedArtifactId={selectedArtifactId}
-            isSelectedArtifactHidden={isSelectedArtifactHidden(selectedArtifactId)}
-            onSelectArtifact={onSelectArtifact}
-            onOpenQuickFactModal={onOpenQuickFactModal}
-            onOpenCreateArtifactModal={onOpenCreateArtifactModal}
-            onUpdateArtifact={onUpdateArtifact}
-            onUpdateArtifactData={onUpdateArtifactData}
-            onDuplicateArtifact={onDuplicateArtifact}
-            onDeleteArtifact={onDeleteArtifact}
-            onAddRelation={onAddRelation}
-            onRemoveRelation={onRemoveRelation}
-            onImportArtifacts={onImportArtifacts}
-            onExportArtifacts={onExportArtifacts}
-            onChapterBibleExport={onChapterBibleExport}
-            onLoreJsonExport={onLoreJsonExport}
-            canUseDataApi={canUseDataApi}
-            detailSectionRef={detailSectionRef}
-            addXp={addXp}
-            onWorkspaceError={onWorkspaceError}
-          />
-        </div>
-      </section>
+  const summaryFeatureGroup = PROJECT_FEATURE_GROUPS.summary;
 
-      <WorkspaceActivityPanel
-        analyticsGroup={PROJECT_FEATURE_GROUPS.analytics}
-        trackingGroup={PROJECT_FEATURE_GROUPS.tracking}
-        distributionGroup={PROJECT_FEATURE_GROUPS.distribution}
-        visibilitySettings={visibilitySettings}
-        project={project}
-        profile={profile}
-        projectArtifacts={projectArtifacts}
-        allArtifacts={allArtifacts}
-        projectConversations={projectConversations}
-        onMemoryStatusChange={onMemoryStatusChange}
-        onCaptureInspirationCard={onCaptureInspirationCard}
-        onSelectArtifact={onSelectArtifact}
-        onOpenCreateArtifactModal={onOpenCreateArtifactModal}
-        markProjectActivity={markProjectActivity}
-        milestoneProgress={milestoneProgress}
-        upcomingMilestoneOverview={upcomingMilestoneOverview}
-        addXp={addXp}
-        publishHistoryRecord={publishHistoryRecord}
-        lastPublishedAtLabel={lastPublishedAtLabel}
-        canPublishToGitHub={canPublishToGitHub}
-        onPublishProject={onPublishProject}
-        onStartGitHubPublish={onStartGitHubPublish}
-        onGitHubArtifactsImported={onGitHubArtifactsImported}
-        onApplyProjectTemplate={onApplyProjectTemplate}
-        onSelectTemplate={onSelectTemplate}
-      />
+return (
+    <>
+      <div className="space-y-12">
+        <WorkspaceSummarySection
+          featureGroup={summaryFeatureGroup}
+          heroSectionProps={{
+            project,
+            projectHeroStats,
+            quickFactPreview,
+            totalQuickFacts: quickFacts.length,
+            level,
+            xpProgress,
+            statusLabel: formatStatusLabel(project.status),
+            showProjectHero: visibilitySettings.projectHero,
+            showProjectOverview: visibilitySettings.projectOverview,
+            showQuickFactsPanel: visibilitySettings.quickFactsPanel,
+            visibilitySettings,
+            onOpenCreateArtifactModal: () => onOpenCreateArtifactModal(),
+            onOpenQuickFactModal,
+            onPublishProject,
+            onSelectArtifact,
+            onUpdateProject,
+            onDeleteProject,
+            onToggleVisibility,
+            onResetVisibility,
+          }}
+          artifactPanelProps={{
+            isVisible: visibilitySettings.artifactExplorer,
+            project,
+            allArtifacts,
+            projectArtifacts,
+            filteredArtifacts,
+            quickFactPreview,
+            totalQuickFacts: quickFacts.length,
+            viewMode,
+            setViewMode,
+            artifactTypeFilter,
+            setArtifactTypeFilter,
+            statusFilter,
+            setStatusFilter,
+            availableStatuses,
+            availableTagFilters,
+            activeTagFilters,
+            hasActiveFilters,
+            onResetFilters: handleResetFilters,
+            onToggleTagFilter: handleToggleTagFilter,
+            searchTerm,
+            setSearchTerm,
+            selectedArtifact,
+            selectedArtifactId,
+            isSelectedArtifactHidden: isSelectedArtifactHidden(selectedArtifactId),
+            onSelectArtifact,
+            onOpenQuickFactModal,
+            onOpenCreateArtifactModal,
+            onUpdateArtifact,
+            onUpdateArtifactData,
+            onDuplicateArtifact,
+            onDeleteArtifact,
+            onAddRelation,
+            onRemoveRelation,
+            onImportArtifacts,
+            onExportArtifacts,
+            onChapterBibleExport,
+            onLoreJsonExport,
+            canUseDataApi,
+            detailSectionRef,
+            addXp,
+            onWorkspaceError,
+          }}
+        />
+
+        <WorkspaceActivityPanel
+          analyticsGroup={PROJECT_FEATURE_GROUPS.analytics}
+          trackingGroup={PROJECT_FEATURE_GROUPS.tracking}
+          distributionGroup={PROJECT_FEATURE_GROUPS.distribution}
+          visibilitySettings={visibilitySettings}
+          project={project}
+          profile={profile}
+          projectArtifacts={projectArtifacts}
+          allArtifacts={allArtifacts}
+          projectConversations={projectConversations}
+          onMemoryStatusChange={onMemoryStatusChange}
+          onCaptureInspirationCard={onCaptureInspirationCard}
+          onSelectArtifact={onSelectArtifact}
+          onOpenCreateArtifactModal={onOpenCreateArtifactModal}
+          markProjectActivity={markProjectActivity}
+          milestoneProgress={milestoneProgress}
+          upcomingMilestoneOverview={upcomingMilestoneOverview}
+          addXp={addXp}
+          publishHistoryRecord={publishHistoryRecord}
+          lastPublishedAtLabel={lastPublishedAtLabel}
+          canPublishToGitHub={canPublishToGitHub}
+          onPublishProject={onPublishProject}
+          onStartGitHubPublish={onStartGitHubPublish}
+          onGitHubArtifactsImported={onGitHubArtifactsImported}
+          onApplyProjectTemplate={onApplyProjectTemplate}
+          onSelectTemplate={onSelectTemplate}
+        />
+      </div>
 
       <BackToTopButton />
     </>

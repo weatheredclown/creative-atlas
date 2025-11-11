@@ -34,16 +34,12 @@ import { projectTemplates, templateLibrary } from '../../src/data/templates';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import type { MilestoneProgressOverview } from '../../utils/milestoneProgress';
 import type { ProjectPublishRecord } from '../../utils/publishHistory';
-
-interface FeatureGroupMetadata {
-  title: string;
-  description: string;
-}
+import type { WorkspaceFeatureGroup } from './types';
 
 interface WorkspaceActivityPanelProps {
-  analyticsGroup: FeatureGroupMetadata;
-  trackingGroup: FeatureGroupMetadata;
-  distributionGroup: FeatureGroupMetadata;
+  analyticsGroup: WorkspaceFeatureGroup;
+  trackingGroup: WorkspaceFeatureGroup;
+  distributionGroup: WorkspaceFeatureGroup;
   visibilitySettings: ProjectVisibilitySettings;
   project: Project;
   profile: UserProfile;
