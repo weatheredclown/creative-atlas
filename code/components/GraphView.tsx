@@ -1,6 +1,15 @@
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Node, Edge, NodeChange, applyNodeChanges } from 'reactflow';
+import React, { useEffect, useMemo } from 'react';
+import dagre from 'dagre';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Node,
+  Edge,
+  useEdgesState,
+  useNodesState,
+} from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
 import { evaluateCharacterArc, getArcStageBadgeClassName } from '../utils/characterProgression';
@@ -41,11 +50,45 @@ const createBaseNodeStyle = (type: ArtifactType) => ({
   transition: 'transform 150ms ease, box-shadow 150ms ease, border-width 150ms ease',
 });
 
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 96;
+
+const layoutGraph = (nodes: Node<GraphNodeData>[], edges: Edge[]) => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ rankdir: 'LR', nodesep: 120, ranksep: 160, marginx: 40, marginy: 40 });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  return nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    if (!nodeWithPosition) {
+      return node;
+    }
+
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - NODE_WIDTH / 2,
+        y: nodeWithPosition.y - NODE_HEIGHT / 2,
+      },
+    };
+  });
+};
+
 const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId }) => {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
-    const nodes: Node<GraphNodeData>[] = artifacts.map((artifact, i) => {
+    const nodes: Node<GraphNodeData>[] = artifacts.map((artifact) => {
       const arc = artifact.type === ArtifactType.Character
         ? evaluateCharacterArc(artifact, artifactLookup)
         : null;
@@ -61,7 +104,6 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
           ),
           type: artifact.type,
         },
-        position: { x: (i % 6) * 190 + Math.random() * 40, y: Math.floor(i / 6) * 140 + Math.random() * 40 },
         style: createBaseNodeStyle(artifact.type),
       };
     });
@@ -82,22 +124,22 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
       });
     });
 
-    return { nodes, edges };
+    return { nodes: layoutGraph(nodes, edges), edges };
   }, [artifacts]);
 
-  const [nodes, setNodes] = useState<Node<GraphNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
   useEffect(() => {
-    setEdges(initialEdges);
-    setNodes((prevNodes) => initialNodes.map((node) => {
+    setEdges(layoutEdges);
+    setNodes((prevNodes) => layoutNodes.map((node) => {
       const existing = prevNodes.find((prevNode) => prevNode.id === node.id);
       return {
         ...node,
         position: existing?.position ?? node.position,
       };
     }));
-  }, [initialEdges, initialNodes]);
+  }, [layoutEdges, layoutNodes, setEdges, setNodes]);
 
   useEffect(() => {
     setNodes((prevNodes) => prevNodes.map((node) => {
@@ -113,11 +155,7 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
         },
       };
     }));
-  }, [selectedArtifactId]);
-
-  const handleNodesChange = useCallback((changes: NodeChange<GraphNodeData>[]) => {
-    setNodes((prevNodes) => applyNodeChanges(changes, prevNodes));
-  }, []);
+  }, [selectedArtifactId, setNodes]);
 
   return (
     <div style={{ height: '600px' }} className="bg-slate-900/70 rounded-lg border border-slate-700/50 overflow-hidden">
@@ -125,7 +163,8 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
         nodes={nodes}
         edges={edges}
         onNodeClick={(_, node) => onSelectArtifact(node.id)}
-        onNodesChange={handleNodesChange}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         fitView
         nodesDraggable
         nodesConnectable={false}
