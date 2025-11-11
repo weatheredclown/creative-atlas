@@ -7,7 +7,8 @@ import { evaluateCharacterArc, getArcStageBadgeClassName } from '../utils/charac
 
 interface GraphViewProps {
   artifacts: Artifact[];
-  onNodeClick: (id: string) => void;
+  onSelectArtifact: (id: string) => void;
+  selectedArtifactId: string | null;
 }
 
 const nodeColor = (type: ArtifactType): string => {
@@ -29,11 +30,12 @@ const nodeColor = (type: ArtifactType): string => {
 
 type GraphNodeData = { label: React.ReactNode; type: ArtifactType };
 
-const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
+const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId }) => {
   const { nodes, edges } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
     const initialNodes: Node<GraphNodeData>[] = artifacts.map((artifact, i) => {
+      const isSelected = artifact.id === selectedArtifactId;
       const arc = artifact.type === ArtifactType.Character
         ? evaluateCharacterArc(artifact, artifactLookup)
         : null;
@@ -58,6 +60,10 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
             width: 160,
             textAlign: 'center',
             padding: '12px 8px',
+            boxShadow: isSelected ? '0 0 0 4px rgba(45, 212, 191, 0.25)' : undefined,
+            borderWidth: isSelected ? 2 : 1,
+            transform: isSelected ? 'scale(1.02)' : undefined,
+            transition: 'transform 150ms ease, box-shadow 150ms ease, border-width 150ms ease',
         }
       };
     });
@@ -79,14 +85,14 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onNodeClick }) => {
     });
 
     return { nodes: initialNodes, edges: initialEdges };
-  }, [artifacts]);
+  }, [artifacts, selectedArtifactId]);
 
   return (
     <div style={{ height: '600px' }} className="bg-slate-900/70 rounded-lg border border-slate-700/50 overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodeClick={(_, node) => onNodeClick(node.id)}
+        onNodeClick={(_, node) => onSelectArtifact(node.id)}
         fitView
         nodesDraggable
         nodesConnectable={false}
