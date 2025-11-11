@@ -24,6 +24,14 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: code/package-lock.json
+      - name: Validate frontend deployment configuration
+        run: |
+          if [[ -z "${VITE_DATA_API_BASE_URL}" ]]; then
+            echo "VITE_DATA_API_BASE_URL must be configured via GitHub Actions variables before deploying." >&2
+            exit 1
+          fi
+        env:
+          VITE_DATA_API_BASE_URL: ${{ env.VITE_DATA_API_BASE_URL }}
       - name: Install dependencies
         run: npm ci
         working-directory: code
@@ -52,6 +60,14 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: server/package-lock.json
+      - name: Validate Gemini credentials
+        run: |
+          if [[ -z "${GEMINI_API_KEY}" ]]; then
+            echo "GEMINI_API_KEY must be configured via GitHub secrets or variables before deploying." >&2
+            exit 1
+          fi
+        env:
+          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
       - name: Install dependencies
         run: npm ci
         working-directory: server
