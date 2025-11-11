@@ -60,12 +60,13 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
   const [fact, setFact] = useState('');
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [fallbackIndex, setFallbackIndex] = useState(() =>
-    FALLBACK_FACT_PROMPTS.length > 0 ? Math.floor(Math.random() * FALLBACK_FACT_PROMPTS.length) : 0,
-  );
-  const [surprisePrompt, setSurprisePrompt] = useState<FactPrompt | null>(
-    FALLBACK_FACT_PROMPTS[fallbackIndex] ?? null,
-  );
+  const [surprisePrompt, setSurprisePrompt] = useState<FactPrompt | null>(() => {
+    if (FALLBACK_FACT_PROMPTS.length === 0) {
+      return null;
+    }
+    const initialIndex = Math.floor(Math.random() * FALLBACK_FACT_PROMPTS.length);
+    return FALLBACK_FACT_PROMPTS[initialIndex] ?? null;
+  });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [surpriseError, setSurpriseError] = useState<string | null>(null);
 
@@ -91,21 +92,6 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
     }
   };
 
-  const getNextFallbackPrompt = useCallback((): FactPrompt | null => {
-    if (FALLBACK_FACT_PROMPTS.length === 0) {
-      return null;
-    }
-
-    let selected: FactPrompt | null = null;
-    setFallbackIndex((current) => {
-      const nextIndex = (current + 1) % FALLBACK_FACT_PROMPTS.length;
-      selected = FALLBACK_FACT_PROMPTS[nextIndex];
-      return nextIndex;
-    });
-
-    return selected ?? FALLBACK_FACT_PROMPTS[0] ?? null;
-  }, []);
-
   const summonQuickFactPrompt = useCallback(async () => {
     setIsGeneratingPrompt(true);
     setSurpriseError(null);
@@ -130,26 +116,15 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
       setError(null);
     } catch (err) {
       console.error('Failed to generate quick fact inspiration', err);
-      const fallback = getNextFallbackPrompt();
-      if (fallback) {
-        setSurprisePrompt(fallback);
-        setFact(fallback.prompt);
-        setDetail('');
-        setError(null);
-        setSurpriseError(
-          'Atlas Intelligence was unavailable, so we surfaced a saved prompt instead.',
-        );
-      } else {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Atlas Intelligence could not propose a quick fact right now.';
-        setSurpriseError(message);
-      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Atlas Intelligence could not propose a quick fact right now.';
+      setSurpriseError(message);
     } finally {
       setIsGeneratingPrompt(false);
     }
-  }, [artifacts, getNextFallbackPrompt, projectTitle]);
+  }, [artifacts, projectTitle]);
 
   const handleSurpriseMe = () => {
     if (isGeneratingPrompt) {
