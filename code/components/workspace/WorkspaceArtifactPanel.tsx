@@ -26,9 +26,22 @@ import {
   type Artifact,
   ArtifactType,
   type Project,
+  type CharacterData,
+  type CharacterTrait,
+  type ConlangLexeme,
+  type LocationData,
+  type LocationFeature,
+  type MagicSystemData,
+  type Scene,
+  type TaskData,
+  type TimelineData,
+  type TimelineEvent,
+  type WikiData,
   isNarrativeArtifactType,
+  TASK_STATE,
 } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
+import { normalizeMagicSystemData } from '../../utils/magicSystem';
 
 interface FeatureGroupMetadata {
   title: string;
@@ -79,6 +92,282 @@ interface WorkspaceArtifactPanelProps {
   detailSectionRef: React.MutableRefObject<HTMLDivElement | null>;
   onWorkspaceError: (message: string) => void;
 }
+
+const RECOVERABLE_TYPES = new Set<ArtifactType>([
+  ArtifactType.Wiki,
+  ArtifactType.Character,
+  ArtifactType.Location,
+  ArtifactType.Conlang,
+  ArtifactType.Task,
+  ArtifactType.Timeline,
+  ArtifactType.MagicSystem,
+]);
+
+const VALID_TASK_STATES = new Set<string>(Object.values(TASK_STATE));
+
+const createRecoveryId = (prefix: string, timestamp: number, index: number): string =>
+  `${prefix}-${timestamp.toString(36)}-${index.toString(36)}`;
+
+const coerceString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value);
+};
+
+const sanitizeSceneList = (value: unknown, timestamp: number): Scene[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const raw = entry as Partial<Scene> & Record<string, unknown>;
+      const title = coerceString(raw.title).trim();
+      const summary = coerceString(raw.summary);
+      const rawId = coerceString(raw.id).trim();
+      const id = rawId.length > 0 ? rawId : createRecoveryId('scene', timestamp, index);
+
+      return {
+        id,
+        title: title.length > 0 ? title : `Scene ${index + 1}`,
+        summary,
+      };
+    })
+    .filter((scene): scene is Scene => scene !== null);
+};
+
+const sanitizeCharacterData = (value: unknown, timestamp: number): CharacterData => {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Partial<CharacterData> & Record<string, unknown>)
+      : ({} as Partial<CharacterData> & Record<string, unknown>);
+  const bio = coerceString(source.bio);
+  const traitsSource = Array.isArray(source.traits) ? source.traits : [];
+
+  const traits = traitsSource
+    .map((trait, index) => {
+      if (!trait || typeof trait !== 'object') {
+        return null;
+      }
+
+      const raw = trait as Partial<CharacterTrait> & Record<string, unknown>;
+      const key = coerceString(raw.key).trim();
+      const valueText = coerceString(raw.value);
+      const rawId = coerceString(raw.id).trim();
+      const id = rawId.length > 0 ? rawId : createRecoveryId('trait', timestamp, index);
+
+      if (key.length === 0 && valueText.trim().length === 0) {
+        return null;
+      }
+
+      return {
+        id,
+        key: key.length > 0 ? key : `Trait ${index + 1}`,
+        value: valueText,
+      };
+    })
+    .filter((trait): trait is CharacterTrait => trait !== null);
+
+  return {
+    bio,
+    traits,
+  };
+};
+
+const sanitizeLocationData = (value: unknown, timestamp: number): LocationData => {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Partial<LocationData> & Record<string, unknown>)
+      : ({} as Partial<LocationData> & Record<string, unknown>);
+  const description = coerceString(source.description);
+  const featuresSource = Array.isArray(source.features) ? source.features : [];
+
+  const features = featuresSource
+    .map((feature, index) => {
+      if (!feature || typeof feature !== 'object') {
+        return null;
+      }
+
+      const raw = feature as Partial<LocationFeature> & Record<string, unknown>;
+      const name = coerceString(raw.name).trim();
+      const detail = coerceString(raw.description);
+      const rawId = coerceString(raw.id).trim();
+      const id = rawId.length > 0 ? rawId : createRecoveryId('feature', timestamp, index);
+
+      if (name.length === 0 && detail.trim().length === 0) {
+        return null;
+      }
+
+      return {
+        id,
+        name: name.length > 0 ? name : `Feature ${index + 1}`,
+        description: detail,
+      };
+    })
+    .filter((feature): feature is LocationFeature => feature !== null);
+
+  return {
+    description,
+    features,
+  };
+};
+
+const sanitizeConlangLexemes = (value: unknown, timestamp: number): ConlangLexeme[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const raw = entry as Partial<ConlangLexeme> & Record<string, unknown>;
+      const lemma = coerceString(raw.lemma).trim();
+      const pos = coerceString(raw.pos).trim();
+      const gloss = coerceString(raw.gloss);
+      const etymology = coerceString(raw.etymology).trim();
+      const rawId = coerceString(raw.id).trim();
+      const id = rawId.length > 0 ? rawId : createRecoveryId('lex', timestamp, index);
+      const tags = Array.isArray(raw.tags)
+        ? raw.tags
+            .map((tag) => coerceString(tag).trim())
+            .filter((tag) => tag.length > 0)
+        : [];
+
+      if (lemma.length === 0 && gloss.trim().length === 0) {
+        return null;
+      }
+
+      return {
+        id,
+        lemma: lemma.length > 0 ? lemma : `Entry ${index + 1}`,
+        pos: pos.length > 0 ? pos : 'noun',
+        gloss,
+        etymology: etymology.length > 0 ? etymology : undefined,
+        tags: tags.length > 0 ? tags : undefined,
+      };
+    })
+    .filter((lexeme): lexeme is ConlangLexeme => lexeme !== null);
+};
+
+const sanitizeTaskData = (value: unknown): TaskData => {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Partial<TaskData> & Record<string, unknown>)
+      : ({} as Partial<TaskData> & Record<string, unknown>);
+  const rawState = coerceString(source.state).trim();
+  const state = VALID_TASK_STATES.has(rawState) ? (rawState as TaskData['state']) : TASK_STATE.Todo;
+  const assignee = coerceString(source.assignee).trim();
+  const due = coerceString(source.due).trim();
+
+  return {
+    state,
+    assignee: assignee.length > 0 ? assignee : undefined,
+    due: due.length > 0 ? due : undefined,
+  };
+};
+
+const sanitizeTimelineData = (value: unknown, timestamp: number): TimelineData => {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Partial<TimelineData> & Record<string, unknown>)
+      : ({} as Partial<TimelineData> & Record<string, unknown>);
+  const eventsSource = Array.isArray(source.events) ? source.events : [];
+
+  const events = eventsSource
+    .map((event, index) => {
+      if (!event || typeof event !== 'object') {
+        return null;
+      }
+
+      const raw = event as Partial<TimelineEvent> & Record<string, unknown>;
+      const title = coerceString(raw.title).trim();
+      const description = coerceString(raw.description);
+      const date = coerceString(raw.date);
+      const rawId = coerceString(raw.id).trim();
+      const id = rawId.length > 0 ? rawId : createRecoveryId('event', timestamp, index);
+
+      if (title.length === 0 && description.trim().length === 0 && date.trim().length === 0) {
+        return null;
+      }
+
+      return {
+        id,
+        title: title.length > 0 ? title : `Event ${index + 1}`,
+        description,
+        date,
+      };
+    })
+    .filter((event): event is TimelineEvent => event !== null);
+
+  return { events };
+};
+
+const sanitizeWikiData = (artifact: Artifact): WikiData => {
+  const fallbackTitle = artifact.title?.trim().length ? artifact.title.trim() : 'Untitled Artifact';
+  const fallbackContent = `# ${fallbackTitle}\n\nStart writing your wiki page here.`;
+  const data = artifact.data;
+
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    return { content: trimmed.length > 0 ? data : fallbackContent };
+  }
+
+  if (data && typeof data === 'object') {
+    const maybeContent = (data as { content?: unknown }).content;
+    const content = coerceString(maybeContent);
+    return { content: content.length > 0 ? content : fallbackContent };
+  }
+
+  return { content: fallbackContent };
+};
+
+const canRecoverArtifact = (artifact: Artifact): boolean =>
+  isNarrativeArtifactType(artifact.type) || RECOVERABLE_TYPES.has(artifact.type);
+
+const recoverArtifactData = (artifact: Artifact, timestamp: number): Artifact['data'] | null => {
+  try {
+    if (isNarrativeArtifactType(artifact.type)) {
+      return sanitizeSceneList(artifact.data, timestamp);
+    }
+
+    switch (artifact.type) {
+      case ArtifactType.Character:
+        return sanitizeCharacterData(artifact.data, timestamp);
+      case ArtifactType.Location:
+        return sanitizeLocationData(artifact.data, timestamp);
+      case ArtifactType.Conlang:
+        return sanitizeConlangLexemes(artifact.data, timestamp);
+      case ArtifactType.Task:
+        return sanitizeTaskData(artifact.data);
+      case ArtifactType.Timeline:
+        return sanitizeTimelineData(artifact.data, timestamp);
+      case ArtifactType.Wiki:
+        return sanitizeWikiData(artifact);
+      case ArtifactType.MagicSystem:
+        return normalizeMagicSystemData(artifact.data as Partial<MagicSystemData> | undefined, artifact.title);
+      default:
+        return null;
+    }
+  } catch (error) {
+    console.warn('Failed to coerce artifact data into a safe format.', {
+      artifactId: artifact.id,
+      artifactType: artifact.type,
+      error,
+    });
+    return null;
+  }
+};
 
 const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   featureGroup,
@@ -423,6 +712,23 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
               const artifactLabel = selectedArtifact.title?.trim().length
                 ? selectedArtifact.title.trim()
                 : 'this artifact';
+              const recoveryEnabled = canRecoverArtifact(selectedArtifact);
+              const handleAttemptRecovery = () => {
+                const recovered = recoverArtifactData(selectedArtifact, Date.now());
+                if (!recovered) {
+                  onWorkspaceError(
+                    'We could not coerce this artifact automatically. Please duplicate it or export the raw data before trying again.',
+                  );
+                  return;
+                }
+
+                onUpdateArtifactData(selectedArtifact.id, recovered);
+                onWorkspaceError(
+                  'We reset the artifact to a safe format. Review the content to confirm nothing important was lost.',
+                );
+                reset();
+              };
+
               return (
                 <div
                   ref={detailSectionRef}
@@ -433,6 +739,12 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                     <p className="text-sm text-rose-100/80">
                       The rest of your workspace is safe. Try again or close this artifact before refreshing the page.
                     </p>
+                    {recoveryEnabled ? (
+                      <p className="text-xs text-rose-100/70">
+                        Recovery will coerce mismatched fields into a safe format and may clear data Creative Atlas cannot parse.
+                        Make a backup first if you need to preserve the raw payload.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <button
@@ -442,6 +754,15 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                     >
                       Try again
                     </button>
+                    {recoveryEnabled ? (
+                      <button
+                        type="button"
+                        onClick={handleAttemptRecovery}
+                        className="rounded-md border border-amber-400/60 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-colors hover:border-amber-300 hover:bg-amber-500/20"
+                      >
+                        Attempt recovery
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => onSelectArtifact(null)}
