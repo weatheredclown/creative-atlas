@@ -56,7 +56,9 @@ export function useArtifactFilters(
     const seen = new Map<string, string>();
 
     for (const artifact of projectArtifacts) {
-      for (const rawTag of artifact.tags) {
+      const artifactTags = Array.isArray(artifact.tags) ? artifact.tags : [];
+
+      for (const rawTag of artifactTags) {
         const trimmed = rawTag.trim();
         if (!trimmed) {
           continue;
@@ -101,8 +103,10 @@ export function useArtifactFilters(
         return false;
       }
 
+      const artifactTags = Array.isArray(artifact.tags) ? artifact.tags : [];
+
       if (normalizedActiveTagFilters.length > 0) {
-        const artifactTagSet = new Set(artifact.tags.map((tag) => tag.toLowerCase()));
+        const artifactTagSet = new Set(artifactTags.map((tag) => tag.toLowerCase()));
         const matchesAllTags = normalizedActiveTagFilters.every((tag) => artifactTagSet.has(tag));
         if (!matchesAllTags) {
           return false;
@@ -110,7 +114,7 @@ export function useArtifactFilters(
       }
 
       if (normalizedQuery) {
-        const haystack = `${artifact.title} ${artifact.summary} ${artifact.tags.join(' ')}`.toLowerCase();
+        const haystack = `${artifact.title ?? ''} ${artifact.summary ?? ''} ${artifactTags.join(' ')}`.toLowerCase();
         if (!haystack.includes(normalizedQuery)) {
           return false;
         }
