@@ -23,20 +23,11 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Kanban board normalizes missing task states so workspace cards stay visible when tasks lack a stored status.
 
 ## Segment B — Feature Depth & Design Polish
-- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
-  - ✅ Expose an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
 - Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed); next add progression state overlays and sync them with the relationship graph.
-- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
-- Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
-  - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
-  - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
-  - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - ✅ Family tree tools now display progression badges derived from shared arc analysis so stage overlays are consistent with the tracker.
   - Render progression overlays within the family tree and ensure the relationship graph consumes the shared state without duplication.
-- Streamline artifact relation linking in the workspace: design and implement multi-select linking with grouped relation types to reduce repetitive scrolling.
 - ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
-- Create procedural encounter generator: blend Dustland and PIT lore to output encounters; expose controls in the quest builder UI.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
@@ -54,6 +45,15 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Atlas Intelligence fallback responses now replace workspace IDs with human-readable artifact and project labels so offline drafts stay readable.
   - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
+
+## Segment F — Simulated History Heatmap
+- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
+  - ✅ Expose an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
+- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
+- Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
+  - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
+  - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
+  - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 
 ## Segment C — Tutorial & Education Experience
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)

@@ -24,6 +24,7 @@ import {
 } from '../Icons';
 import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
+import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 
@@ -247,11 +248,15 @@ const sanitizeTaskData = (value: unknown): TaskData => {
   const state = VALID_TASK_STATES.has(rawState) ? (rawState as TaskData['state']) : TASK_STATE.Todo;
   const assignee = coerceString(source.assignee).trim();
   const due = coerceString(source.due).trim();
+  const encounterConfig = sanitizeEncounterConfig(source.encounterConfig);
+  const generatedEncounter = sanitizeGeneratedEncounter(source.generatedEncounter);
 
   return {
     state,
     assignee: assignee.length > 0 ? assignee : undefined,
     due: due.length > 0 ? due : undefined,
+    encounterConfig,
+    generatedEncounter,
   };
 };
 
@@ -483,74 +488,79 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
 
   return (
     <section className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg shadow-slate-950/20">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <h3 className="text-2xl font-bold text-white">Artifact workspace</h3>
           <p className="text-sm text-slate-400">{featureGroup.description}</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</span>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".csv,.tsv"
-              className="hidden"
-            />
-            <button
-              onClick={handleImportClick}
-              title={
-                canUseDataApi ? 'Import artifacts from CSV or TSV' : 'Connect the data server to import artifacts.'
-              }
-              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-              type="button"
-              disabled={!canUseDataApi}
-            >
-              <ArrowUpTrayIcon className="h-5 w-5" />
-              Import
-            </button>
-            <label htmlFor="artifact-export-select" className="sr-only">
-              Export artifacts
-            </label>
-            <select
-              id="artifact-export-select"
-              onChange={handleExportOptionSelection}
-              defaultValue=""
-              className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={!canUseDataApi}
-            >
-              <option value="">Export…</option>
-              <option value="export-csv">Artifacts (CSV)</option>
-              <option value="export-tsv">Artifacts (TSV)</option>
-              <option value="export-chapter-markdown">Chapter Bible (Markdown)</option>
-              <option value="export-chapter-pdf">Chapter Bible (PDF)</option>
-              <option value="export-lore-json">Lore Bundle (JSON)</option>
-            </select>
+        <div className="flex flex-col gap-3 lg:w-full lg:max-w-3xl">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-700/60 bg-slate-800/40 px-4 py-3 shadow-lg shadow-slate-950/30 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".csv,.tsv"
+                className="hidden"
+              />
+              <button
+                onClick={handleImportClick}
+                title={
+                  canUseDataApi ? 'Import artifacts from CSV or TSV' : 'Connect the data server to import artifacts.'
+                }
+                className="flex items-center gap-2 rounded-md bg-slate-700/60 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                disabled={!canUseDataApi}
+              >
+                <ArrowUpTrayIcon className="h-5 w-5" />
+                Import
+              </button>
+              <label htmlFor="artifact-export-select" className="sr-only">
+                Export artifacts
+              </label>
+              <select
+                id="artifact-export-select"
+                onChange={handleExportOptionSelection}
+                defaultValue=""
+                className="rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!canUseDataApi}
+              >
+                <option value="">Export…</option>
+                <option value="export-csv">Artifacts (CSV)</option>
+                <option value="export-tsv">Artifacts (TSV)</option>
+                <option value="export-chapter-markdown">Chapter Bible (Markdown)</option>
+                <option value="export-chapter-pdf">Chapter Bible (PDF)</option>
+                <option value="export-lore-json">Lore Bundle (JSON)</option>
+              </select>
+            </div>
+            <div className="hidden h-8 w-px bg-slate-700/60 sm:block" />
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <button
+                type="button"
+                onClick={() => onOpenQuickFactModal()}
+                className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                title="Capture a tiny lore beat."
+              >
+                <SparklesIcon className="h-5 w-5" />
+                Add One Fact
+              </button>
+              <button
+                id="add-new-artifact-button"
+                onClick={() => onOpenCreateArtifactModal()}
+                className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                type="button"
+              >
+                <PlusIcon className="h-5 w-5" />
+                New Seed
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">View</span>
-            <ViewSwitcher />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onOpenQuickFactModal()}
-              className="flex items-center gap-2 rounded-md bg-slate-700/60 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg transition-colors hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Capture a tiny lore beat."
-            >
-              <SparklesIcon className="h-5 w-5" />
-              Add One Fact
-            </button>
-            <button
-              id="add-new-artifact-button"
-              onClick={() => onOpenCreateArtifactModal()}
-              className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-cyan-500 hover:shadow-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-200/60 focus:ring-offset-2 focus:ring-offset-slate-900"
-              type="button"
-            >
-              <PlusIcon className="h-5 w-5" />
-              New Seed
-            </button>
+          <div className="flex items-center justify-end">
+            <div className="flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">View</span>
+              <ViewSwitcher />
+            </div>
           </div>
         </div>
       </header>
