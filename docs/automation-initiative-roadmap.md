@@ -16,7 +16,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
-  - Artifact residue cache now preserves mismatched tags/relations during normalization; add regression tests that assert warnings fire and editors surface the preserved data.
   - ✅ Artifact detail panel now tolerates malformed tag and relation arrays and defaults missing project artifact collections so workspace editors stay stable when wiki payloads arrive incomplete.
   - ✅ Artifact filter hook now tolerates artifacts missing tag arrays so wiki selections don't crash the explorer.
   - ✅ Workspace artifact list view now renders as card markup with keyboard support, eliminating `<tr>` hydration crashes in guest mode.
