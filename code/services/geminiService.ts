@@ -446,7 +446,7 @@ export const generateQuickFactInspiration = async ({
         responseMimeType: 'application/json',
         responseSchema: quickFactInspirationSchema,
         temperature: 0.7,
-        maxOutputTokens: 256,
+        maxOutputTokens: 8192,
       },
     })).trim();
 
