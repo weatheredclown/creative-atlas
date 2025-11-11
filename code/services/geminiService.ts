@@ -3,7 +3,7 @@ import { SchemaType } from '@google/generative-ai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
-import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
+import { getGeminiErrorMessage, isGeminiProxyError, requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
   type: SchemaType.OBJECT,
@@ -407,15 +407,111 @@ const buildQuickFactArtifactContext = (artifacts: Artifact[]): string[] => {
   return context;
 };
 
-export const generateQuickFactInspiration = async ({
-  projectTitle,
-  artifacts,
-}: {
-  projectTitle: string;
-  artifacts: Artifact[];
-}): Promise<QuickFactInspiration> => {
-  const safeTitle = projectTitle.trim().length > 0 ? projectTitle.trim() : 'Untitled Atlas Project';
-  const artifactContext = buildQuickFactArtifactContext(artifacts);
+const shrinkQuickFactContext = (context: string[]): string[] | null => {
+  if (context.length === 0) {
+    return null;
+  }
+
+  if (context.length === 1) {
+    return [];
+  }
+
+  const targetLength = Math.max(1, Math.min(context.length - 1, Math.floor(context.length * 0.75)));
+
+  if (targetLength >= context.length) {
+    return context.slice(0, context.length - 1);
+  }
+
+  return context.slice(0, targetLength);
+};
+
+const findFinishReasonInDetails = (details: unknown): string | null => {
+  if (!details) {
+    return null;
+  }
+
+  if (typeof details === 'string') {
+    const trimmed = details.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return findFinishReasonInDetails(parsed);
+    } catch {
+      const match = trimmed.match(/"finishReason"\s*:\s*"([^"]+)"/i);
+      if (match) {
+        return match[1];
+      }
+      return null;
+    }
+  }
+
+  if (Array.isArray(details)) {
+    for (const item of details) {
+      const candidate = findFinishReasonInDetails(item);
+      if (candidate) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  if (typeof details === 'object') {
+    const record = details as Record<string, unknown>;
+    const direct = record.finishReason;
+    if (typeof direct === 'string' && direct.length > 0) {
+      return direct;
+    }
+
+    const reason = record.reason;
+    if (typeof reason === 'string' && reason.length > 0) {
+      return reason;
+    }
+
+    const finishReasons = record.finishReasons;
+    if (typeof finishReasons === 'string' && finishReasons.length > 0) {
+      return finishReasons;
+    }
+    if (Array.isArray(finishReasons)) {
+      const first = finishReasons.find(
+        (value): value is string => typeof value === 'string' && value.length > 0,
+      );
+      if (first) {
+        return first;
+      }
+    }
+
+    for (const value of Object.values(record)) {
+      const nested = findFinishReasonInDetails(value);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+
+  return null;
+};
+
+const shouldRetryQuickFactRequest = (error: unknown, contextLength: number): boolean => {
+  if (contextLength === 0 || !isGeminiProxyError(error)) {
+    return false;
+  }
+
+  const finishReason = findFinishReasonInDetails(error.details);
+  if (typeof finishReason === 'string' && finishReason.toUpperCase().includes('MAX_TOKENS')) {
+    return true;
+  }
+
+  const message = typeof error.message === 'string' ? error.message.toUpperCase() : '';
+  return message.includes('MAX_TOKENS');
+};
+
+const requestQuickFactInspiration = async (
+  safeTitle: string,
+  artifactContext: string[],
+): Promise<QuickFactInspiration> => {
   const formattedArtifacts =
     artifactContext.length > 0
       ? artifactContext.map((line, index) => `${index + 1}. ${line}`).join('\n')
@@ -439,45 +535,83 @@ export const generateQuickFactInspiration = async ({
     'The fact should reference or build upon the supplied artifacts when possible. Keep the tone curious and inviting.',
   ].join('\n');
 
-  try {
-    const jsonText = (await requestGeminiText({
-      prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: quickFactInspirationSchema,
-        temperature: 0.7,
-        maxOutputTokens: 256,
-      },
-    })).trim();
+  const jsonText = (await requestGeminiText({
+    prompt,
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: quickFactInspirationSchema,
+      temperature: 0.7,
+      maxOutputTokens: 256,
+    },
+  })).trim();
 
-    if (!jsonText) {
-      throw new Error('AI response was empty.');
-    }
-
-    const parsed = JSON.parse(jsonText) as Partial<QuickFactInspiration> | null;
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('AI response is not a valid object.');
-    }
-
-    const fact = typeof parsed.fact === 'string' ? parsed.fact.trim() : '';
-    if (!fact) {
-      throw new Error('AI response is missing a quick fact.');
-    }
-
-    const spark = typeof parsed.spark === 'string' ? parsed.spark.trim() : undefined;
-
-    return {
-      fact,
-      spark: spark && spark.length > 0 ? spark : undefined,
-    };
-  } catch (error) {
-    console.error('Error generating quick fact inspiration with Gemini:', error);
-    const message = getGeminiErrorMessage(
-      error,
-      'Atlas Intelligence could not propose a quick fact right now.',
-    );
-    throw new Error(message);
+  if (!jsonText) {
+    throw new Error('AI response was empty.');
   }
+
+  let parsed: Partial<QuickFactInspiration> | null;
+  try {
+    parsed = JSON.parse(jsonText) as Partial<QuickFactInspiration> | null;
+  } catch {
+    throw new Error('AI response is not valid JSON.');
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('AI response is not a valid object.');
+  }
+
+  const fact = typeof parsed.fact === 'string' ? parsed.fact.trim() : '';
+  if (!fact) {
+    throw new Error('AI response is missing a quick fact.');
+  }
+
+  const spark = typeof parsed.spark === 'string' ? parsed.spark.trim() : undefined;
+
+  return {
+    fact,
+    spark: spark && spark.length > 0 ? spark : undefined,
+  };
+};
+
+export const generateQuickFactInspiration = async ({
+  projectTitle,
+  artifacts,
+}: {
+  projectTitle: string;
+  artifacts: Artifact[];
+}): Promise<QuickFactInspiration> => {
+  const safeTitle = projectTitle.trim().length > 0 ? projectTitle.trim() : 'Untitled Atlas Project';
+  let artifactContext = buildQuickFactArtifactContext(artifacts);
+  let attemptError: unknown = null;
+
+  while (true) {
+    try {
+      return await requestQuickFactInspiration(safeTitle, artifactContext);
+    } catch (error) {
+      attemptError = error;
+
+      if (shouldRetryQuickFactRequest(error, artifactContext.length)) {
+        const nextContext = shrinkQuickFactContext(artifactContext);
+        if (nextContext) {
+          console.warn(
+            `Gemini quick fact request hit MAX_TOKENS. Retrying with ${nextContext.length} of ${artifactContext.length} artifact lines.`,
+          );
+          artifactContext = nextContext;
+          continue;
+        }
+      }
+
+      break;
+    }
+  }
+
+  const finalError = attemptError ?? new Error('Unknown Gemini error.');
+  console.error('Error generating quick fact inspiration with Gemini:', finalError);
+  const message = getGeminiErrorMessage(
+    finalError,
+    'Atlas Intelligence could not propose a quick fact right now.',
+  );
+  throw new Error(message);
 };
 
 const STOP_WORDS = new Set([
