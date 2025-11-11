@@ -10,6 +10,7 @@ import {
 } from '@google/generative-ai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
+import { extractTextFromResponse } from './geminiResponse.js';
 
 const router = Router();
 
@@ -67,57 +68,6 @@ const generateRequestSchema = z.object({
   prompt: z.string().trim().min(1, 'Prompt is required.'),
   config: generationConfigSchema.optional(),
 });
-
-const extractTextFromResponse = (
-  response: EnhancedGenerateContentResponse,
-): string | null => {
-  try {
-    const directText = response.text().trim();
-    if (directText) {
-      return directText;
-    }
-  } catch (error) {
-    // Swallow errors from the helper if Gemini blocked the prompt or returned no text.
-  }
-
-  const candidates = response.candidates;
-  if (!Array.isArray(candidates)) {
-    return null;
-  }
-
-  for (const candidate of candidates) {
-    if (!candidate || typeof candidate !== 'object') {
-      continue;
-    }
-
-    const parts = candidate.content?.parts;
-    if (!Array.isArray(parts)) {
-      continue;
-    }
-
-    const segments: string[] = [];
-
-    for (const part of parts) {
-      if (!part || typeof part !== 'object') {
-        continue;
-      }
-
-      const text = (part as { text?: unknown }).text;
-      if (typeof text === 'string') {
-        const trimmed = text.trim();
-        if (trimmed.length > 0) {
-          segments.push(trimmed);
-        }
-      }
-    }
-
-    if (segments.length > 0) {
-      return segments.join('\n\n');
-    }
-  }
-
-  return null;
-};
 
 router.post(
   '/generate',
