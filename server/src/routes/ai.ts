@@ -38,7 +38,74 @@ const generateRequestSchema = z.object({
   config: generationConfigSchema.optional(),
 });
 
-const extractTextFromResponse = (response: GenerateContentResponse): string | null => {
+const stringifyArgs = (value: unknown): string | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? null : serialized;
+  } catch {
+    return null;
+  }
+};
+
+const extractTextFromPart = (part: unknown): string | null => {
+  if (!part || typeof part !== 'object') {
+    return null;
+  }
+
+  const text = (part as { text?: unknown }).text;
+  if (typeof text === 'string') {
+    const trimmed = text.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+
+  const functionCall = (part as { functionCall?: { args?: unknown } }).functionCall;
+  if (functionCall && typeof functionCall === 'object') {
+    const serialized = stringifyArgs((functionCall as { args?: unknown }).args);
+    if (serialized) {
+      return serialized;
+    }
+  }
+
+  const functionResponse = (part as { functionResponse?: { name?: unknown; response?: unknown } }).functionResponse;
+  if (functionResponse && typeof functionResponse === 'object') {
+    const serialized = stringifyArgs(
+      (functionResponse as { name?: unknown; response?: unknown }).response,
+    );
+    if (serialized) {
+      return serialized;
+    }
+  }
+
+  const inlineData = (part as { inlineData?: { data?: unknown } }).inlineData;
+  if (inlineData && typeof inlineData === 'object') {
+    const raw = (inlineData as { data?: unknown }).data;
+    if (typeof raw === 'string' && raw.length > 0) {
+      try {
+        const decoded = Buffer.from(raw, 'base64').toString('utf-8').trim();
+        if (decoded.length > 0) {
+          return decoded;
+        }
+      } catch (error) {
+        console.error('Gemini proxy failed to decode inline data segment', error);
+      }
+    }
+  }
+
+  return null;
+};
+
+export const extractTextFromResponse = (response: GenerateContentResponse): string | null => {
   const directText = typeof response.text === 'string' ? response.text.trim() : '';
   if (directText) {
     return directText;
@@ -62,16 +129,9 @@ const extractTextFromResponse = (response: GenerateContentResponse): string | nu
     const segments: string[] = [];
 
     for (const part of parts) {
-      if (!part || typeof part !== 'object') {
-        continue;
-      }
-
-      const text = (part as { text?: unknown }).text;
-      if (typeof text === 'string') {
-        const trimmed = text.trim();
-        if (trimmed.length > 0) {
-          segments.push(trimmed);
-        }
+      const segment = extractTextFromPart(part);
+      if (segment) {
+        segments.push(segment);
       }
     }
 
@@ -89,6 +149,7 @@ router.post(
     const parsed = generateRequestSchema.safeParse(req.body);
 
     if (!parsed.success) {
+      console.warn('Gemini proxy received invalid request payload', parsed.error.flatten());
       res.status(400).json({
         error: 'Invalid request payload.',
         details: parsed.error.flatten(),
@@ -130,6 +191,10 @@ router.post(
       const text = extractTextFromResponse(response);
 
       if (!text) {
+        console.error('Gemini proxy returned an empty response', {
+          model,
+          promptLength: prompt.length,
+        });
         res.status(502).json({
           error: 'Gemini returned an empty response.',
         });
@@ -140,7 +205,7 @@ router.post(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown Gemini error occurred.';
-      console.error('Gemini proxy request failed', message);
+      console.error('Gemini proxy request failed', error);
       res.status(502).json({
         error: 'Gemini request failed.',
         details: message,
