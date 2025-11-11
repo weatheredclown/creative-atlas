@@ -156,3 +156,5 @@ npm run test:e2e
 
 `npm test` executes the Vitest-powered unit and integration suite. `npm run test:e2e` runs the Playwright smoke tests; the first run
 may prompt you to install the required browsers via `npx playwright install`.
+
+:)
