@@ -5,6 +5,13 @@ const jspdfEsmPath = 'jspdf/dist/jspdf.es.min.js';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const apiBaseUrl = env.VITE_API_BASE_URL?.trim();
+
+  if (mode === 'production' && !apiBaseUrl) {
+    throw new Error(
+      'VITE_API_BASE_URL is required when building for production. Configure the environment variable or abort the deployment.'
+    );
+  }
 
   return {
     plugins: [react()],
@@ -19,7 +26,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE_URL || 'http://localhost:4000',
+          target: apiBaseUrl || 'http://localhost:4000',
           changeOrigin: true,
         },
       },
