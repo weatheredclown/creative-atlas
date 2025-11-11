@@ -35,6 +35,13 @@ import {
   updateProfileViaApi,
   updateProjectViaApi,
 } from '../services/dataApi';
+import {
+  type ArtifactPayload,
+  type ArtifactResidue,
+  normalizeArtifact,
+  normalizeArtifacts,
+} from '../utils/artifactNormalization';
+import { createArtifactResidueStore } from '../utils/artifactResidueStore';
 
 interface ProfileUpdate
   extends Partial<Omit<UserProfile, 'settings' | 'achievementsUnlocked' | 'questlinesClaimed'>> {
@@ -107,14 +114,6 @@ const createDefaultProfile = (
   };
 };
 
-type ArtifactPayload = Omit<Artifact, 'ownerId' | 'tags' | 'relations'> & {
-  ownerId?: string;
-  tags?: unknown;
-  relations?: unknown;
-};
-
-type ArtifactResidue = Partial<Record<'tags' | 'relations', unknown>>;
-
 const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
   projects.map((project) => ({
     ...project,
@@ -123,48 +122,6 @@ const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
       ? project.tags.filter((tag): tag is string => typeof tag === 'string')
       : [],
   }));
-
-const normalizeArtifact = (
-  artifact: ArtifactPayload,
-  ownerId: string,
-): { sanitized: Artifact; residue?: ArtifactResidue } => {
-  const residue: ArtifactResidue = {};
-
-  const normalizedTags = Array.isArray(artifact.tags)
-    ? artifact.tags.filter((tag): tag is string => typeof tag === 'string')
-    : [];
-  if (!Array.isArray(artifact.tags) || normalizedTags.length !== (artifact.tags?.length ?? 0)) {
-    residue.tags = artifact.tags;
-  }
-
-  const normalizedRelations = Array.isArray(artifact.relations)
-    ? artifact.relations.filter(
-        (relation): relation is Artifact['relations'][number] =>
-          Boolean(relation) && typeof relation.toId === 'string' && typeof relation.kind === 'string',
-      )
-    : [];
-  if (
-    !Array.isArray(artifact.relations) ||
-    normalizedRelations.length !== (Array.isArray(artifact.relations) ? artifact.relations.length : 0)
-  ) {
-    residue.relations = artifact.relations;
-  }
-
-  const hasResidue = Object.keys(residue).length > 0;
-
-  return {
-    sanitized: {
-      ...artifact,
-      ownerId: artifact.ownerId ?? ownerId,
-      tags: normalizedTags,
-      relations: normalizedRelations,
-    } as Artifact,
-    residue: hasResidue ? residue : undefined,
-  };
-};
-
-const normalizeArtifacts = (artifacts: ArtifactPayload[], ownerId: string): Artifact[] =>
-  artifacts.map((artifact) => normalizeArtifact(artifact, ownerId).sanitized);
 
 const groupArtifactsByProject = (artifacts: Artifact[]): Record<string, Artifact[]> => {
   return artifacts.reduce<Record<string, Artifact[]>>((acc, artifact) => {
@@ -207,51 +164,24 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [memoryConversations, setMemoryConversations] = useState<MemorySyncConversation[]>([]);
-  const artifactResidueRef = useRef<Record<string, ArtifactResidue>>({});
+  const artifactResidueStoreRef = useRef(createArtifactResidueStore());
 
   const clearResidueField = useCallback((artifactId: string, field: keyof ArtifactResidue) => {
-    if (!artifactResidueRef.current[artifactId]) {
-      return;
-    }
-    const nextResidue = { ...artifactResidueRef.current[artifactId] };
-    delete nextResidue[field];
-    if (Object.keys(nextResidue).length === 0) {
-      delete artifactResidueRef.current[artifactId];
-    } else {
-      artifactResidueRef.current[artifactId] = nextResidue;
-    }
+    artifactResidueStoreRef.current.clearField(artifactId, field);
   }, []);
 
   const setResidueField = useCallback(
     (artifactId: string, field: keyof ArtifactResidue, value: unknown) => {
-      artifactResidueRef.current[artifactId] = {
-        ...(artifactResidueRef.current[artifactId] ?? {}),
-        [field]: value,
-      };
-      console.warn('Artifact payload contained mismatched fields and was preserved separately.', {
-        artifactId,
-        field,
-      });
+      artifactResidueStoreRef.current.setField(artifactId, field, value);
     },
     [],
   );
 
   const recordArtifactResidue = useCallback(
     (artifactId: string, residue?: ArtifactResidue) => {
-      (['tags', 'relations'] as const).forEach((field) => {
-        if (residue && Object.prototype.hasOwnProperty.call(residue, field)) {
-          const value = residue[field];
-          if (value !== undefined) {
-            setResidueField(artifactId, field, value);
-          } else {
-            clearResidueField(artifactId, field);
-          }
-        } else {
-          clearResidueField(artifactId, field);
-        }
-      });
+      artifactResidueStoreRef.current.record(artifactId, residue);
     },
-    [clearResidueField, setResidueField],
+    [],
   );
 
   const clearError = useCallback(() => {
@@ -267,7 +197,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMemoryConversations([]);
     setLoading(false);
     setError(null);
-    artifactResidueRef.current = {};
+    artifactResidueStoreRef.current.reset();
   }, []);
 
   const reportError = useCallback(
@@ -871,7 +801,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             [findProjectId]: nextList,
           };
         });
-        delete artifactResidueRef.current[artifactId];
+        artifactResidueStoreRef.current.delete(artifactId);
       };
 
       if (isGuestMode || !isDataApiConfigured) {
