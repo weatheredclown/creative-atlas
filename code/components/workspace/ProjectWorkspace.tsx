@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ProjectWorkspaceContainer from '../ProjectWorkspaceContainer';
 import WorkspaceModals from './WorkspaceModals';
 import { CreateArtifactInput, InfoModalState, QuickFactInput } from './types';
+import { XMarkIcon } from '../Icons';
 
 import {
   type Artifact,
@@ -118,6 +119,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [isQuickFactModalOpen, setIsQuickFactModalOpen] = useState(false);
   const [isSavingQuickFact, setIsSavingQuickFact] = useState(false);
   const [infoModalContent, setInfoModalContent] = useState<InfoModalState>(null);
+  const [workspaceErrorToast, setWorkspaceErrorToast] = useState<{ id: number; message: string } | null>(null);
 
   const projectArtifactsById = useMemo(() => {
     const map = new Map<string, Artifact>();
@@ -135,7 +137,34 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     setIsQuickFactModalOpen(false);
     setIsSavingQuickFact(false);
     setInfoModalContent(null);
+    setWorkspaceErrorToast(null);
   }, [project.id]);
+
+  useEffect(() => {
+    if (!workspaceErrorToast) {
+      return undefined;
+    }
+
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setWorkspaceErrorToast(null);
+    }, 6000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [workspaceErrorToast]);
+
+  const handleWorkspaceError = useCallback((message: string) => {
+    setWorkspaceErrorToast({ id: Date.now(), message });
+  }, []);
+
+  const dismissWorkspaceError = useCallback(() => {
+    setWorkspaceErrorToast(null);
+  }, []);
 
   const openCreateArtifactModal = useCallback(
     ({ defaultType = null, sourceArtifactId: sourceId = null }: { defaultType?: ArtifactType | null; sourceArtifactId?: string | null } = {}) => {
@@ -649,6 +678,24 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
   return (
     <>
+      {workspaceErrorToast ? (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm">
+          <div className="flex items-start gap-3 rounded-lg border border-rose-500/40 bg-rose-500/90 px-4 py-3 text-sm text-rose-50 shadow-xl shadow-rose-900/40">
+            <div className="flex-1 space-y-1">
+              <p className="font-semibold">We hit a snag.</p>
+              <p className="text-rose-50/90">{workspaceErrorToast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissWorkspaceError}
+              className="rounded-md p-1 text-rose-100/80 transition-colors hover:text-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200/80 focus:ring-offset-2 focus:ring-offset-rose-900"
+            >
+              <span className="sr-only">Dismiss error message</span>
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
       <ProjectWorkspaceContainer
         profile={profile}
         project={project}
@@ -691,6 +738,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         upcomingMilestoneOverview={upcomingMilestoneOverview}
         canUseDataApi={canUseDataApi}
         canPublishToGitHub={canPublishToGitHub}
+        onWorkspaceError={handleWorkspaceError}
       />
 
       <WorkspaceModals
