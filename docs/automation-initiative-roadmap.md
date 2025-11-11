@@ -43,6 +43,11 @@ This document tracks the multi-session automation initiative to deliver the full
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
 - Add a workspace section index navigation so creators can jump between hero, tracking, templates, and publishing panels without excessive scrolling.
+- Address the usability fixes outlined in `docs/usability-improvement-tips.md`:
+  - Refine artifact detail panel tabs with clear labelling and full keyboard support.
+  - Layer guidance into Graph view and Family Tree tools so linking workflows feel discoverable.
+  - Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
+  - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
 - App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; hero, artifact, activity, and modal subcomponents now live under `code/components/workspace/`.
   - ✅ Quick fact capture launched from artifact rows now anchors the saved fact to the selected artifact via automatic relations and contextual prompts.
   - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
