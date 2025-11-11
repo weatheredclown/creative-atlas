@@ -65,6 +65,32 @@ export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [
 export const isNarrativeArtifactType = (type: ArtifactType): boolean =>
   NARRATIVE_ARTIFACT_TYPES.includes(type);
 
+export type ArcStageId = 'spark' | 'rising' | 'crisis' | 'transformation' | 'legacy';
+
+export type CharacterProgressionStatus =
+  | 'untracked'
+  | 'inciting'
+  | 'escalating'
+  | 'confrontation'
+  | 'resolution'
+  | 'legacy';
+
+export interface CharacterProgressionCheckpoint {
+  stageId: ArcStageId;
+  status: CharacterProgressionStatus;
+  notedAt: string;
+  summary?: string;
+  recordedBy?: string;
+}
+
+export interface CharacterProgressionState {
+  stageId: ArcStageId;
+  status: CharacterProgressionStatus;
+  updatedAt: string;
+  lastAdvancedAt?: string;
+  checkpoints: CharacterProgressionCheckpoint[];
+}
+
 export const TASK_STATE = {
     Todo: 'Todo',
     InProgress: 'In Progress',
@@ -101,6 +127,7 @@ export interface CharacterTrait {
 export interface CharacterData {
     bio: string;
     traits: CharacterTrait[];
+    progression?: CharacterProgressionState;
 }
 
 export interface WikiData {

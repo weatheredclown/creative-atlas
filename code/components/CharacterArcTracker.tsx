@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react';
-import { Artifact, ArtifactType } from '../types';
-import { ArcStageId, CharacterArcEvaluation, evaluateCharacterArc } from '../utils/characterProgression';
+import { Artifact, ArtifactType, ArcStageId } from '../types';
+import {
+  CharacterArcEvaluation,
+  evaluateCharacterArc,
+  formatProgressionStatus,
+} from '../utils/characterProgression';
 import { FlagIcon, ShareIcon, SparklesIcon } from './Icons';
 
 interface CharacterArcTrackerProps {
@@ -117,11 +121,14 @@ const CharacterArcTracker: React.FC<CharacterArcTrackerProps> = ({ artifacts }) 
                   <h4 className="text-lg font-semibold text-slate-100">{entry.character.title}</h4>
                   <p className="text-sm text-slate-400">{entry.character.summary || 'No summary provided yet.'}</p>
                 </div>
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border ${stageBadgeClassNames[entry.stage.id]}`}
                   >
                     {entry.stage.label}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    {formatProgressionStatus(entry.progression.status)}
                   </span>
                   <span className="text-xs text-slate-500">Score: {entry.score.toFixed(1)}</span>
                 </div>

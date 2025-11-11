@@ -12,7 +12,11 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
-import { evaluateCharacterArc, getArcStageBadgeClassName } from '../utils/characterProgression';
+import {
+  evaluateCharacterArc,
+  formatProgressionStatus,
+  getArcStageBadgeClassName,
+} from '../utils/characterProgression';
 
 interface GraphViewProps {
   artifacts: Artifact[];
@@ -99,7 +103,14 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
           label: (
             <div className="flex flex-col items-center gap-2 py-1">
               <span className="text-sm font-semibold text-slate-100">{artifact.title}</span>
-              {arc && <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>}
+              {arc && (
+                <>
+                  <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    {formatProgressionStatus(arc.progression.status)}
+                  </span>
+                </>
+              )}
             </div>
           ),
           type: artifact.type,
