@@ -52,7 +52,7 @@ jobs:
     env:
       GCP_APP_ENGINE_SERVICE_ACCOUNT: ${{ secrets.GCP_APP_ENGINE_SERVICE_ACCOUNT }}
       FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
-      GEMINI_API_KEY: ${{ secrets.VITE_API_KEY != '' && secrets.VITE_API_KEY || vars.VITE_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.VITE_API_KEY || vars.VITE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,8 +66,6 @@ jobs:
             echo "GEMINI_API_KEY must be configured via GitHub secrets or variables before deploying." >&2
             exit 1
           fi
-        env:
-          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
       - name: Install dependencies
         run: npm ci
         working-directory: server
