@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { TutorialLanguage, TutorialStep } from '../types';
-import { DEFAULT_TUTORIAL_LANGUAGE, getTutorialSteps, tutorialLanguageOptions } from '../utils/tutorial';
+import { DEFAULT_TUTORIAL_LANGUAGE, getTutorialSteps } from '../utils/tutorial';
 import TutorialPopover from './TutorialPopover';
 import Stepper from './Stepper';
 
@@ -11,7 +11,6 @@ interface TutorialGuideProps {
   onStepChange?: (step: number) => void;
   onComplete?: () => void;
   language?: TutorialLanguage;
-  onLanguageChange?: (language: TutorialLanguage) => void;
 }
 
 const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) => {
@@ -28,7 +27,6 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({
   onStepChange,
   onComplete,
   language = DEFAULT_TUTORIAL_LANGUAGE,
-  onLanguageChange,
 }) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [referenceElement, setReferenceElement] = useState<HTMLElement | null>(null);
@@ -141,13 +139,6 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({
   const isLastStep = currentStep === totalSteps - 1;
   const canGoBack = currentStep > 0;
 
-  const handleLanguageSelect = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      onLanguageChange?.(event.target.value as TutorialLanguage);
-    },
-    [onLanguageChange],
-  );
-
   if (!currentTutorialStep) {
     return null;
   }
@@ -176,23 +167,6 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({
               </p>
               <h3 className="mt-1 text-lg font-semibold text-slate-50">{currentTutorialStep.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-300">{currentTutorialStep.explanation}</p>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-44">
-              <label htmlFor="tutorial-language" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Language
-              </label>
-              <select
-                id="tutorial-language"
-                value={language}
-                onChange={handleLanguageSelect}
-                className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                {tutorialLanguageOptions.map(option => (
-                  <option key={option.code} value={option.code}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
           <div className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3">

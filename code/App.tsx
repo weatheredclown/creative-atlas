@@ -5,7 +5,6 @@ import {
   Project,
   ProjectStatus,
   TemplateArtifactBlueprint,
-  TutorialLanguage,
   UserProfile,
   type MemorySyncStatus,
   type ProjectComponentKey,
@@ -581,10 +580,6 @@ export default function App() {
     setIsTutorialVisible(true);
   }, []);
 
-  const handleTutorialLanguageChange = useCallback((language: TutorialLanguage) => {
-    setTutorialProgress(previous => ({ ...previous, language }));
-  }, []);
-
   if (!profile) {
     return <DashboardShellPlaceholder loading={loading} />;
   }
@@ -605,7 +600,6 @@ export default function App() {
             onClose={handleTutorialDismiss}
             onStepChange={handleTutorialStepChange}
             onComplete={handleTutorialComplete}
-            onLanguageChange={handleTutorialLanguageChange}
           />
         </ErrorBoundary>
       )}
