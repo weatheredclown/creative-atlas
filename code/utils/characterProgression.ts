@@ -1,11 +1,12 @@
 import {
   Artifact,
   ArtifactType,
+  ArcStageId,
   CharacterData,
+  CharacterProgressionState,
+  CharacterProgressionStatus,
   isNarrativeArtifactType,
 } from '../types';
-
-export type ArcStageId = 'spark' | 'rising' | 'crisis' | 'transformation' | 'legacy';
 
 export interface ArcStageConfig {
   id: ArcStageId;
@@ -28,6 +29,7 @@ export interface CharacterArcEvaluation {
   questLinks: Artifact[];
   suggestions: string[];
   score: number;
+  progression: CharacterProgressionState;
 }
 
 export const ARC_STAGE_CONFIG: ArcStageConfig[] = [
@@ -85,6 +87,31 @@ export const getArcStageBadgeClassName = (stageId: ArcStageId): string => {
   return `${ARC_STAGE_BADGE_BASE_CLASSES} ${ARC_STAGE_BADGE_COLOR_CLASSES[stageId]}`;
 };
 
+const ARC_STAGE_STATUS_MAP: Record<ArcStageId, CharacterProgressionStatus> = {
+  spark: 'inciting',
+  rising: 'escalating',
+  crisis: 'confrontation',
+  transformation: 'resolution',
+  legacy: 'legacy',
+};
+
+export const formatProgressionStatus = (status: CharacterProgressionStatus): string => {
+  switch (status) {
+    case 'inciting':
+      return 'Inciting Spark';
+    case 'escalating':
+      return 'Escalating Stakes';
+    case 'confrontation':
+      return 'Confrontation';
+    case 'resolution':
+      return 'Resolution Arc';
+    case 'legacy':
+      return 'Legacy Echo';
+    default:
+      return 'Untracked';
+  }
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const safeWordCount = (text?: string | null) => {
@@ -111,6 +138,58 @@ const getNextStage = (currentStage: ArcStageConfig): ArcStageConfig | null => {
     return null;
   }
   return ARC_STAGE_CONFIG[currentIndex + 1];
+};
+
+const buildProgressionState = (
+  character: Artifact,
+  stage: ArcStageConfig,
+): CharacterProgressionState => {
+  const data = (character.data as CharacterData | undefined) ?? { bio: '', traits: [] };
+  const previousState = data.progression;
+  const status = ARC_STAGE_STATUS_MAP[stage.id];
+  const now = new Date().toISOString();
+
+  if (!previousState) {
+    return {
+      stageId: stage.id,
+      status,
+      updatedAt: now,
+      lastAdvancedAt: now,
+      checkpoints: [
+        {
+          stageId: stage.id,
+          status,
+          notedAt: now,
+          summary: 'Initial progression snapshot derived from arc evaluation.',
+        },
+      ],
+    } satisfies CharacterProgressionState;
+  }
+
+  if (previousState.stageId === stage.id && previousState.status === status) {
+    return {
+      ...previousState,
+      updatedAt: previousState.updatedAt ?? now,
+      stageId: stage.id,
+      status,
+    } satisfies CharacterProgressionState;
+  }
+
+  return {
+    stageId: stage.id,
+    status,
+    updatedAt: now,
+    lastAdvancedAt: now,
+    checkpoints: [
+      ...previousState.checkpoints,
+      {
+        stageId: stage.id,
+        status,
+        notedAt: now,
+        summary: `Advanced to ${stage.label} via arc evaluation.`,
+      },
+    ],
+  } satisfies CharacterProgressionState;
 };
 
 const deriveStatusScore = (status: string | undefined) => {
@@ -231,6 +310,8 @@ export const evaluateCharacterArc = (
     timelineLinks,
   });
 
+  const progression = buildProgressionState(character, stage);
+
   return {
     stage,
     nextStage,
@@ -244,6 +325,7 @@ export const evaluateCharacterArc = (
     questLinks,
     suggestions,
     score,
+    progression,
   } satisfies CharacterArcEvaluation;
 };
 

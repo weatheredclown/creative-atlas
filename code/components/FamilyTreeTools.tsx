@@ -3,6 +3,7 @@ import { Artifact, ArtifactType, CharacterData } from '../types';
 import {
   CharacterArcEvaluation,
   evaluateCharacterArc,
+  formatProgressionStatus,
   getArcStageBadgeClassName,
 } from '../utils/characterProgression';
 import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
@@ -310,13 +311,17 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     };
 
     const arc = progressionMap.get(artifact.id);
+    const statusLabel = arc ? formatProgressionStatus(arc.progression.status) : null;
+    const title = arc
+      ? `${artifact.title} — ${arc.stage.label}${statusLabel ? ` · ${statusLabel}` : ''}`
+      : artifact.title;
 
     return (
       <button
         type="button"
         onClick={() => handleSelect(artifact.id)}
         className={`${baseStyles} ${variantStyles[variant]}`}
-        title={arc ? `${artifact.title} — ${arc.stage.label}` : artifact.title}
+        title={title}
       >
         {artifact.title}
       </button>
@@ -353,11 +358,12 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
               <LinkIcon className="h-4 w-4" />
             </div>
             {arc && (
-              <span
-                className={getArcStageBadgeClassName(arc.stage.id)}
-              >
-                {arc.stage.label}
-              </span>
+              <div className="flex flex-col items-end gap-1 text-right">
+                <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {formatProgressionStatus(arc.progression.status)}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -533,7 +539,14 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
                   >
                     {summary.character.title}
                   </button>
-                  {arc && <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>}
+                  {arc && (
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        {formatProgressionStatus(arc.progression.status)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <span>{summary.parents}</span>
                 <span>{summary.children}</span>
