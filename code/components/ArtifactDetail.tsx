@@ -83,6 +83,11 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     [artifact.relations],
   );
 
+  const projectArtifactsList = useMemo(
+    () => (Array.isArray(projectArtifacts) ? projectArtifacts : []),
+    [projectArtifacts],
+  );
+
   useEffect(() => {
     setEditableSummary(artifact.summary);
     setIsEditingSummary(false);
@@ -198,7 +203,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     setTagInput('');
   };
 
-  const availableTargets = projectArtifacts.filter(
+  const availableTargets = projectArtifactsList.filter(
     (candidate) =>
       candidate.id !== artifact.id &&
       !relationEntries.some((entry) => entry.relation.toId === candidate.id),
@@ -465,7 +470,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
           <>
             <div className="space-y-2">
               {relationEntries.map(({ relation, index }) => {
-                const target = projectArtifacts.find((a) => a.id === relation.toId);
+                const target = projectArtifactsList.find((a) => a.id === relation.toId);
                 return (
                   <div key={`${relation.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
                     <span className="text-slate-400">{formatStatusLabel(relation.kind)}</span>
@@ -532,7 +537,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
             {relationEntries.length > 0 ? (
               <ul className="space-y-2">
                 {relationEntries.map(({ relation, index }) => {
-                  const target = projectArtifacts.find((a) => a.id === relation.toId);
+                  const target = projectArtifactsList.find((a) => a.id === relation.toId);
                   return (
                     <li key={`${relation.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
                       <div className="flex items-center gap-2">

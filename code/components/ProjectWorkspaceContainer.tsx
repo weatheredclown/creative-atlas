@@ -252,7 +252,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
 
   const summaryFeatureGroup = PROJECT_FEATURE_GROUPS.summary;
 
-  return (
+return (
     <>
       <div className="space-y-12">
         <WorkspaceSummarySection
