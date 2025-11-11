@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   GoogleGenAI,
   type GenerationConfig,
+  type GenerateContentResponse,  
   HarmCategory,
   HarmBlockThreshold,
 } from '@google/genai';
@@ -42,6 +43,51 @@ const generateRequestSchema = z.object({
   prompt: z.string().trim().min(1, 'Prompt is required.'),
   config: generationConfigSchema.optional(),
 });
+
+const extractTextFromResponse = (response: GenerateContentResponse): string | null => {
+  const directText = typeof response.text === 'string' ? response.text.trim() : '';
+  if (directText) {
+    return directText;
+  }
+
+  const candidates = (response as { candidates?: unknown }).candidates;
+  if (!Array.isArray(candidates)) {
+    return null;
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') {
+      continue;
+    }
+
+    const parts = (candidate as { content?: { parts?: unknown } }).content?.parts;
+    if (!Array.isArray(parts)) {
+      continue;
+    }
+
+    const segments: string[] = [];
+
+    for (const part of parts) {
+      if (!part || typeof part !== 'object') {
+        continue;
+      }
+
+      const text = (part as { text?: unknown }).text;
+      if (typeof text === 'string') {
+        const trimmed = text.trim();
+        if (trimmed.length > 0) {
+          segments.push(trimmed);
+        }
+      }
+    }
+
+    if (segments.length > 0) {
+      return segments.join('\n\n');
+    }
+  }
+
+  return null;
+};
 
 router.post(
   '/generate',
@@ -107,7 +153,7 @@ router.post(
 
     try {
       const response = await client.models.generateContent(payload);
-      const text = response.text?.trim();
+      const text = extractTextFromResponse(response);
 
       if (!text) {
         console.log(
