@@ -22,21 +22,12 @@ import {
   TableCellsIcon,
   ViewColumnsIcon,
 } from '../Icons';
-import {
-  type Artifact,
-  ArtifactType,
-  type Project,
-  isNarrativeArtifactType,
-} from '../../types';
+import { type Artifact, ArtifactType, type Project, isNarrativeArtifactType } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
-
-interface FeatureGroupMetadata {
-  title: string;
-  description: string;
-}
+import type { WorkspaceFeatureGroup } from './types';
 
 interface WorkspaceArtifactPanelProps {
-  featureGroup: FeatureGroupMetadata;
+  featureGroup: WorkspaceFeatureGroup;
   isVisible: boolean;
   project: Project;
   allArtifacts: Artifact[];
