@@ -64,64 +64,6 @@ type Candidate = {
   safetyRatings?: SafetyRating[];
 };
 
-const extractTextFromResponse = (response: GenerateContentResponse): string | null => {
-  const enhanced = response as GenerateContentResponse & { text?: unknown };
-
-  if (typeof enhanced.text === 'function') {
-    try {
-      const generatedText = (enhanced.text as () => string)().trim();
-      if (generatedText.length > 0) {
-        return generatedText;
-      }
-    } catch (error) {
-      console.warn('Failed to read Gemini response via text() helper', error);
-    }
-  } else if (typeof enhanced.text === 'string') {
-    const directText = enhanced.text.trim();
-    if (directText.length > 0) {
-      return directText;
-    }
-  }
-
-  const candidates = (response as { candidates?: unknown }).candidates;
-  if (!Array.isArray(candidates)) {
-    return null;
-  }
-
-  for (const candidate of candidates) {
-    if (!candidate || typeof candidate !== 'object') {
-      continue;
-    }
-
-    const parts = (candidate as { content?: { parts?: unknown } }).content?.parts;
-    if (!Array.isArray(parts)) {
-      continue;
-    }
-
-    const segments: string[] = [];
-
-    for (const part of parts) {
-      if (!part || typeof part !== 'object') {
-        continue;
-      }
-
-      const text = (part as { text?: unknown }).text;
-      if (typeof text === 'string') {
-        const trimmed = text.trim();
-        if (trimmed.length > 0) {
-          segments.push(trimmed);
-        }
-      }
-    }
-
-    if (segments.length > 0) {
-      return segments.join('\n\n');
-    }
-  }
-
-  return null;
-};
-
 const normalizeBlockReason = (reason: unknown): BlockReason | null => {
   if (typeof reason !== 'string') {
     return null;
