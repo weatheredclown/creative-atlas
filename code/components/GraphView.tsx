@@ -1,6 +1,6 @@
 
-import React, { useMemo } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Node, Edge } from 'reactflow';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ReactFlow, { Background, Controls, MiniMap, Node, Edge, NodeChange, applyNodeChanges } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
 import { evaluateCharacterArc, getArcStageBadgeClassName } from '../utils/characterProgression';
@@ -30,12 +30,22 @@ const nodeColor = (type: ArtifactType): string => {
 
 type GraphNodeData = { label: React.ReactNode; type: ArtifactType };
 
+const createBaseNodeStyle = (type: ArtifactType) => ({
+  background: '#1e293b', // slate-800
+  color: '#e2e8f0', // slate-200
+  border: `1px solid ${nodeColor(type)}`,
+  borderRadius: '0.5rem',
+  width: 160,
+  textAlign: 'center',
+  padding: '12px 8px',
+  transition: 'transform 150ms ease, box-shadow 150ms ease, border-width 150ms ease',
+});
+
 const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId }) => {
-  const { nodes, edges } = useMemo(() => {
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
-    const initialNodes: Node<GraphNodeData>[] = artifacts.map((artifact, i) => {
-      const isSelected = artifact.id === selectedArtifactId;
+    const nodes: Node<GraphNodeData>[] = artifacts.map((artifact, i) => {
       const arc = artifact.type === ArtifactType.Character
         ? evaluateCharacterArc(artifact, artifactLookup)
         : null;
@@ -52,27 +62,15 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
           type: artifact.type,
         },
         position: { x: (i % 6) * 190 + Math.random() * 40, y: Math.floor(i / 6) * 140 + Math.random() * 40 },
-        style: {
-            background: '#1e293b', // slate-800
-            color: '#e2e8f0', // slate-200
-            border: `1px solid ${nodeColor(artifact.type)}`,
-            borderRadius: '0.5rem',
-            width: 160,
-            textAlign: 'center',
-            padding: '12px 8px',
-            boxShadow: isSelected ? '0 0 0 4px rgba(45, 212, 191, 0.25)' : undefined,
-            borderWidth: isSelected ? 2 : 1,
-            transform: isSelected ? 'scale(1.02)' : undefined,
-            transition: 'transform 150ms ease, box-shadow 150ms ease, border-width 150ms ease',
-        }
+        style: createBaseNodeStyle(artifact.type),
       };
     });
 
-    const initialEdges: Edge[] = [];
+    const edges: Edge[] = [];
     artifacts.forEach(sourceArtifact => {
       sourceArtifact.relations.forEach(relation => {
         if (artifactIds.has(relation.toId)) {
-          initialEdges.push({
+          edges.push({
             id: `e-${sourceArtifact.id}-${relation.toId}`,
             source: sourceArtifact.id,
             target: relation.toId,
@@ -84,8 +82,42 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
       });
     });
 
-    return { nodes: initialNodes, edges: initialEdges };
-  }, [artifacts, selectedArtifactId]);
+    return { nodes, edges };
+  }, [artifacts]);
+
+  const [nodes, setNodes] = useState<Node<GraphNodeData>[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+    setNodes((prevNodes) => initialNodes.map((node) => {
+      const existing = prevNodes.find((prevNode) => prevNode.id === node.id);
+      return {
+        ...node,
+        position: existing?.position ?? node.position,
+      };
+    }));
+  }, [initialEdges, initialNodes]);
+
+  useEffect(() => {
+    setNodes((prevNodes) => prevNodes.map((node) => {
+      const type = (node.data as GraphNodeData).type;
+      const isSelected = node.id === selectedArtifactId;
+      return {
+        ...node,
+        style: {
+          ...createBaseNodeStyle(type),
+          boxShadow: isSelected ? '0 0 0 4px rgba(45, 212, 191, 0.25)' : undefined,
+          borderWidth: isSelected ? 2 : 1,
+          transform: isSelected ? 'scale(1.02)' : undefined,
+        },
+      };
+    }));
+  }, [selectedArtifactId]);
+
+  const handleNodesChange = useCallback((changes: NodeChange<GraphNodeData>[]) => {
+    setNodes((prevNodes) => applyNodeChanges(changes, prevNodes));
+  }, []);
 
   return (
     <div style={{ height: '600px' }} className="bg-slate-900/70 rounded-lg border border-slate-700/50 overflow-hidden">
@@ -93,6 +125,7 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
         nodes={nodes}
         edges={edges}
         onNodeClick={(_, node) => onSelectArtifact(node.id)}
+        onNodesChange={handleNodesChange}
         fitView
         nodesDraggable
         nodesConnectable={false}
