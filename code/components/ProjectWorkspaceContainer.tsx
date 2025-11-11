@@ -284,7 +284,6 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
             featureGroup={PROJECT_FEATURE_GROUPS.summary}
             isVisible={visibilitySettings.artifactExplorer}
             project={project}
-            allArtifacts={allArtifacts}
             projectArtifacts={projectArtifacts}
             filteredArtifacts={filteredArtifacts}
             quickFactPreview={quickFactPreview}

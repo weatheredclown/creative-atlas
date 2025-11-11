@@ -52,7 +52,6 @@ interface WorkspaceArtifactPanelProps {
   featureGroup: FeatureGroupMetadata;
   isVisible: boolean;
   project: Project;
-  allArtifacts: Artifact[];
   projectArtifacts: Artifact[];
   filteredArtifacts: Artifact[];
   quickFactPreview: Artifact[];
@@ -373,7 +372,6 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   featureGroup,
   isVisible,
   project,
-  allArtifacts,
   projectArtifacts,
   filteredArtifacts,
   quickFactPreview,
@@ -673,6 +671,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                     onOpenCreateArtifact={() => onOpenCreateArtifactModal({ sourceId: artifact.id })}
                     quickFactPreview={quickFactPreview}
                     totalQuickFacts={totalQuickFacts}
+                    isSelected={selectedArtifactId === artifact.id}
                   />
                 ))}
               </div>
@@ -782,16 +781,17 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                 </div>
               ) : null}
               <ArtifactDetail
-                project={project}
                 artifact={selectedArtifact}
-                allArtifacts={allArtifacts}
-                onUpdate={onUpdateArtifact}
-                onUpdateData={onUpdateArtifactData}
-                onDuplicate={onDuplicateArtifact}
-                onDelete={onDeleteArtifact}
+                projectArtifacts={projectArtifacts}
+                onUpdateArtifact={onUpdateArtifact}
                 onAddRelation={onAddRelation}
                 onRemoveRelation={onRemoveRelation}
-                onClose={() => onSelectArtifact(null)}
+                onDeleteArtifact={onDeleteArtifact}
+                onDuplicateArtifact={onDuplicateArtifact}
+                onNewArtifact={(sourceId) => onOpenCreateArtifactModal({ sourceId })}
+                addXp={(amount) => {
+                  void addXp(amount);
+                }}
               />
               {selectedArtifact.type === ArtifactType.Conlang ? (
                 <ConlangLexiconEditor
