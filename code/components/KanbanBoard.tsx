@@ -1,6 +1,17 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, TaskData, TASK_STATE, TASK_STATE_VALUES, type TaskState } from '../types';
+
+const normalizeTaskState = (task: Artifact): TaskState => {
+  const data = (task.data as TaskData | undefined) ?? { state: TASK_STATE.Todo };
+  const rawState = data.state;
+
+  if (rawState && TASK_STATE_VALUES.includes(rawState)) {
+    return rawState;
+  }
+
+  return TASK_STATE.Todo;
+};
 
 interface KanbanCardProps {
   task: Artifact;
@@ -8,9 +19,12 @@ interface KanbanCardProps {
 }
 
 const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState }) => {
-  const taskData = task.data as TaskData;
+  const currentState = normalizeTaskState(task);
 
-  const availableStates = TASK_STATE_VALUES.filter((state) => state !== taskData.state);
+  const availableStates = useMemo(
+    () => TASK_STATE_VALUES.filter((state) => state !== currentState),
+    [currentState],
+  );
 
   return (
     <div className="bg-slate-700/70 p-3 rounded-lg border border-slate-600/80 shadow-md">
@@ -70,14 +84,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ artifacts, onUpdateArtifactDa
   const handleUpdateTaskState = (taskId: string, newState: TaskState) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      onUpdateArtifactData(taskId, { ...(task.data as TaskData), state: newState });
+      const currentData = (task.data as TaskData | undefined) ?? { state: TASK_STATE.Todo };
+      onUpdateArtifactData(taskId, { ...currentData, state: newState });
     }
   };
 
-  const columns = TASK_STATE_VALUES.map((state) => ({
-    title: state,
-    tasks: tasks.filter(task => (task.data as TaskData).state === state),
-  }));
+  const columns = useMemo(
+    () =>
+      TASK_STATE_VALUES.map((state) => ({
+        title: state,
+        tasks: tasks.filter((task) => normalizeTaskState(task) === state),
+      })),
+    [tasks],
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ minHeight: '600px' }}>
