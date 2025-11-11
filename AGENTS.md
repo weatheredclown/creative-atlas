@@ -8,6 +8,7 @@ This document provides instructions for agents working on the Creative Atlas cod
 *   The frontend is a Vite + React + TypeScript application.
 *   The backend is a Node.js Express application written in TypeScript.
 *   When introducing new environment variables or externally configured secrets, document how to provision them in the README and update `.github/workflows/firebase-hosting-merge.yml` so the CI environment stays in sync.
+*   The GCP project ID is `creative-atlas`, the App Engine API is hosted at `creative-atlas.uc.r.appspot.com`, and the primary web URL is `https://creative-atlas.web.app`.
 
 ## Automation Initiative Tracking
 
