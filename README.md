@@ -86,7 +86,7 @@ Grant the App Engine runtime service account (by default `<project-id>@appspot.g
 
 When GitHub Actions deploys `main`, it now reuses that App Engine configuration. Store a service-account JSON (granted App Engine Deployer permissions) in the `GCP_APP_ENGINE_SERVICE_ACCOUNT` repository secret so [the merge deployment workflow](.github/workflows/firebase-hosting-merge.yml) can authenticate and run `gcloud app deploy` with the `server/app.yaml` manifest.
 
-The same workflow requires a populated `VITE_DATA_API_BASE_URL` [Actions variable](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#using-variables) for the frontend build and a `GEMINI_API_KEY` secret or variable for the backend deployment. Missing values now fail the pipeline before any artifacts are published, so double-check both are configured in repository or environment settings.
+The same workflow requires populated `VITE_DATA_API_BASE_URL` and `VITE_API_BASE_URL` [Actions variables](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#using-variables) for the frontend build and a `GEMINI_API_KEY` secret or variable for the backend deployment. Missing values now fail the pipeline before any artifacts are published, so double-check all three are configured in repository or environment settings.
 
 ### GitHub Integration (Optional)
 
