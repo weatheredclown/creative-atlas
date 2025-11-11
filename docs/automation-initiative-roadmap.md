@@ -21,6 +21,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Artifact filter hook now tolerates artifacts missing tag arrays so wiki selections don't crash the explorer.
   - ✅ Workspace artifact list view now renders as card markup with keyboard support, eliminating `<tr>` hydration crashes in guest mode.
   - Error boundary now offers a recovery button that coerces malformed artifact payloads into safe editor defaults; add coverage that exercises the new UI flow with corrupted wiki content.
+  - ✅ Kanban board normalizes missing task states so workspace cards stay visible when tasks lack a stored status.
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.

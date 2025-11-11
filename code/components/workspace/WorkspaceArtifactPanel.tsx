@@ -671,7 +671,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
           ) : null}
 
           {viewMode === 'kanban' ? (
-            <KanbanBoard artifacts={filteredArtifacts} onSelectArtifact={onSelectArtifact} />
+            <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={onUpdateArtifactData} />
           ) : null}
         </div>
 
