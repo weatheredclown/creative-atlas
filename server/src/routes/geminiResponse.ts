@@ -30,9 +30,46 @@ const stringifyCandidatePart = (value: unknown): string | null => {
   return null;
 };
 
+const getBlockedReason = (
+  response: EnhancedGenerateContentResponse,
+): string | null => {
+  const { promptFeedback } = response;
+  if (!promptFeedback) {
+    return null;
+  }
+
+  if (promptFeedback.blockReason) {
+    return `Request was blocked because: ${promptFeedback.blockReason}`;
+  }
+
+  const safetyRatings = promptFeedback.safetyRatings;
+  if (!Array.isArray(safetyRatings) || safetyRatings.length === 0) {
+    return null;
+  }
+
+  const concerningRatings = safetyRatings.filter(
+    (rating) => rating.probability !== 'NEGLIGIBLE',
+  );
+
+  if (concerningRatings.length === 0) {
+    return null;
+  }
+
+  const ratingSummaries = concerningRatings.map(
+    (rating) => `${rating.category}: ${rating.probability}`,
+  );
+
+  return `Request may have been blocked due to safety concerns: ${ratingSummaries.join(', ')}`;
+};
+
 export const extractTextFromResponse = (
   response: EnhancedGenerateContentResponse,
 ): string | null => {
+  const blockedReason = getBlockedReason(response);
+  if (blockedReason) {
+    return blockedReason;
+  }
+
   try {
     const directText = response.text().trim();
     if (directText) {
@@ -50,6 +87,18 @@ export const extractTextFromResponse = (
   for (const candidate of candidates) {
     if (!candidate || typeof candidate !== 'object') {
       continue;
+    }
+
+    if (candidate.finishReason === 'SAFETY') {
+      const safetyRatings = candidate.safetyRatings;
+      if (Array.isArray(safetyRatings) && safetyRatings.length > 0) {
+        const ratingSummaries = safetyRatings.map(
+          (rating) => `${rating.category}: ${rating.probability}`,
+        );
+        return `Response was blocked due to safety concerns: ${ratingSummaries.join(', ')}`;
+      }
+
+      return 'Response was blocked due to unspecified safety concerns.';
     }
 
     const parts = candidate.content?.parts;
