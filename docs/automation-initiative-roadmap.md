@@ -9,6 +9,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ## Segment A — Infrastructure & Robustness
 - ✅ Frontend deployment pipeline now forwards `VITE_API_BASE_URL` from GitHub Actions variables so production builds receive the required configuration.
+- ✅ CI workflow now exports `VITE_API_BASE_URL` so verification builds succeed without manual intervention.
 - Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
 - Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
 - Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
