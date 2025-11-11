@@ -72,18 +72,31 @@ const layoutGraph = (nodes: Node<GraphNodeData>[], edges: Edge[]) => {
 
   dagre.layout(dagreGraph);
 
-  return nodes.map((node) => {
+  const columnCount = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
+  const xSpacing = NODE_WIDTH + 120;
+  const ySpacing = NODE_HEIGHT + 80;
+
+  return nodes.map((node, index) => {
     const nodeWithPosition = dagreGraph.node(node.id);
+    const fallbackPosition = {
+      x: (index % columnCount) * xSpacing,
+      y: Math.floor(index / columnCount) * ySpacing,
+    };
+
     if (!nodeWithPosition) {
-      return node;
+      return {
+        ...node,
+        position: fallbackPosition,
+      };
     }
+
+    const layoutX = nodeWithPosition.x - NODE_WIDTH / 2;
+    const layoutY = nodeWithPosition.y - NODE_HEIGHT / 2;
+    const hasValidCoordinates = Number.isFinite(layoutX) && Number.isFinite(layoutY);
 
     return {
       ...node,
-      position: {
-        x: nodeWithPosition.x - NODE_WIDTH / 2,
-        y: nodeWithPosition.y - NODE_HEIGHT / 2,
-      },
+      position: hasValidCoordinates ? { x: layoutX, y: layoutY } : fallbackPosition,
     };
   });
 };
