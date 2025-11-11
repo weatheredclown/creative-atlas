@@ -98,9 +98,61 @@ export interface CharacterTrait {
     value: string;
 }
 
+export type CharacterArcStageId = 'spark' | 'rising' | 'crisis' | 'transformation' | 'legacy';
+
+export const CHARACTER_PROGRESSION_STATUS = {
+    Concept: 'concept',
+    Exploring: 'exploring',
+    Drafting: 'drafting',
+    Revising: 'revising',
+    Canonized: 'canonized',
+    Retired: 'retired',
+} as const;
+
+export type CharacterProgressionStatus = typeof CHARACTER_PROGRESSION_STATUS[keyof typeof CHARACTER_PROGRESSION_STATUS];
+
+export const CHARACTER_PROGRESSION_STATUS_ORDER: CharacterProgressionStatus[] = [
+    CHARACTER_PROGRESSION_STATUS.Concept,
+    CHARACTER_PROGRESSION_STATUS.Exploring,
+    CHARACTER_PROGRESSION_STATUS.Drafting,
+    CHARACTER_PROGRESSION_STATUS.Revising,
+    CHARACTER_PROGRESSION_STATUS.Canonized,
+    CHARACTER_PROGRESSION_STATUS.Retired,
+];
+
+export const CHARACTER_PROGRESSION_STATUS_LABELS: Record<CharacterProgressionStatus, string> = {
+    [CHARACTER_PROGRESSION_STATUS.Concept]: 'Concept Seed',
+    [CHARACTER_PROGRESSION_STATUS.Exploring]: 'Exploring Threads',
+    [CHARACTER_PROGRESSION_STATUS.Drafting]: 'Drafting Beats',
+    [CHARACTER_PROGRESSION_STATUS.Revising]: 'Revision Cycle',
+    [CHARACTER_PROGRESSION_STATUS.Canonized]: 'Canonized',
+    [CHARACTER_PROGRESSION_STATUS.Retired]: 'Retired',
+};
+
+export interface CharacterProgressionSnapshot {
+    status: CharacterProgressionStatus;
+    stageId?: CharacterArcStageId;
+    changedAt: string;
+    note?: string;
+    changedBy?: string;
+}
+
+export interface CharacterProgressionState {
+    status: CharacterProgressionStatus;
+    stageId?: CharacterArcStageId;
+    statusChangedAt: string;
+    stageChangedAt?: string;
+    updatedAt: string;
+    updatedBy?: string;
+    acknowledgedAt?: string;
+    note?: string;
+    history?: CharacterProgressionSnapshot[];
+}
+
 export interface CharacterData {
     bio: string;
     traits: CharacterTrait[];
+    progression?: CharacterProgressionState;
 }
 
 export interface WikiData {

@@ -1,11 +1,12 @@
 import {
   Artifact,
   ArtifactType,
+  CharacterArcStageId,
   CharacterData,
   isNarrativeArtifactType,
 } from '../types';
 
-export type ArcStageId = 'spark' | 'rising' | 'crisis' | 'transformation' | 'legacy';
+export type ArcStageId = CharacterArcStageId;
 
 export interface ArcStageConfig {
   id: ArcStageId;
