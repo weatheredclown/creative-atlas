@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Artifact } from '../types';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Artifact, Relation } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
 import { getStatusClasses, formatStatusLabel } from '../utils/status';
@@ -19,6 +19,35 @@ interface ArtifactDetailProps {
 }
 
 const BASE_STATUS_OPTIONS = ['idea', 'draft', 'in-progress', 'todo', 'alpha', 'beta', 'released', 'done'];
+
+const normalizeTagList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((tag): tag is string => typeof tag === 'string');
+};
+
+const createRelationEntries = (
+  value: unknown,
+): { relation: Relation; index: number }[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry, index) => {
+      if (
+        entry &&
+        typeof (entry as { toId?: unknown }).toId === 'string' &&
+        typeof (entry as { kind?: unknown }).kind === 'string'
+      ) {
+        return { relation: entry as Relation, index };
+      }
+      return null;
+    })
+    .filter((entry): entry is { relation: Relation; index: number } => entry !== null);
+};
 
 const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   artifact,
@@ -43,6 +72,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const [showActions, setShowActions] = useState(false);
   const { showDetailedFields } = useDepthPreferences();
   const tagInputRef = useRef<HTMLInputElement | null>(null);
+
+  const artifactTags = useMemo(
+    () => normalizeTagList(artifact.tags as unknown),
+    [artifact.tags],
+  );
+
+  const relationEntries = useMemo(
+    () => createRelationEntries(artifact.relations as unknown),
+    [artifact.relations],
+  );
 
   useEffect(() => {
     setEditableSummary(artifact.summary);
@@ -123,12 +162,12 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const handleAddTag = () => {
     const newTag = tagInput.trim();
     if (!newTag) return;
-    const exists = artifact.tags.some((tag) => tag.toLowerCase() === newTag.toLowerCase());
+    const exists = artifactTags.some((tag) => tag.toLowerCase() === newTag.toLowerCase());
     if (exists) {
       setTagInput('');
       return;
     }
-    onUpdateArtifact(artifact.id, { tags: [...artifact.tags, newTag] });
+    onUpdateArtifact(artifact.id, { tags: [...artifactTags, newTag] });
     setTagInput('');
     setIsAddingTag(false);
   };
@@ -146,7 +185,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
 
   const handleRemoveTag = (tagToRemove: string) => {
     onUpdateArtifact(artifact.id, {
-      tags: artifact.tags.filter((tag) => tag !== tagToRemove),
+      tags: artifactTags.filter((tag) => tag !== tagToRemove),
     });
   };
 
@@ -159,7 +198,11 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     setTagInput('');
   };
 
-  const availableTargets = projectArtifacts.filter((a) => a.id !== artifact.id && !artifact.relations.some((r) => r.toId === a.id));
+  const availableTargets = projectArtifacts.filter(
+    (candidate) =>
+      candidate.id !== artifact.id &&
+      !relationEntries.some((entry) => entry.relation.toId === candidate.id),
+  );
   const relationOptions = [
     'RELATES_TO',
     'CONTAINS',
@@ -272,7 +315,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
           <div className="md:col-span-2">
             <label htmlFor="artifact-tags-input" className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Tags</label>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              {artifact.tags.map((tag) => (
+              {artifactTags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-slate-700/60 border border-slate-600/60 rounded-full text-slate-200"
@@ -289,7 +332,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   )}
                 </span>
               ))}
-              {artifact.tags.length === 0 && !isAddingTag && (
+              {artifactTags.length === 0 && !isAddingTag && (
                 <span className="text-xs text-slate-500">
                   {showDetailedFields
                     ? 'No tags yet. Use the + button to add one and categorize this artifact.'
@@ -421,16 +464,16 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
         {showDetailedFields ? (
           <>
             <div className="space-y-2">
-              {artifact.relations.map((rel, index) => {
-                const target = projectArtifacts.find((a) => a.id === rel.toId);
+              {relationEntries.map(({ relation, index }) => {
+                const target = projectArtifacts.find((a) => a.id === relation.toId);
                 return (
-                  <div key={`${rel.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
-                    <span className="text-slate-400">{formatStatusLabel(rel.kind)}</span>
+                  <div key={`${relation.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
+                    <span className="text-slate-400">{formatStatusLabel(relation.kind)}</span>
                     <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
                     <button
                       onClick={() => handleRemoveRelation(index)}
                       className="ml-auto p-1 text-slate-400 hover:text-red-400 transition"
-                      aria-label={`Remove relation ${rel.kind} to ${target?.title ?? rel.toId}`}
+                      aria-label={`Remove relation ${relation.kind} to ${target?.title ?? relation.toId}`}
                       title="Remove relation"
                     >
                       <XMarkIcon className="w-4 h-4" />
@@ -438,7 +481,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   </div>
                 );
               })}
-              {artifact.relations.length === 0 && !showAddRelation && (
+              {relationEntries.length === 0 && !showAddRelation && (
                 <p className="text-sm text-slate-500">No relations yet.</p>
               )}
             </div>
@@ -486,19 +529,19 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
           </>
         ) : (
           <div className="space-y-3 text-sm text-slate-400">
-            {artifact.relations.length > 0 ? (
+            {relationEntries.length > 0 ? (
               <ul className="space-y-2">
-                {artifact.relations.map((rel, index) => {
-                  const target = projectArtifacts.find((a) => a.id === rel.toId);
+                {relationEntries.map(({ relation, index }) => {
+                  const target = projectArtifacts.find((a) => a.id === relation.toId);
                   return (
-                    <li key={`${rel.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
+                    <li key={`${relation.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
-                        <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(rel.kind)}</span>
+                        <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(relation.kind)}</span>
                         <button
                           onClick={() => handleRemoveRelation(index)}
                           className="ml-auto text-slate-500 hover:text-red-400 transition"
-                          aria-label={`Remove relation ${rel.kind} to ${target?.title ?? rel.toId}`}
+                          aria-label={`Remove relation ${relation.kind} to ${target?.title ?? relation.toId}`}
                           title="Remove relation"
                         >
                           <XMarkIcon className="w-4 h-4" />

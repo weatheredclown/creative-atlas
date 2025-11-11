@@ -16,6 +16,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
   - Artifact residue cache now preserves mismatched tags/relations during normalization; add regression tests that assert warnings fire and editors surface the preserved data.
+  - ✅ Artifact detail panel now tolerates malformed tag and relation arrays so workspace editors stay stable when wiki payloads arrive incomplete.
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
