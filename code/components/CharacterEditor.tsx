@@ -152,6 +152,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   'Identify the figures this character descends from to ground them in the family tree.',
                 targetFilter: (candidate) => candidate.type === ArtifactType.Character,
                 placeholder: 'Select a parent or guardian',
+                group: 'Family Bonds',
               },
               {
                 kind: 'PARENT_OF',
@@ -160,6 +161,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   'Link children, protégés, or wards who look to this character as a parental figure.',
                 targetFilter: (candidate) => candidate.type === ArtifactType.Character,
                 placeholder: 'Select a child or ward',
+                group: 'Family Bonds',
               },
               {
                 kind: 'SIBLING_OF',
@@ -168,6 +170,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   'Note litter-mates, adopted siblings, or sworn family bonds to map lateral ties.',
                 targetFilter: (candidate) => candidate.type === ArtifactType.Character,
                 placeholder: 'Select a sibling',
+                group: 'Family Bonds',
               },
               {
                 kind: 'PARTNER_OF',
@@ -176,6 +179,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   'Track marriages, partnerships, and significant bonds for relationship insights.',
                 targetFilter: (candidate) => candidate.type === ArtifactType.Character,
                 placeholder: 'Select a partner',
+                group: 'Family Bonds',
               },
               {
                 kind: 'APPEARS_IN',
@@ -183,6 +187,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                 description: 'Connect stories, scenes, or locations where this character shows up.',
                 targetFilter: (candidate) => CHARACTER_APPEARS_IN_TYPES.includes(candidate.type),
                 placeholder: 'Select a story, scene, or location',
+                group: 'Narrative Presence',
               },
               {
                 kind: 'DERIVES_FROM',
@@ -190,6 +195,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                 description: 'Track mentors, alter-egos, or canonical references that shape this character.',
                 targetFilter: (candidate) => CHARACTER_LINEAGE_TYPES.includes(candidate.type),
                 placeholder: 'Select an influence or lineage',
+                group: 'Origins & Influences',
               },
               {
                 kind: 'USES',
@@ -197,6 +203,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                 description: 'Link the magic systems, languages, or tools this character wields.',
                 targetFilter: (candidate) => CHARACTER_GEAR_TYPES.includes(candidate.type),
                 placeholder: 'Select a tool, system, or lexicon',
+                group: 'Origins & Influences',
               },
             ]}
           />

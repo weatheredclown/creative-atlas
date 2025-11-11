@@ -148,6 +148,7 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
                 description: 'Tie this location to story beats, quests, or releases where it features prominently.',
                 targetFilter: (candidate) => LOCATION_APPEARANCE_TYPES.includes(candidate.type),
                 placeholder: 'Select a story, quest, or release',
+                group: 'Narrative Placement',
               },
               {
                 kind: 'USES',
@@ -155,6 +156,7 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
                 description: 'Connect rulebooks, conlangs, or wikis that define this space.',
                 targetFilter: (candidate) => LOCATION_SYSTEM_TYPES.includes(candidate.type),
                 placeholder: 'Select supporting lore',
+                group: 'Supporting Lore',
               },
               {
                 kind: 'DERIVES_FROM',
@@ -162,6 +164,7 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
                 description: 'Reference blueprint locations, prior seasons, or historical notes that inspired this locale.',
                 targetFilter: (candidate) => LOCATION_ORIGIN_TYPES.includes(candidate.type),
                 placeholder: 'Select an origin location or lore',
+                group: 'Origins & Inspiration',
               },
             ]}
           />

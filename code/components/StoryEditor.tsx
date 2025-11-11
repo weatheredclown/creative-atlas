@@ -123,6 +123,7 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                 description: 'Tag characters, factions, or collaborators who appear in this storyline.',
                 targetFilter: (candidate) => CAST_TARGET_TYPES.includes(candidate.type),
                 placeholder: 'Select a character, faction, or collaborator',
+                group: 'Narrative Cast',
               },
               {
                 kind: 'USES',
@@ -130,6 +131,7 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                 description: 'Link the locations, conlangs, rulebooks, or tools that power this narrative.',
                 targetFilter: (candidate) => STORY_SUPPORT_TYPES.includes(candidate.type),
                 placeholder: 'Select supporting lore or systems',
+                group: 'Supporting Lore',
               },
               {
                 kind: 'DERIVES_FROM',
@@ -137,6 +139,7 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                 description: 'Reference source material, earlier chapters, or inspirational artifacts.',
                 targetFilter: (candidate) => STORY_SOURCE_TYPES.includes(candidate.type),
                 placeholder: 'Select a source artifact',
+                group: 'Origins & Inspiration',
               },
             ]}
           />
