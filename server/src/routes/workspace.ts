@@ -25,11 +25,24 @@ import {
   enforceShareLinkRetention,
   sanitizeForExternalShare,
 } from '../compliance/enforcement.js';
+import { telemetry } from '../monitoring/telemetry.js';
 
 const router = Router();
 
-const respondWithComplianceError = (res: Response, error: unknown): error is ComplianceError => {
+const respondWithComplianceError = (
+  res: Response,
+  error: unknown,
+  context?: Record<string, unknown>,
+): error is ComplianceError => {
   if (error instanceof ComplianceError) {
+    telemetry.recordComplianceViolation({
+      violation: error.violation,
+      message: error.message,
+      metadata: {
+        ...(error.context ?? {}),
+        ...(context ?? {}),
+      },
+    });
     const status = error.violation === 'retention' ? 410 : 422;
     res.status(status).json({
       error: error.message,
@@ -108,60 +121,76 @@ router.get(
   '/share/:shareId',
   asyncHandler(async (req, res) => {
     const { shareId } = req.params;
-    if (!shareId) {
-      res.status(400).json({ error: 'Share identifier is required.' });
-      return;
-    }
-
-    const shareSnapshot = await firestore.collection('projectShares').doc(shareId).get();
-    if (!shareSnapshot.exists) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
+    const operation = telemetry.startOperation('share.fetch', { shareId });
 
     try {
+      if (!shareId) {
+        operation.fail(new Error('Missing share identifier'), { outcome: 'invalid-request' }, 'WARNING');
+        res.status(400).json({ error: 'Share identifier is required.' });
+        return;
+      }
+
+      const shareSnapshot = await firestore.collection('projectShares').doc(shareId).get();
+      if (!shareSnapshot.exists) {
+        operation.success({ outcome: 'share-not-found' });
+        res.status(404).json({ error: 'Shared project not found.' });
+        return;
+      }
+
       await enforceShareLinkRetention(shareSnapshot, async () => {
         await shareSnapshot.ref.delete();
       });
-    } catch (error) {
-      if (respondWithComplianceError(res, error)) {
+
+      const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
+      const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
+      const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
+
+      if (!projectId || !ownerId) {
+        operation.success({ outcome: 'share-metadata-missing' }, 'WARNING');
+        res.status(404).json({ error: 'Shared project not found.' });
         return;
       }
+
+      const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+      if (!projectSnapshot.exists) {
+        operation.success({ outcome: 'project-not-found', projectId });
+        res.status(404).json({ error: 'Shared project not found.' });
+        return;
+      }
+
+      const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
+      if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
+        operation.success({ outcome: 'ownership-mismatch', projectId }, 'WARNING');
+        res.status(404).json({ error: 'Shared project not found.' });
+        return;
+      }
+
+      const artifactsSnapshot = await firestore
+        .collection('artifacts')
+        .where('projectId', '==', projectId)
+        .get();
+
+      const project = sanitizeForExternalShare(mapProject(projectSnapshot, ownerId));
+      const artifacts = artifactsSnapshot.docs.map((doc) =>
+        sanitizeForExternalShare(mapArtifact(doc, ownerId)),
+      );
+
+      operation.success({
+        outcome: 'success',
+        projectId,
+        ownerId,
+        artifactCount: artifacts.length,
+      });
+
+      res.json({ project, artifacts });
+    } catch (error) {
+      if (respondWithComplianceError(res, error, { shareId })) {
+        operation.fail(error, { outcome: 'compliance-violation', shareId }, 'WARNING');
+        return;
+      }
+      operation.fail(error, { outcome: 'unexpected-error', shareId });
       throw error;
     }
-
-    const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
-    const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
-    const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
-
-    if (!projectId || !ownerId) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
-    if (!projectSnapshot.exists) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
-    if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const artifactsSnapshot = await firestore
-      .collection('artifacts')
-      .where('projectId', '==', projectId)
-      .get();
-
-    const project = sanitizeForExternalShare(mapProject(projectSnapshot, ownerId));
-    const artifacts = artifactsSnapshot.docs.map((doc) =>
-      sanitizeForExternalShare(mapArtifact(doc, ownerId)),
-    );
-
-    res.json({ project, artifacts });
   }),
 );
 
@@ -638,7 +667,13 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
       action: 'create-project',
     });
   } catch (error) {
-    if (respondWithComplianceError(res, error)) {
+    if (
+      respondWithComplianceError(res, error, {
+        actorId: uid,
+        projectId: docRef.id,
+        action: 'create-project',
+      })
+    ) {
       return;
     }
     throw error;
@@ -766,7 +801,13 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
       },
     );
   } catch (error) {
-    if (respondWithComplianceError(res, error)) {
+    if (
+      respondWithComplianceError(res, error, {
+        actorId: uid,
+        projectId: docRef.id,
+        action: 'update-project',
+      })
+    ) {
       return;
     }
     throw error;
@@ -868,7 +909,14 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
         action: 'create-artifact',
       });
     } catch (error) {
-      if (respondWithComplianceError(res, error)) {
+      if (
+        respondWithComplianceError(res, error, {
+          actorId: uid,
+          projectId,
+          artifactId,
+          action: 'create-artifact',
+        })
+      ) {
         return;
       }
       throw error;
@@ -950,7 +998,14 @@ router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedReq
       },
     );
   } catch (error) {
-    if (respondWithComplianceError(res, error)) {
+    if (
+      respondWithComplianceError(res, error, {
+        actorId: uid,
+        projectId: snapshot.get('projectId'),
+        artifactId: docRef.id,
+        action: 'update-artifact',
+      })
+    ) {
       return;
     }
     throw error;
@@ -981,6 +1036,7 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
   const { projectId } = req.params;
   const bodySchema = z.object({ content: z.string().min(1) });
   const { content } = bodySchema.parse(req.body);
+  const operation = telemetry.startOperation('artifacts.import', { actorId: uid, projectId });
 
   try {
     const artifacts = importArtifactsFromCsv(content, projectId, uid);
@@ -988,42 +1044,60 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
 
     const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
     if (!projectSnapshot.exists) {
-      return res.status(404).json({ error: 'Project not found' });
+      operation.success({ outcome: 'project-not-found' }, 'NOTICE');
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
     if (projectSnapshot.get('ownerId') !== uid) {
-      return res.status(403).json({ error: 'Forbidden' });
+      operation.success({ outcome: 'forbidden' }, 'WARNING');
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
-  const seenIds = new Set<string>();
-  for (const artifact of artifacts) {
-    if (seenIds.has(artifact.id)) {
-      return res.status(400).json({ error: `Duplicate artifact id detected: ${artifact.id}` });
-    }
-    seenIds.add(artifact.id);
-
-    const docRef = firestore.collection('artifacts').doc(artifact.id);
-    const existing = await docRef.get();
-    if (existing.exists) {
-      if (existing.get('ownerId') !== uid) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
-      return res.status(409).json({ error: `Artifact already exists: ${artifact.id}` });
-    }
-
-    try {
-      assertArtifactContentCompliance(artifact, {
-        actorId: uid,
-        projectId,
-        artifactId: artifact.id,
-        action: 'import-artifact',
-      });
-    } catch (error) {
-      if (respondWithComplianceError(res, error)) {
+    const seenIds = new Set<string>();
+    for (const artifact of artifacts) {
+      if (seenIds.has(artifact.id)) {
+        operation.success({ outcome: 'duplicate-artifact-id', artifactId: artifact.id }, 'WARNING');
+        res.status(400).json({ error: `Duplicate artifact id detected: ${artifact.id}` });
         return;
       }
-      throw error;
+      seenIds.add(artifact.id);
+
+      const docRef = firestore.collection('artifacts').doc(artifact.id);
+      const existing = await docRef.get();
+      if (existing.exists) {
+        if (existing.get('ownerId') !== uid) {
+          operation.success({ outcome: 'existing-artifact-forbidden', artifactId: artifact.id }, 'WARNING');
+          res.status(403).json({ error: 'Forbidden' });
+          return;
+        }
+        operation.success({ outcome: 'artifact-already-exists', artifactId: artifact.id }, 'WARNING');
+        res.status(409).json({ error: `Artifact already exists: ${artifact.id}` });
+        return;
+      }
+
+      try {
+        assertArtifactContentCompliance(artifact, {
+          actorId: uid,
+          projectId,
+          artifactId: artifact.id,
+          action: 'import-artifact',
+        });
+      } catch (error) {
+        if (
+          respondWithComplianceError(res, error, {
+            actorId: uid,
+            projectId,
+            artifactId: artifact.id,
+            action: 'import-artifact',
+          })
+        ) {
+          operation.fail(error, { outcome: 'compliance-violation', artifactId: artifact.id }, 'WARNING');
+          return;
+        }
+        throw error;
+      }
     }
-  }
 
     await firestore.runTransaction(async (transaction) => {
       artifacts.forEach((artifact) => {
@@ -1045,12 +1119,26 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
       });
     });
 
+    operation.success({ outcome: 'success', importedCount: persisted.length });
     res.json({ artifacts: persisted });
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith('Validation failed')) {
-      return res.status(400).json({ error: e.message });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Validation failed')) {
+      operation.fail(error, { outcome: 'validation-error' }, 'WARNING');
+      res.status(400).json({ error: error.message });
+      return;
     }
-    throw e;
+    if (
+      respondWithComplianceError(res, error, {
+        actorId: uid,
+        projectId,
+        action: 'import-artifact',
+      })
+    ) {
+      operation.fail(error, { outcome: 'compliance-violation' }, 'WARNING');
+      return;
+    }
+    operation.fail(error, { outcome: 'unexpected-error' });
+    throw error;
   }
 }));
 
@@ -1058,33 +1146,57 @@ router.get('/projects/:projectId/export', asyncHandler(async (req: Authenticated
   const { uid } = req.user!;
   const { projectId } = req.params;
   const format = typeof req.query.format === 'string' ? req.query.format.toLowerCase() : 'csv';
+  const operation = telemetry.startOperation('projects.export', {
+    actorId: uid,
+    projectId,
+    format,
+  });
 
-  const projectSnap = await firestore.collection('projects').doc(projectId).get();
-  if (!projectSnap.exists || projectSnap.get('ownerId') !== uid) {
-    return res.status(404).json({ error: 'Project not found' });
+  try {
+    const projectSnap = await firestore.collection('projects').doc(projectId).get();
+    if (!projectSnap.exists || projectSnap.get('ownerId') !== uid) {
+      operation.success({ outcome: 'project-not-found' }, 'NOTICE');
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const artifactsSnapshot = await firestore
+      .collection('artifacts')
+      .where('ownerId', '==', uid)
+      .where('projectId', '==', projectId)
+      .get();
+
+    const project = mapProject(projectSnap, uid);
+    const artifacts = artifactsSnapshot.docs.map((doc) => mapArtifact(doc, uid));
+
+    if (format === 'markdown') {
+      const markdown = exportArtifactsToMarkdown(project, artifacts);
+      operation.success({ outcome: 'success', artifactCount: artifacts.length }, 'INFO');
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title.replace(/\s+/g, '_')}.md"`);
+      return res.send(markdown);
+    }
+
+    const delimiter = format === 'tsv' ? '\t' : ',';
+    const file = exportArtifactsToDelimited(artifacts, delimiter as ',' | '\t');
+    operation.success({
+      outcome: 'success',
+      artifactCount: artifacts.length,
+      delimiter,
+    });
+    res.setHeader(
+      'Content-Type',
+      format === 'tsv' ? 'text/tab-separated-values; charset=utf-8' : 'text/csv; charset=utf-8',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${project.title.replace(/\s+/g, '_')}.${format === 'tsv' ? 'tsv' : 'csv'}"`,
+    );
+    res.send(file);
+  } catch (error) {
+    operation.fail(error, { outcome: 'unexpected-error' });
+    throw error;
   }
-
-  const artifactsSnapshot = await firestore
-    .collection('artifacts')
-    .where('ownerId', '==', uid)
-    .where('projectId', '==', projectId)
-    .get();
-
-  const project = mapProject(projectSnap, uid);
-  const artifacts = artifactsSnapshot.docs.map((doc) => mapArtifact(doc, uid));
-
-  if (format === 'markdown') {
-    const markdown = exportArtifactsToMarkdown(project, artifacts);
-    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${project.title.replace(/\s+/g, '_')}.md"`);
-    return res.send(markdown);
-  }
-
-  const delimiter = format === 'tsv' ? '\t' : ',';
-  const file = exportArtifactsToDelimited(artifacts, delimiter as ',' | '\t');
-  res.setHeader('Content-Type', format === 'tsv' ? 'text/tab-separated-values; charset=utf-8' : 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${project.title.replace(/\s+/g, '_')}.${format === 'tsv' ? 'tsv' : 'csv'}"`);
-  res.send(file);
 }));
 
 router.post('/lexicon/import/csv', asyncHandler(async (req: AuthenticatedRequest, res) => {
@@ -1103,20 +1215,30 @@ router.post('/lexicon/import/markdown', asyncHandler(async (req: AuthenticatedRe
 
 router.delete('/account', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { uid } = req.user!;
+  const operation = telemetry.startOperation('account.delete', { actorId: uid });
 
-  await deleteOwnedDocuments('artifacts', uid);
-  await deleteOwnedDocuments('projects', uid);
+  try {
+    await deleteOwnedDocuments('artifacts', uid);
+    await deleteOwnedDocuments('projects', uid);
 
-  const userRef = firestore.collection('users').doc(uid);
-  const userSnap = await userRef.get();
-  if (userSnap.exists) {
-    await userRef.delete();
+    const userRef = firestore.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    let userDocumentDeleted = false;
+    if (userSnap.exists) {
+      await userRef.delete();
+      userDocumentDeleted = true;
+    }
+
+    operation.success({ outcome: 'success', userDocumentDeleted });
+    res.status(204).send();
+  } catch (error) {
+    operation.fail(error, { outcome: 'unexpected-error' });
+    throw error;
   }
-
-  res.status(204).send();
 }));
 
 router.post('/lexicon/export', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid } = req.user!;
   const bodySchema = z.object({ lexemes: z.array(z.object({
     id: z.string().optional(),
     lemma: z.string(),
@@ -1135,17 +1257,29 @@ router.post('/lexicon/export', asyncHandler(async (req: AuthenticatedRequest, re
     etymology: lexeme.etymology,
     tags: lexeme.tags ?? [],
   }));
+  const operation = telemetry.startOperation('lexicon.export', {
+    actorId: uid,
+    format,
+    lexemeCount: mapped.length,
+  });
 
-  if (format === 'markdown') {
-    const markdown = exportLexemesToMarkdown(mapped);
-    return res
-      .setHeader('Content-Type', 'text/markdown; charset=utf-8')
-      .send(markdown);
+  try {
+    if (format === 'markdown') {
+      const markdown = exportLexemesToMarkdown(mapped);
+      operation.success({ outcome: 'success' });
+      return res
+        .setHeader('Content-Type', 'text/markdown; charset=utf-8')
+        .send(markdown);
+    }
+
+    const csv = exportLexemesToCsv(mapped);
+    operation.success({ outcome: 'success' });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csv);
+  } catch (error) {
+    operation.fail(error, { outcome: 'unexpected-error' });
+    throw error;
   }
-
-  const csv = exportLexemesToCsv(mapped);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.send(csv);
 }));
 
 export default router;

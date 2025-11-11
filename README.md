@@ -80,6 +80,8 @@ ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.we
 
 Atlas Intelligence features now proxy Gemini requests through the backend. Provide a `GEMINI_API_KEY` in `server/.env` (and mirror it in your deployment secrets) so the Express API can authorize calls without exposing the key to the browser.
 
+Structured telemetry is now available for key backend flows. Set `ENABLE_GCP_LOGGING=true` in production (and adjust `OPERATIONS_LOG_NAME` or `REQUEST_WARNING_THRESHOLD_MS` as needed) to forward analytics events to Google Cloud Logging. The [monitoring runbook](docs/operations/monitoring-runbook.md) covers alert configuration and incident response expectations.
+
 For App Engine deployments, mirror these values in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variables automatically.
 
 Grant the App Engine runtime service account (by default `<project-id>@appspot.gserviceaccount.com`) the **Cloud Datastore User** and **Firebase Admin** roles so `firebase-admin` can verify ID tokens and reach Firestore. Missing permissions manifest as 5xx responses from the API; with the new error banner in the UI you will now see a warning immediately if the backend credentials need attention.

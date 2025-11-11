@@ -66,6 +66,9 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ## Segment D — Compliance & Operations
 - Integrate analytics & monitoring: instrument key flows, set up alerting, and document operational runbooks.
+  - ✅ Added Cloud Logging-backed telemetry for share fetches, artifact imports, project exports, lexicon exports, account deletion, and request latency.
+  - ✅ Documented the monitoring runbook with alert configuration guidance and environment variable defaults.
+  - Automate provisioning of Cloud Logging alert policies (Terraform or `gcloud` script) so staging and production stay aligned.
 
 ## Segment E — Research & Sequencing Queue
 - Document decisions required for collaboration scope (real-time vs. turn-based) and list dependencies before implementation begins.

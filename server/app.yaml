@@ -11,3 +11,6 @@ env_variables:
   APP_BASE_URL: "placeholder"
   SESSION_SECRET: "replace_me"
   GEMINI_API_KEY: "placeholder"
+  ENABLE_GCP_LOGGING: "true"
+  OPERATIONS_LOG_NAME: "creative-atlas-operations"
+  REQUEST_WARNING_THRESHOLD_MS: "4000"
