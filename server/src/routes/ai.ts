@@ -397,6 +397,23 @@ router.post(
         return;
       }
 
+      if (
+        text.startsWith('Request was blocked') ||
+        text.startsWith('Response was blocked')
+      ) {
+        console.log(
+          'Gemini request was blocked. Details:',
+          text,
+          'Full response object:',
+          JSON.stringify(response, null, 2),
+        );
+        res.status(502).json({
+          error: 'Gemini request was blocked.',
+          details: text,
+        });
+        return;
+      }
+
       res.json({ text });
     } catch (error) {
       const message =
