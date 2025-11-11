@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Artifact, Project } from '../types';
 import { PlusIcon, SparklesIcon, BuildingStorefrontIcon } from './Icons';
+import { useTutorialLanguage } from '../contexts/TutorialLanguageContext';
+import { logAnalyticsEvent } from '../services/analytics';
 
 const formatNumber = (value: number): string =>
   new Intl.NumberFormat('en-US', { notation: value > 9999 ? 'compact' : 'standard' }).format(value);
@@ -43,13 +45,13 @@ const StatPill: React.FC<{ label: string; value: number; tone?: 'default' | 'acc
   </div>
 );
 
-const QuickFactCard: React.FC<{ fact: Artifact; onSelect: (id: string) => void }> = ({ fact, onSelect }) => (
+const QuickFactCard: React.FC<{ fact: Artifact; onSelect: (id: string) => void; label: string }> = ({ fact, onSelect, label }) => (
   <button
     type="button"
     onClick={() => onSelect(fact.id)}
     className="group flex flex-col gap-1 rounded-xl border border-slate-700/60 bg-slate-900/70 p-4 text-left transition-all hover:-translate-y-1 hover:border-cyan-500/60 hover:bg-slate-900/80"
   >
-    <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">Quick Fact</span>
+    <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">{label}</span>
     <span className="text-sm font-semibold text-slate-100 group-hover:text-white">{fact.title}</span>
     {fact.summary && (
       <p
@@ -81,6 +83,48 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   xpProgress,
 }) => {
   const hasQuickFacts = quickFacts.length > 0;
+  const language = useTutorialLanguage();
+  const copy = useMemo(() => ({
+    ...(language === 'es'
+      ? {
+          quickFactLabel: 'Dato rápido',
+          quickFactsHeading: 'Últimos datos rápidos',
+          savedSoFar: 'guardados hasta ahora',
+          emptyMessage: 'Captura tu primera chispa de lore para construir una estantería de referencia rápida.',
+          emptyCta: 'Agrega tu primer dato',
+        }
+      : {
+          quickFactLabel: 'Quick Fact',
+          quickFactsHeading: 'Latest quick facts',
+          savedSoFar: 'saved so far',
+          emptyMessage: 'Capture your first lore spark to build a quick reference shelf.',
+          emptyCta: 'Add your first fact',
+        }),
+  }), [language]);
+
+  const handleCreateArtifact = useCallback(() => {
+    void logAnalyticsEvent('workspace_create_artifact_clicked', {
+      project_id: project.id,
+      source: 'hero_panel',
+    });
+    onCreateArtifact();
+  }, [onCreateArtifact, project.id]);
+
+  const handleCaptureQuickFact = useCallback(() => {
+    void logAnalyticsEvent('quick_fact_capture_started', {
+      project_id: project.id,
+      source: hasQuickFacts ? 'hero_panel' : 'hero_panel_empty_state',
+    });
+    onCaptureQuickFact();
+  }, [hasQuickFacts, onCaptureQuickFact, project.id]);
+
+  const handlePublishProject = useCallback(() => {
+    void logAnalyticsEvent('workspace_publish_clicked', {
+      project_id: project.id,
+      source: 'hero_panel',
+    });
+    onPublishProject();
+  }, [onPublishProject, project.id]);
 
   return (
     <section
@@ -123,7 +167,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={onCreateArtifact}
+              onClick={handleCreateArtifact}
               className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
             >
               <PlusIcon className="h-4 w-4" />
@@ -131,7 +175,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             </button>
             <button
               type="button"
-              onClick={onCaptureQuickFact}
+              onClick={handleCaptureQuickFact}
               className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
             >
               <SparklesIcon className="h-4 w-4" />
@@ -139,7 +183,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             </button>
             <button
               type="button"
-              onClick={onPublishProject}
+              onClick={handlePublishProject}
               id="publish-world-button"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
             >
@@ -162,27 +206,27 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-600/60 bg-slate-900/70 p-5 shadow-lg">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Latest quick facts</h3>
-            <p className="mt-1 text-xs text-slate-500">{totalQuickFacts} saved so far</p>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{copy.quickFactsHeading}</h3>
+            <p className="mt-1 text-xs text-slate-500">{totalQuickFacts} {copy.savedSoFar}</p>
             <div className="mt-4 grid gap-3">
               {hasQuickFacts ? (
                 quickFacts.map((fact) => (
-                  <QuickFactCard key={fact.id} fact={fact} onSelect={onSelectQuickFact} />
+                  <QuickFactCard key={fact.id} fact={fact} onSelect={onSelectQuickFact} label={copy.quickFactLabel} />
                 ))
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-600/60 bg-slate-900/80 p-4 text-xs text-slate-400">
-                  Capture your first lore spark to build a quick reference shelf.
+                  {copy.emptyMessage}
                 </div>
               )}
             </div>
             {!hasQuickFacts && (
               <button
                 type="button"
-                onClick={onCaptureQuickFact}
+                onClick={handleCaptureQuickFact}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-500/20"
               >
                 <SparklesIcon className="h-3.5 w-3.5" />
-                Add your first fact
+                {copy.emptyCta}
               </button>
             )}
           </div>

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import dagre from 'dagre';
 import ReactFlow, {
   Background,
@@ -9,6 +9,7 @@ import ReactFlow, {
   Edge,
   useEdgesState,
   useNodesState,
+  type NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
@@ -22,6 +23,7 @@ interface GraphViewProps {
   artifacts: Artifact[];
   onSelectArtifact: (id: string) => void;
   selectedArtifactId: string | null;
+  projectId: string;
 }
 
 const nodeColor = (type: ArtifactType): string => {
@@ -56,6 +58,41 @@ const createBaseNodeStyle = (type: ArtifactType) => ({
 
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 96;
+
+type StoredNodePositions = Record<string, { x: number; y: number }>;
+
+const STORAGE_PREFIX = 'creative-atlas:graph-layout:';
+
+const loadStoredPositions = (storageKey: string): StoredNodePositions => {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as { positions?: StoredNodePositions } | StoredNodePositions;
+    if (!parsed) {
+      return {};
+    }
+
+    if ('positions' in parsed && parsed.positions && typeof parsed.positions === 'object') {
+      return parsed.positions as StoredNodePositions;
+    }
+
+    if (typeof parsed === 'object') {
+      return parsed as StoredNodePositions;
+    }
+
+    return {};
+  } catch (error) {
+    console.warn('Failed to load persisted graph layout positions.', error);
+    return {};
+  }
+};
 
 const layoutGraph = (nodes: Node<GraphNodeData>[], edges: Edge[]) => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -101,7 +138,7 @@ const layoutGraph = (nodes: Node<GraphNodeData>[], edges: Edge[]) => {
   });
 };
 
-const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId }) => {
+const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId, projectId }) => {
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
@@ -151,19 +188,57 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
     return { nodes: layoutGraph(nodes, edges), edges };
   }, [artifacts]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(layoutNodes);
+  const storageKey = useMemo(() => `${STORAGE_PREFIX}${projectId}`, [projectId]);
+  const [storedPositions, setStoredPositions] = useState<StoredNodePositions>(() => loadStoredPositions(storageKey));
+  const [nodes, setNodes, onNodesStateChange] = useNodesState(layoutNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+
+  useEffect(() => {
+    setStoredPositions(loadStoredPositions(storageKey));
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ positions: storedPositions }));
+    } catch (error) {
+      console.warn('Failed to persist graph layout positions.', error);
+    }
+  }, [storageKey, storedPositions]);
+
+  useEffect(() => {
+    const validIds = new Set(layoutNodes.map((node) => node.id));
+    setStoredPositions((previous) => {
+      const next: StoredNodePositions = {};
+      let mutated = false;
+
+      for (const [id, position] of Object.entries(previous)) {
+        if (!validIds.has(id)) {
+          mutated = true;
+          continue;
+        }
+
+        next[id] = position;
+      }
+
+      return mutated ? next : previous;
+    });
+  }, [layoutNodes]);
 
   useEffect(() => {
     setEdges(layoutEdges);
     setNodes((prevNodes) => layoutNodes.map((node) => {
       const existing = prevNodes.find((prevNode) => prevNode.id === node.id);
+      const stored = storedPositions[node.id];
       return {
         ...node,
-        position: existing?.position ?? node.position,
+        position: existing?.position ?? stored ?? node.position,
       };
     }));
-  }, [layoutEdges, layoutNodes, setEdges, setNodes]);
+  }, [layoutEdges, layoutNodes, setEdges, setNodes, storedPositions]);
 
   useEffect(() => {
     setNodes((prevNodes) => prevNodes.map((node) => {
@@ -181,13 +256,38 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
     }));
   }, [selectedArtifactId, setNodes]);
 
+  const handleNodesChange = useCallback((changes: NodeChange<GraphNodeData>[]) => {
+    setStoredPositions((previous) => {
+      let mutated = false;
+      const next: StoredNodePositions = { ...previous };
+
+      for (const change of changes) {
+        if (change.type === 'position' && change.position) {
+          next[change.id] = { x: change.position.x, y: change.position.y };
+          mutated = true;
+        }
+
+        if (change.type === 'remove') {
+          if (change.id in next) {
+            delete next[change.id];
+            mutated = true;
+          }
+        }
+      }
+
+      return mutated ? next : previous;
+    });
+
+    onNodesStateChange(changes);
+  }, [onNodesStateChange]);
+
   return (
     <div style={{ height: '600px' }} className="bg-slate-900/70 rounded-lg border border-slate-700/50 overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodeClick={(_, node) => onSelectArtifact(node.id)}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         fitView
         nodesDraggable

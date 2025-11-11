@@ -27,6 +27,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { createProjectActivity, evaluateMilestoneProgress, MilestoneProgressOverview, ProjectActivity } from './utils/milestoneProgress';
 import PublishToGitHubModal from './components/PublishToGitHubModal';
 import { DepthPreferencesProvider } from './contexts/DepthPreferencesContext';
+import { TutorialLanguageProvider } from './contexts/TutorialLanguageContext';
 import {
   createDefaultVisibility,
   ensureVisibilityDefaults,
@@ -43,6 +44,7 @@ import WorkspaceSidebar from './components/WorkspaceSidebar';
 import { getDefaultDataForType } from './utils/artifactDefaults';
 import { useGitHubPublish } from './hooks/useGitHubPublish';
 import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
+import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -118,6 +120,17 @@ export default function App() {
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId],
   );
+
+  useEffect(() => {
+    if (!profile) {
+      void clearAnalyticsUser();
+      return;
+    }
+
+    void setAnalyticsUser(profile.uid, {
+      tutorial_language: tutorialProgress.language,
+    });
+  }, [profile, tutorialProgress.language]);
   const projectArtifacts = useMemo(
     () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
     [artifacts, selectedProjectId],
@@ -581,8 +594,9 @@ export default function App() {
   const isViewingOwnWorkspace = !selectedProject || selectedProject.ownerId === profile.uid;
 
   return (
-    <DepthPreferencesProvider>
-      <div className="min-h-screen flex flex-col">
+    <TutorialLanguageProvider language={tutorialProgress.language}>
+      <DepthPreferencesProvider>
+        <div className="min-h-screen flex flex-col">
       {isTutorialVisible && (
         <ErrorBoundary>
           <TutorialGuide
@@ -708,7 +722,8 @@ export default function App() {
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
       />
-      </div>
-    </DepthPreferencesProvider>
+        </div>
+      </DepthPreferencesProvider>
+    </TutorialLanguageProvider>
   );
 }

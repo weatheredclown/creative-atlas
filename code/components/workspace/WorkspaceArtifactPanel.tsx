@@ -669,6 +669,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
               artifacts={projectArtifacts}
               onSelectArtifact={onSelectArtifact}
               selectedArtifactId={selectedArtifactId}
+              projectId={project.id}
             />
           ) : null}
 

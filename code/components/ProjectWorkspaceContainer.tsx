@@ -36,6 +36,7 @@ import BackToTopButton from './BackToTopButton';
 import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
 import type { QuickFactModalOptions } from './workspace/types';
+import { logAnalyticsEvent } from '../services/analytics';
 
 interface ProjectWorkspaceContainerProps {
   profile: UserProfile;
@@ -164,6 +165,10 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
 
   const handleViewModeAnalytics = useCallback(
     (mode: 'table' | 'graph' | 'kanban') => {
+      void logAnalyticsEvent('workspace_view_mode_change', {
+        project_id: project.id,
+        view_mode: mode,
+      });
       if (mode === 'graph') {
         markProjectActivity({ viewedGraph: true });
       }
@@ -171,7 +176,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
         markProjectActivity({ viewedKanban: true });
       }
     },
-    [markProjectActivity],
+    [markProjectActivity, project.id],
   );
 
   useEffect(() => {
