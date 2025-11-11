@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 
 import AICopilotPanel from '../AICopilotPanel';
 import CharacterArcTracker from '../CharacterArcTracker';
@@ -66,6 +66,12 @@ interface WorkspaceActivityPanelProps {
 
 const featuredAssistant = aiAssistants[0];
 
+interface ToolTab {
+  id: string;
+  label: string;
+  render: () => React.ReactNode;
+}
+
 const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   analyticsGroup,
   trackingGroup,
@@ -92,8 +98,63 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   onGitHubArtifactsImported,
   onApplyProjectTemplate,
   onSelectTemplate,
-}) => (
-  <>
+}) => {
+  const toolTabs = useMemo<ToolTab[]>(() => {
+    const tabs: ToolTab[] = [];
+
+    if (visibilitySettings.narrativeHealth) {
+      tabs.push({
+        id: 'narrative-health',
+        label: 'Narrative Need Heatmap',
+        render: () => <NarrativeHealthPanel artifacts={projectArtifacts} />,
+      });
+    }
+
+    if (visibilitySettings.continuityMonitor) {
+      tabs.push({
+        id: 'continuity-monitor',
+        label: 'Continuity Monitor',
+        render: () => <ContinuityMonitor artifacts={projectArtifacts} />,
+      });
+    }
+
+    if (visibilitySettings.worldSimulation) {
+      tabs.push({
+        id: 'world-simulation',
+        label: 'Temporal gravity',
+        render: () => (
+          <WorldSimulationPanel
+            artifacts={projectArtifacts}
+            allArtifacts={allArtifacts}
+            projectTitle={project.title}
+            onSelectArtifact={onSelectArtifact}
+          />
+        ),
+      });
+    }
+
+    return tabs;
+  }, [
+    visibilitySettings.narrativeHealth,
+    visibilitySettings.continuityMonitor,
+    visibilitySettings.worldSimulation,
+    projectArtifacts,
+    allArtifacts,
+    project.title,
+    onSelectArtifact,
+  ]);
+
+  const [activeToolTab, setActiveToolTab] = useState<string | null>(null);
+
+  const currentTabId =
+    activeToolTab && toolTabs.some((tab) => tab.id === activeToolTab)
+      ? activeToolTab
+      : toolTabs[0]?.id ?? null;
+
+  const activeTab = toolTabs.find((tab) => tab.id === currentTabId) ?? null;
+
+  return (
+    <>
     <section className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold text-slate-100">{analyticsGroup.title}</h2>
@@ -116,18 +177,30 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
             <AICopilotPanel assistants={aiAssistants} />
           </div>
         ) : null}
-        {(visibilitySettings.narrativeHealth || visibilitySettings.continuityMonitor || visibilitySettings.worldSimulation) ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {visibilitySettings.narrativeHealth ? <NarrativeHealthPanel artifacts={projectArtifacts} /> : null}
-            {visibilitySettings.continuityMonitor ? <ContinuityMonitor artifacts={projectArtifacts} /> : null}
-            {visibilitySettings.worldSimulation ? (
-              <WorldSimulationPanel
-                artifacts={projectArtifacts}
-                allArtifacts={allArtifacts}
-                projectTitle={project.title}
-                onSelectArtifact={onSelectArtifact}
-              />
+        {toolTabs.length > 0 ? (
+          <div className="space-y-4">
+            {toolTabs.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {toolTabs.map((tab) => {
+                  const isActive = tab.id === currentTabId;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveToolTab(tab.id)}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                        isActive
+                          ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-100 shadow-inner shadow-emerald-500/10'
+                          : 'border-slate-700/60 text-slate-400 hover:border-slate-500/60 hover:text-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             ) : null}
+            {activeTab ? <div className="space-y-6">{activeTab.render()}</div> : null}
           </div>
         ) : null}
         {visibilitySettings.inspirationDeck ? (
@@ -260,6 +333,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
       </div>
     </section>
   </>
-);
+  );
+};
 
 export default WorkspaceActivityPanel;
