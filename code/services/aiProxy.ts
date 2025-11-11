@@ -1,4 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? '';
+const normalizeBaseUrl = (value?: string): string =>
+  value && value.trim().length > 0 ? value.replace(/\/$/, '') : '';
+
+const API_BASE_URL =
+  normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL) ||
+  normalizeBaseUrl(import.meta.env.VITE_DATA_API_BASE_URL);
 const GEMINI_PROXY_PATH = '/api/ai/generate';
 
 export interface GeminiProxyConfig {
@@ -76,6 +81,12 @@ export const getGeminiErrorMessage = (error: unknown, fallback: string): string 
 };
 
 export const requestGeminiText = async (payload: GeminiProxyRequest): Promise<string> => {
+  if (!API_BASE_URL && import.meta.env.PROD) {
+    throw new GeminiProxyError(
+      'Gemini proxy is not configured. Set VITE_API_BASE_URL or VITE_DATA_API_BASE_URL in the deployment environment.'
+    );
+  }
+
   const response = await fetch(buildProxyUrl(), {
     method: 'POST',
     headers: {
@@ -103,7 +114,12 @@ export const requestGeminiText = async (payload: GeminiProxyRequest): Promise<st
   }
 
   if (!data.text || typeof data.text !== 'string') {
-    throw new GeminiProxyError('Gemini proxy returned an empty response.', {
+    const message =
+      typeof data.error === 'string' && data.error.trim().length > 0
+        ? data.error.trim()
+        : 'Gemini proxy returned an empty response.';
+
+    throw new GeminiProxyError(message, {
       status: response.status,
       details: data.details,
     });
