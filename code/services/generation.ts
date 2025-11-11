@@ -1,5 +1,5 @@
 
-import { requestGeminiText } from './aiProxy';
+import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const DEFAULT_TEMPERATURE = 0.85;
@@ -49,11 +49,7 @@ export async function generateText(prompt: string, options: GenerateTextOptions 
     return text;
   } catch (error) {
     console.error('Failed to generate text with Gemini:', error);
-    if (error instanceof Error) {
-      throw new Error(
-        `Failed to generate text. The AI model may be unavailable or the request was invalid. Details: ${error.message}`,
-      );
-    }
-    throw new Error('An unknown error occurred while generating text.');
+    const message = getGeminiErrorMessage(error, 'Failed to generate text.');
+    throw new Error(message);
   }
 }

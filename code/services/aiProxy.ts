@@ -29,6 +29,52 @@ const buildProxyUrl = (): string => {
   return GEMINI_PROXY_PATH;
 };
 
+export class GeminiProxyError extends Error {
+  readonly status: number;
+  readonly details?: unknown;
+
+  constructor(message: string, options: { status?: number; details?: unknown; cause?: unknown } = {}) {
+    super(message);
+    this.name = 'GeminiProxyError';
+    this.status = typeof options.status === 'number' ? options.status : 0;
+    this.details = options.details;
+    if ('cause' in options && options.cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+export const isGeminiProxyError = (error: unknown): error is GeminiProxyError => error instanceof GeminiProxyError;
+
+export const getGeminiErrorMessage = (error: unknown, fallback: string): string => {
+  const base = fallback.trim().length > 0 ? fallback.trim() : 'Gemini request failed.';
+
+  if (isGeminiProxyError(error)) {
+    const detail = error.message.trim();
+    if (detail.length > 0) {
+      if (detail.toLowerCase().startsWith(base.toLowerCase())) {
+        return detail;
+      }
+      return `${base} ${detail}`.trim();
+    }
+    return base;
+  }
+
+  if (error instanceof Error) {
+    const detail = error.message.trim();
+    if (detail.length > 0) {
+      return `${base} Details: ${detail}`;
+    }
+    return base;
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return `${base} Details: ${error.trim()}`;
+  }
+
+  return base;
+};
+
 export const requestGeminiText = async (payload: GeminiProxyRequest): Promise<string> => {
   const response = await fetch(buildProxyUrl(), {
     method: 'POST',
@@ -53,11 +99,14 @@ export const requestGeminiText = async (payload: GeminiProxyRequest): Promise<st
     if (data.details) {
       message += `\n${JSON.stringify(data.details, null, 2)}`;
     }
-    throw new Error(message);
+    throw new GeminiProxyError(message, { status: response.status, details: data.details });
   }
 
   if (!data.text || typeof data.text !== 'string') {
-    throw new Error('Gemini proxy returned an empty response.');
+    throw new GeminiProxyError('Gemini proxy returned an empty response.', {
+      status: response.status,
+      details: data.details,
+    });
   }
 
   return data.text;

@@ -1,27 +1,27 @@
 
-import { Type } from '@google/genai';
+import { SchemaType } from '@google/generative-ai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
-import { requestGeminiText } from './aiProxy';
+import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
-  type: Type.OBJECT,
+  type: SchemaType.OBJECT,
   properties: {
     lemma: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: 'The base form of the word in the constructed language.'
     },
     pos: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: 'The part of speech (e.g., \'noun\', \'verb\', \'adjective\').'
     },
     gloss: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: 'A brief English definition or translation of the word.'
     },
     etymology: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: 'A brief, plausible-sounding origin story for the word within the fictional world.'
     }
   },
@@ -48,30 +48,30 @@ const GENERATED_ARTIFACT_TYPES: ArtifactType[] = [
 ];
 
 const projectArtifactSchema = {
-  type: Type.OBJECT,
+  type: SchemaType.OBJECT,
   properties: {
     title: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: 'Artifact title. Should highlight a unique element such as a character, location, or lore entry.',
     },
     type: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description:
         `Artifact type. Choose from: ${GENERATED_ARTIFACT_TYPES.map((value) => `'${value}'`).join(', ')}.`,
     },
     summary: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: '1-3 sentence pitch that captures the hook and role of this artifact.',
     },
     status: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: "Optional status label such as 'idea', 'draft', or 'active'.",
     },
     tags: {
-      type: Type.ARRAY,
+      type: SchemaType.ARRAY,
       description: 'Optional short tags (1-2 words) describing themes or functions.',
       items: {
-        type: Type.STRING,
+        type: SchemaType.STRING,
         description: 'Single descriptive tag.',
       },
     },
@@ -80,28 +80,28 @@ const projectArtifactSchema = {
 };
 
 const projectBlueprintSchema = {
-  type: Type.OBJECT,
+  type: SchemaType.OBJECT,
   properties: {
     title: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description:
         'A concise, compelling project title. Prefer proper nouns and limit to 60 characters.',
     },
     summary: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description:
         'A short project summary (2-3 sentences) highlighting the premise, tone, or core goal.',
     },
     tags: {
-      type: Type.ARRAY,
+      type: SchemaType.ARRAY,
       description: '1-6 short descriptive tags that help classify the project.',
       items: {
-        type: Type.STRING,
+        type: SchemaType.STRING,
         description: 'A single descriptive tag (one or two words).',
       },
     },
     artifacts: {
-      type: Type.ARRAY,
+      type: SchemaType.ARRAY,
       description:
         '3-6 starter artifacts that would give the creator a head start. Focus on key characters, factions, locations, plot arcs, or lore documents.',
       items: projectArtifactSchema,
@@ -111,15 +111,15 @@ const projectBlueprintSchema = {
 };
 
 const quickFactInspirationSchema = {
-  type: Type.OBJECT,
+  type: SchemaType.OBJECT,
   properties: {
     fact: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description:
         'A concise quick fact (1-2 sentences) that can be saved directly into the project lore.',
     },
     spark: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description:
         'An optional follow-up note that suggests how to elaborate on or apply the fact inside the atlas.',
     },
@@ -163,7 +163,7 @@ export const generateLexemes = async (
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-          type: Type.ARRAY,
+          type: SchemaType.ARRAY,
           items: lexemeSchema,
         },
         temperature: 0.8,
@@ -179,10 +179,8 @@ export const generateLexemes = async (
 
   } catch (error) {
     console.error('Error generating lexemes with Gemini:', error);
-    if (error instanceof Error) {
-        throw new Error(`Failed to generate lexemes. The AI model may be unavailable or the request was invalid. Details: ${error.message}`);
-    }
-    throw new Error('An unknown error occurred while generating lexemes.');
+    const message = getGeminiErrorMessage(error, 'Failed to generate lexemes.');
+    throw new Error(message);
   }
 };
 
@@ -258,12 +256,8 @@ export const generateProjectFromDescription = async (
     };
   } catch (error) {
     console.error('Error generating project blueprint with Gemini:', error);
-    if (error instanceof Error) {
-      throw new Error(
-        `Failed to generate project details. The AI model may be unavailable or the request was invalid. Details: ${error.message}`,
-      );
-    }
-    throw new Error('An unknown error occurred while generating project details.');
+    const message = getGeminiErrorMessage(error, 'Failed to generate project details.');
+    throw new Error(message);
   }
 };
 
@@ -478,7 +472,11 @@ export const generateQuickFactInspiration = async ({
     };
   } catch (error) {
     console.error('Error generating quick fact inspiration with Gemini:', error);
-    throw new Error('Atlas Intelligence could not propose a quick fact right now.');
+    const message = getGeminiErrorMessage(
+      error,
+      'Atlas Intelligence could not propose a quick fact right now.',
+    );
+    throw new Error(message);
   }
 };
 
@@ -729,10 +727,8 @@ export const expandSummary = async (artifact: Artifact): Promise<string> => {
         return result.trim();
     } catch (error) {
         console.error('Error expanding summary with Gemini:', error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to expand summary. The AI model may be unavailable or the request was invalid. Details: ${error.message}`);
-        }
-        throw new Error('An unknown error occurred while expanding the summary.');
+        const message = getGeminiErrorMessage(error, 'Failed to expand summary.');
+        throw new Error(message);
     }
 };
 
@@ -814,9 +810,7 @@ export const generateReleaseNotes = async ({
         return result.trim();
     } catch (error) {
         console.error('Error generating release notes with Gemini:', error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to generate release notes. ${error.message}`);
-        }
-        throw new Error('An unknown error occurred while generating release notes.');
+        const message = getGeminiErrorMessage(error, 'Failed to generate release notes.');
+        throw new Error(message);
     }
 };

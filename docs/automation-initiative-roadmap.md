@@ -14,6 +14,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
+  - Artifact residue cache now preserves mismatched tags/relations during normalization; add regression tests that assert warnings fire and editors surface the preserved data.
 
 ## Segment B — Feature Depth & Design Polish
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`.
@@ -44,8 +45,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Atlas Intelligence fallback responses now replace workspace IDs with human-readable artifact and project labels so offline drafts stay readable.
   - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
-- Add server-side tests that exercise Gemini proxy candidate parsing so quick fact inspiration stays resilient to SDK response changes.
-  - ✅ Migrated the Gemini proxy to the `@google/generative-ai` SDK and reapplied the default safety settings so the build succeeds without manual request tweaks.
 
 ## Segment C — Tutorial & Education Experience
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
