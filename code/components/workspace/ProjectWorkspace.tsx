@@ -21,6 +21,7 @@ import {
   type UserProfile,
   type TaskData,
   TASK_STATE,
+  TutorialLanguage,
 } from '../../types';
 import {
   QUICK_FACT_TAG,
@@ -76,6 +77,7 @@ interface ProjectWorkspaceProps {
   canUseDataApi: boolean;
   canPublishToGitHub: boolean;
   onStartGitHubPublish: () => Promise<void>;
+  tutorialLanguage: TutorialLanguage;
 }
 
 const DEFAULT_ARTIFACT_STATUS = 'idea';
@@ -111,6 +113,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   canUseDataApi,
   canPublishToGitHub,
   onStartGitHubPublish,
+  tutorialLanguage,
 }) => {
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -771,6 +774,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         canUseDataApi={canUseDataApi}
         canPublishToGitHub={canPublishToGitHub}
         onWorkspaceError={handleWorkspaceError}
+        tutorialLanguage={tutorialLanguage}
       />
 
       <WorkspaceModals

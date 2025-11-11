@@ -13,6 +13,7 @@ import {
   UserProfile,
   type ProjectVisibilitySettings,
   isNarrativeArtifactType,
+  TutorialLanguage,
 } from '../types';
 import { PROJECT_FEATURE_GROUPS } from '../utils/projectVisibility';
 import {
@@ -80,6 +81,7 @@ interface ProjectWorkspaceContainerProps {
   canUseDataApi: boolean;
   canPublishToGitHub: boolean;
   onWorkspaceError: (message: string) => void;
+  tutorialLanguage: TutorialLanguage;
 }
 
 type ProjectWorkspaceContainerComponent = React.FC<ProjectWorkspaceContainerProps>;
@@ -127,6 +129,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   canUseDataApi,
   canPublishToGitHub,
   onWorkspaceError,
+  tutorialLanguage,
 }) => {
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
   const previousSelectedArtifactIdRef = useRef<string | null>(null);
@@ -270,6 +273,7 @@ return (
             showProjectOverview: visibilitySettings.projectOverview,
             showQuickFactsPanel: visibilitySettings.quickFactsPanel,
             visibilitySettings,
+            tutorialLanguage,
             onOpenCreateArtifactModal: () => onOpenCreateArtifactModal(),
             onOpenQuickFactModal,
             onPublishProject,

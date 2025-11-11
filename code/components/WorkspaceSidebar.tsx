@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 import {
   Achievement,
@@ -8,6 +8,7 @@ import {
   Quest,
   Questline,
   UserProfile,
+  TutorialLanguage,
 } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import UserProfileCard from './UserProfileCard';
@@ -17,6 +18,8 @@ import Quests from './Quests';
 import QuestlineBoard from './QuestlineBoard';
 import Achievements from './Achievements';
 import { FolderPlusIcon } from './Icons';
+import SupportContentPanel from './SupportContentPanel';
+import { getSupportContent } from '../utils/supportContent';
 
 interface WorkspaceSidebarProps {
   profile: UserProfile;
@@ -44,6 +47,8 @@ interface WorkspaceSidebarProps {
   onClaimQuestline: (questlineId: string, xpReward: number) => void;
   achievements: Achievement[];
   artifacts: Artifact[];
+  tutorialLanguage: TutorialLanguage;
+  onStartTutorial: () => void;
 }
 
 const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
@@ -72,7 +77,11 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onClaimQuestline,
   achievements,
   artifacts,
+  tutorialLanguage,
+  onStartTutorial,
 }) => {
+  const supportContent = useMemo(() => getSupportContent(tutorialLanguage), [tutorialLanguage]);
+
   return (
     <aside className="lg:col-span-3 space-y-6">
       {isViewingOwnWorkspace && (
@@ -85,8 +94,8 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           <button
             id="create-new-project-button"
             onClick={onOpenCreateProjectModal}
+            title={supportContent.tooltips.createProject}
             className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-cyan-300 bg-cyan-900/50 hover:bg-cyan-800/50 rounded-md transition-colors"
-            title="Create New Project"
           >
             <FolderPlusIcon className="w-4 h-4" />
             New
@@ -176,6 +185,7 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 }}
                 className="w-full px-3 py-2 text-sm font-semibold text-cyan-200 bg-cyan-950/50 hover:bg-cyan-900/60 border border-cyan-800/50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={isLoadingMoreProjects}
+                title={supportContent.tooltips.loadMoreProjects}
               >
                 {isLoadingMoreProjects ? 'Loading more projects…' : 'Load more projects'}
               </button>
@@ -194,6 +204,7 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         onClaim={onClaimQuestline}
       />
       <Achievements achievements={achievements} artifacts={artifacts} projects={allProjects} />
+      <SupportContentPanel language={tutorialLanguage} onStartTutorial={onStartTutorial} />
     </aside>
   );
 };
