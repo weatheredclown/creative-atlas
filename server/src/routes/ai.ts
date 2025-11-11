@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { GoogleGenAI, type GenerationConfig, type GenerateContentResponse } from '@google/genai';
+import {
+  GoogleGenAI,
+  type GenerationConfig,
+  type GenerateContentResponse,  
+  HarmCategory,
+  HarmBlockThreshold,
+} from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 
@@ -116,9 +122,29 @@ router.post(
       },
     ];
 
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+    ];
+
     const payload: Parameters<typeof client.models.generateContent>[0] = {
       model,
       contents,
+      safetySettings,
     };
 
     if (config) {
@@ -130,6 +156,10 @@ router.post(
       const text = extractTextFromResponse(response);
 
       if (!text) {
+        console.log(
+          'Gemini returned an empty text response. Full response object:',
+          JSON.stringify(response, null, 2),
+        );
         res.status(502).json({
           error: 'Gemini returned an empty response.',
         });
