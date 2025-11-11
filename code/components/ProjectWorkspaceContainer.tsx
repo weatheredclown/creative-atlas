@@ -34,6 +34,7 @@ import { ProjectPublishRecord } from '../utils/publishHistory';
 import { useArtifactFilters } from '../hooks/useArtifactFilters';
 import BackToTopButton from './BackToTopButton';
 import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
+import WorkspaceSectionIndex from './workspace/WorkspaceSectionIndex';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
 import type { QuickFactModalOptions } from './workspace/types';
 import { logAnalyticsEvent } from '../services/analytics';
@@ -258,8 +259,42 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
 
   const summaryFeatureGroup = PROJECT_FEATURE_GROUPS.summary;
 
-return (
+  const shouldShowTrackingSection =
+    visibilitySettings.memorySync ||
+    visibilitySettings.openTasks ||
+    visibilitySettings.narrativePipeline ||
+    visibilitySettings.familyTreeTools ||
+    visibilitySettings.characterArcTracker ||
+    visibilitySettings.milestoneTracker;
+
+  const shouldShowTemplatesSection = visibilitySettings.templates;
+
+  const shouldShowPublishingSection =
+    visibilitySettings.releaseWorkflows || visibilitySettings.githubImport;
+
+  const sectionLinks = useMemo(() => {
+    const links: Array<{ id: string; label: string }> = [
+      { id: 'workspace-hero', label: 'Hero' },
+    ];
+
+    if (shouldShowTrackingSection) {
+      links.push({ id: 'workspace-tracking', label: 'Tracking' });
+    }
+
+    if (shouldShowTemplatesSection) {
+      links.push({ id: 'workspace-templates', label: 'Templates' });
+    }
+
+    if (shouldShowPublishingSection) {
+      links.push({ id: 'workspace-publishing', label: 'Publishing' });
+    }
+
+    return links;
+  }, [shouldShowTrackingSection, shouldShowTemplatesSection, shouldShowPublishingSection]);
+
+  return (
     <>
+      <WorkspaceSectionIndex sections={sectionLinks} />
       <div className="space-y-12">
         <WorkspaceSummarySection
           featureGroup={summaryFeatureGroup}

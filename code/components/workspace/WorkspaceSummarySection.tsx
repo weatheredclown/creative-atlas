@@ -20,7 +20,7 @@ const WorkspaceSummarySection: React.FC<WorkspaceSummarySectionProps> = ({
   heroSectionProps,
   artifactPanelProps,
 }) => (
-  <section className="space-y-6">
+  <section id="workspace-hero" className="space-y-6 scroll-mt-28">
     <header className="space-y-1">
       <h2 className="text-xl font-semibold text-slate-100">{featureGroup.title}</h2>
       <p className="text-sm text-slate-400">{featureGroup.description}</p>
