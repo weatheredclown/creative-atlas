@@ -10,12 +10,14 @@ export interface TutorialProgressState {
 
 const STORAGE_KEY = 'creative-atlas:tutorial-progress';
 
-const DEFAULT_PROGRESS: TutorialProgressState = {
+const createDefaultProgress = (language: TutorialLanguage = DEFAULT_TUTORIAL_LANGUAGE): TutorialProgressState => ({
   currentStep: 0,
   hasCompleted: false,
   wasDismissed: false,
-  language: DEFAULT_TUTORIAL_LANGUAGE,
-};
+  language,
+});
+
+const DEFAULT_PROGRESS = createDefaultProgress();
 
 const AVAILABLE_TUTORIAL_LANGUAGES = new Set<TutorialLanguage>(
   tutorialLanguageOptions.map(option => option.code),
@@ -31,23 +33,43 @@ const parseLanguage = (value: unknown): TutorialLanguage => {
 
 const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
-export const loadTutorialProgress = (): TutorialProgressState => {
+const getLanguageFromQuery = (): TutorialLanguage | null => {
   if (!isBrowser) {
-    return { ...DEFAULT_PROGRESS };
+    return null;
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const candidate = params.get('hl');
+    if (candidate && AVAILABLE_TUTORIAL_LANGUAGES.has(candidate as TutorialLanguage)) {
+      return candidate as TutorialLanguage;
+    }
+  } catch (error) {
+    console.warn('Failed to read tutorial language from URL.', error);
+  }
+
+  return null;
+};
+
+export const loadTutorialProgress = (): TutorialProgressState => {
+  const languageOverride = getLanguageFromQuery();
+
+  if (!isBrowser) {
+    return createDefaultProgress(languageOverride ?? DEFAULT_PROGRESS.language);
   }
 
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      return { ...DEFAULT_PROGRESS };
+      return createDefaultProgress(languageOverride ?? DEFAULT_PROGRESS.language);
     }
 
     const parsed = JSON.parse(stored) as Partial<TutorialProgressState> | null;
     if (!parsed) {
-      return { ...DEFAULT_PROGRESS };
+      return createDefaultProgress(languageOverride ?? DEFAULT_PROGRESS.language);
     }
 
-    const language = parseLanguage(parsed.language);
+    const language = languageOverride ?? parseLanguage(parsed.language);
     const steps = getTutorialSteps(language);
     const currentStep = Number.isFinite(parsed.currentStep)
       ? Math.min(Math.max(parsed.currentStep ?? 0, 0), steps.length - 1)
@@ -61,7 +83,7 @@ export const loadTutorialProgress = (): TutorialProgressState => {
     };
   } catch (error) {
     console.warn('Failed to load tutorial progress from storage.', error);
-    return { ...DEFAULT_PROGRESS };
+    return createDefaultProgress(languageOverride ?? DEFAULT_PROGRESS.language);
   }
 };
 

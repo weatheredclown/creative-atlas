@@ -59,7 +59,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ## Segment C — Tutorial & Education Experience
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
-  - ✅ Added a bilingual tutorial language selector with Spanish copy and screen-reader-friendly step status messaging.
+  - ✅ Bilingual tutorial copy now respects an `?hl=` query parameter (replacing the dropdown selector) while keeping screen-reader-friendly step status messaging.
   - ✅ Expand localization to contextual tooltips and onboarding banners that appear outside the tutorial popover.
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
 
