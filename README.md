@@ -52,6 +52,8 @@ When the backend API is running (see below), expose its URL so CSV/Markdown impo
 VITE_DATA_API_BASE_URL=http://localhost:4000
 ```
 
+Production builds also require the primary API origin. Set `VITE_API_BASE_URL` to the deployed backend URL before running `npm run build`; missing values now halt the deployment and, if somehow bypassed, render a configuration error in the published site.
+
 #### Simulated history heatmap data
 
 Signed-in collaborators automatically see additional timeline snapshots that have been published to Firestore for their account. The app queries the `timelineHeatmap` collection for documents where `ownerId` matches the viewer's UID; any matches are merged with the timelines already present in the workspace.
