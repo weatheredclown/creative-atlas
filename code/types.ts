@@ -112,10 +112,38 @@ export interface Scene {
     summary: string;
 }
 
+export type EncounterIntensity = 'story' | 'skirmish' | 'gauntlet';
+
+export type EncounterObjective = 'recon' | 'extraction' | 'sabotage' | 'escort';
+
+export type EncounterTone = 'hopeful' | 'tense' | 'grim' | 'mystic';
+
+export type DustlandAnchor = 'personaMasks' | 'resonanceCaravans' | 'archiveWards' | 'signalSpire';
+
+export type PitAnchor = 'breachCult' | 'feralDrift' | 'emberParliament' | 'riftSyndicate';
+
+export interface EncounterGeneratorConfig {
+    intensity: EncounterIntensity;
+    objective: EncounterObjective;
+    tone: EncounterTone;
+    dustlandAnchor: DustlandAnchor;
+    pitAnchor: PitAnchor;
+}
+
+export interface GeneratedEncounter {
+    title: string;
+    location: string;
+    briefing: string;
+    beats: string[];
+    rewards: string[];
+}
+
 export interface TaskData {
     state: TaskState;
     assignee?: string;
     due?: string;
+    encounterConfig?: EncounterGeneratorConfig;
+    generatedEncounter?: GeneratedEncounter;
 }
 
 export interface CharacterTrait {

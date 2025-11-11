@@ -24,6 +24,7 @@ import {
 } from '../Icons';
 import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
+import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 
@@ -247,11 +248,15 @@ const sanitizeTaskData = (value: unknown): TaskData => {
   const state = VALID_TASK_STATES.has(rawState) ? (rawState as TaskData['state']) : TASK_STATE.Todo;
   const assignee = coerceString(source.assignee).trim();
   const due = coerceString(source.due).trim();
+  const encounterConfig = sanitizeEncounterConfig(source.encounterConfig);
+  const generatedEncounter = sanitizeGeneratedEncounter(source.generatedEncounter);
 
   return {
     state,
     assignee: assignee.length > 0 ? assignee : undefined,
     due: due.length > 0 ? due : undefined,
+    encounterConfig,
+    generatedEncounter,
   };
 };
 
