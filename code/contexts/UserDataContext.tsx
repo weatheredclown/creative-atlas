@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -106,11 +107,64 @@ const createDefaultProfile = (
   };
 };
 
-const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
-  projects.map((project) => ({ ...project, ownerId }));
+type ArtifactPayload = Omit<Artifact, 'ownerId' | 'tags' | 'relations'> & {
+  ownerId?: string;
+  tags?: unknown;
+  relations?: unknown;
+};
 
-const normalizeArtifacts = (artifacts: Artifact[], ownerId: string): Artifact[] =>
-  artifacts.map((artifact) => ({ ...artifact, ownerId }));
+type ArtifactResidue = Partial<Record<'tags' | 'relations', unknown>>;
+
+const normalizeProjects = (projects: Project[], ownerId: string): Project[] =>
+  projects.map((project) => ({
+    ...project,
+    ownerId: project.ownerId ?? ownerId,
+    tags: Array.isArray(project.tags)
+      ? project.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [],
+  }));
+
+const normalizeArtifact = (
+  artifact: ArtifactPayload,
+  ownerId: string,
+): { sanitized: Artifact; residue?: ArtifactResidue } => {
+  const residue: ArtifactResidue = {};
+
+  const normalizedTags = Array.isArray(artifact.tags)
+    ? artifact.tags.filter((tag): tag is string => typeof tag === 'string')
+    : [];
+  if (!Array.isArray(artifact.tags) || normalizedTags.length !== (artifact.tags?.length ?? 0)) {
+    residue.tags = artifact.tags;
+  }
+
+  const normalizedRelations = Array.isArray(artifact.relations)
+    ? artifact.relations.filter(
+        (relation): relation is Artifact['relations'][number] =>
+          Boolean(relation) && typeof relation.toId === 'string' && typeof relation.kind === 'string',
+      )
+    : [];
+  if (
+    !Array.isArray(artifact.relations) ||
+    normalizedRelations.length !== (Array.isArray(artifact.relations) ? artifact.relations.length : 0)
+  ) {
+    residue.relations = artifact.relations;
+  }
+
+  const hasResidue = Object.keys(residue).length > 0;
+
+  return {
+    sanitized: {
+      ...artifact,
+      ownerId: artifact.ownerId ?? ownerId,
+      tags: normalizedTags,
+      relations: normalizedRelations,
+    } as Artifact,
+    residue: hasResidue ? residue : undefined,
+  };
+};
+
+const normalizeArtifacts = (artifacts: ArtifactPayload[], ownerId: string): Artifact[] =>
+  artifacts.map((artifact) => normalizeArtifact(artifact, ownerId).sanitized);
 
 const groupArtifactsByProject = (artifacts: Artifact[]): Record<string, Artifact[]> => {
   return artifacts.reduce<Record<string, Artifact[]>>((acc, artifact) => {
@@ -153,6 +207,52 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [memoryConversations, setMemoryConversations] = useState<MemorySyncConversation[]>([]);
+  const artifactResidueRef = useRef<Record<string, ArtifactResidue>>({});
+
+  const clearResidueField = useCallback((artifactId: string, field: keyof ArtifactResidue) => {
+    if (!artifactResidueRef.current[artifactId]) {
+      return;
+    }
+    const nextResidue = { ...artifactResidueRef.current[artifactId] };
+    delete nextResidue[field];
+    if (Object.keys(nextResidue).length === 0) {
+      delete artifactResidueRef.current[artifactId];
+    } else {
+      artifactResidueRef.current[artifactId] = nextResidue;
+    }
+  }, []);
+
+  const setResidueField = useCallback(
+    (artifactId: string, field: keyof ArtifactResidue, value: unknown) => {
+      artifactResidueRef.current[artifactId] = {
+        ...(artifactResidueRef.current[artifactId] ?? {}),
+        [field]: value,
+      };
+      console.warn('Artifact payload contained mismatched fields and was preserved separately.', {
+        artifactId,
+        field,
+      });
+    },
+    [],
+  );
+
+  const recordArtifactResidue = useCallback(
+    (artifactId: string, residue?: ArtifactResidue) => {
+      (['tags', 'relations'] as const).forEach((field) => {
+        if (residue && Object.prototype.hasOwnProperty.call(residue, field)) {
+          const value = residue[field];
+          if (value !== undefined) {
+            setResidueField(artifactId, field, value);
+          } else {
+            clearResidueField(artifactId, field);
+          }
+        } else {
+          clearResidueField(artifactId, field);
+        }
+      });
+    },
+    [clearResidueField, setResidueField],
+  );
 
   const clearError = useCallback(() => {
     setError(null);
@@ -167,6 +267,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMemoryConversations([]);
     setLoading(false);
     setError(null);
+    artifactResidueRef.current = {};
   }, []);
 
   const reportError = useCallback(
@@ -181,6 +282,18 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const artifacts = useMemo(() => Object.values(artifactsByProject).flat(), [artifactsByProject]);
+
+  const sanitizeArtifacts = useCallback(
+    (incoming: ArtifactPayload[]): Artifact[] => {
+      const ownerId = profile?.uid ?? user?.uid ?? 'unknown-owner';
+      return incoming.map((artifact) => {
+        const { sanitized, residue } = normalizeArtifact(artifact, ownerId);
+        recordArtifactResidue(sanitized.id, residue);
+        return sanitized;
+      });
+    },
+    [profile?.uid, recordArtifactResidue, user?.uid],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +348,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return;
         }
         setProfile(profileData);
-        setProjects(projectData.projects);
+        setProjects(normalizeProjects(projectData.projects, user.uid));
         setProjectPageToken(projectData.nextPageToken ?? null);
         setArtifactsByProject({});
         setArtifactPageTokens({});
@@ -287,9 +400,10 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await fetchProjectArtifacts(token, projectId, {
           pageToken: nextToken,
         });
+        const normalizedArtifacts = sanitizeArtifacts(response.artifacts);
         setArtifactsByProject((current) => {
           const existing = reset ? [] : current[projectId] ?? [];
-          const merged = mergeArtifactLists(existing, response.artifacts);
+          const merged = mergeArtifactLists(existing, normalizedArtifacts);
           return {
             ...current,
             [projectId]: merged,
@@ -307,7 +421,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
     },
-    [artifactPageTokens, getIdToken, isGuestMode, reportError],
+    [artifactPageTokens, getIdToken, isGuestMode, reportError, sanitizeArtifacts],
   );
 
   const ensureProjectArtifacts = useCallback(
@@ -361,7 +475,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         throw new Error('Data API is not available.');
       }
       const response = await fetchProjects(token, { pageToken: projectPageToken });
-      setProjects((current) => [...current, ...response.projects]);
+      const normalizedProjects = normalizeProjects(
+        response.projects,
+        user?.uid ?? profile?.uid ?? 'unknown-owner',
+      );
+      setProjects((current) => [...current, ...normalizedProjects]);
       setProjectPageToken(response.nextPageToken ?? null);
     } catch (error) {
       reportError(
@@ -370,24 +488,28 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         'We could not load more projects from the data service. Please try again later.',
       );
     }
-  }, [getIdToken, isGuestMode, projectPageToken, reportError]);
+  }, [getIdToken, isGuestMode, profile?.uid, projectPageToken, reportError, user?.uid]);
 
-  const mergeArtifacts = useCallback((projectId: string, incoming: Artifact[]) => {
-    if (incoming.length === 0) {
-      return;
-    }
-    setArtifactsByProject((current) => {
-      const existing = current[projectId] ?? [];
-      return {
+  const mergeArtifacts = useCallback(
+    (projectId: string, incoming: Artifact[]) => {
+      if (incoming.length === 0) {
+        return;
+      }
+      const normalizedIncoming = sanitizeArtifacts(incoming);
+      setArtifactsByProject((current) => {
+        const existing = current[projectId] ?? [];
+        return {
+          ...current,
+          [projectId]: mergeArtifactLists(existing, normalizedIncoming),
+        };
+      });
+      setArtifactPageTokens((current) => ({
         ...current,
-        [projectId]: mergeArtifactLists(existing, incoming),
-      };
-    });
-    setArtifactPageTokens((current) => ({
-      ...current,
-      [projectId]: current[projectId] ?? null,
-    }));
-  }, []);
+        [projectId]: current[projectId] ?? null,
+      }));
+    },
+    [sanitizeArtifacts],
+  );
 
   const updateMemorySuggestionStatus = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -597,8 +719,9 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           relations: draft.relations ?? [],
           data: draft.data ?? {},
         }));
-        mergeArtifacts(projectId, artifactsToAdd);
-        return artifactsToAdd;
+        const normalizedGuestArtifacts = sanitizeArtifacts(artifactsToAdd);
+        mergeArtifacts(projectId, normalizedGuestArtifacts);
+        return normalizedGuestArtifacts;
       }
 
       try {
@@ -607,8 +730,9 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           throw new Error('Missing authentication token.');
         }
         const created = await createArtifactsViaApi(token, projectId, drafts);
-        mergeArtifacts(projectId, created);
-        return created;
+        const normalizedCreated = sanitizeArtifacts(created);
+        mergeArtifacts(projectId, normalizedCreated);
+        return normalizedCreated;
       } catch (error) {
         reportError(
           'Failed to create artifacts',
@@ -618,7 +742,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [];
       }
     },
-    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid, reportError],
+    [getIdToken, isGuestMode, mergeArtifacts, profile?.uid, reportError, sanitizeArtifacts],
   );
 
   const createArtifact = useCallback(
@@ -644,6 +768,33 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return next;
       });
 
+      (['tags', 'relations'] as const).forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(updates, field)) {
+          return;
+        }
+        const value = updates[field];
+        if (field === 'tags') {
+          if (Array.isArray(value) && value.every((tag) => typeof tag === 'string')) {
+            clearResidueField(artifactId, 'tags');
+          } else if (value !== undefined) {
+            setResidueField(artifactId, 'tags', value);
+          }
+        }
+        if (field === 'relations') {
+          if (
+            Array.isArray(value) &&
+            value.every(
+              (relation) =>
+                relation && typeof relation.toId === 'string' && typeof relation.kind === 'string',
+            )
+          ) {
+            clearResidueField(artifactId, 'relations');
+          } else if (value !== undefined) {
+            setResidueField(artifactId, 'relations', value);
+          }
+        }
+      });
+
       if (isGuestMode || !isDataApiConfigured) {
         return artifacts.find((artifact) => artifact.id === artifactId) ?? null;
       }
@@ -661,19 +812,20 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (updates.relations !== undefined) sanitized.relations = updates.relations;
         if (updates.data !== undefined) sanitized.data = updates.data;
         const updated = await updateArtifactViaApi(token, artifactId, sanitized);
+        const [normalizedUpdated] = sanitizeArtifacts([updated]);
         setArtifactsByProject((current) => {
           const next = { ...current };
           Object.keys(next).forEach((projectId) => {
             const list = next[projectId];
             if (list.some((artifact) => artifact.id === artifactId)) {
               next[projectId] = list.map((artifact) =>
-                artifact.id === artifactId ? updated : artifact,
+                artifact.id === artifactId ? normalizedUpdated : artifact,
               );
             }
           });
           return next;
         });
-        return updated;
+        return normalizedUpdated;
       } catch (error) {
         reportError(
           'Failed to update artifact',
@@ -683,7 +835,15 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return null;
       }
     },
-    [artifacts, getIdToken, isGuestMode, reportError],
+    [
+      artifacts,
+      clearResidueField,
+      getIdToken,
+      isGuestMode,
+      reportError,
+      sanitizeArtifacts,
+      setResidueField,
+    ],
   );
 
   const deleteArtifact = useCallback(
@@ -711,6 +871,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             [findProjectId]: nextList,
           };
         });
+        delete artifactResidueRef.current[artifactId];
       };
 
       if (isGuestMode || !isDataApiConfigured) {
