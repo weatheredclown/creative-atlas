@@ -95,6 +95,7 @@ This document tracks the multi-session automation initiative to deliver the full
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)
 - ✅ Artifact action menu now includes inline rename controls so workspace editors can retitle artifacts without leaving the detail view.
 - ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
+- ✅ Moved the Creative Atlas Agent trigger into the header action bar so it aligns with other workspace controls.
 
 ### Onboarding & Education (Help New Creators Succeed)
 - ✅ Bilingual tutorial copy now respects an `?hl=` query parameter (replacing the dropdown selector) while keeping screen-reader-friendly step status messaging.

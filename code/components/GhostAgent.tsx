@@ -1,4 +1,13 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   requestGhostAgentStep,
@@ -105,7 +114,17 @@ const StopIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const GhostAgent: React.FC = () => {
+export interface GhostAgentHandle {
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+}
+
+interface GhostAgentProps {
+  showTriggerButton?: boolean;
+}
+
+const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerButton = true }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [objective, setObjective] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -421,6 +440,43 @@ const GhostAgent: React.FC = () => {
     : 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/50 p-3 font-mono text-[11px] leading-relaxed text-slate-200';
   const logDividerClass = isAwaitingFeedback ? 'border-amber-300/40' : 'border-white/10';
 
+  const closeAgent = useCallback(
+    (message?: string) => {
+      if (isRunningRef.current) {
+        stopAgent(message ?? '⏹️ Agent closed.');
+      }
+      setIsOpen(false);
+    },
+    [stopAgent],
+  );
+
+  const openAgent = useCallback(() => {
+    setIsOpen(true);
+  }, []);
+
+  const toggleAgent = useCallback(() => {
+    setIsOpen(previous => {
+      if (previous) {
+        if (isRunningRef.current) {
+          stopAgent('⏹️ Agent closed.');
+        }
+        return false;
+      }
+
+      return true;
+    });
+  }, [stopAgent]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      open: openAgent,
+      close: () => closeAgent(),
+      toggle: toggleAgent,
+    }),
+    [closeAgent, openAgent, toggleAgent],
+  );
+
   return (
     <>
       <AnimatePresence>
@@ -438,20 +494,12 @@ const GhostAgent: React.FC = () => {
         ) : null}
       </AnimatePresence>
 
-      <div
-        id={AGENT_UI_ID}
-        className="fixed top-4 right-4 z-[10000] flex flex-col items-end text-sm"
-      >
-        {!isOpen ? (
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-900/80 shadow-lg backdrop-blur transition hover:bg-slate-900"
-            aria-label="Open Creative Atlas ghost agent"
-          >
-            <SparklesIcon className="h-6 w-6 text-indigo-300" />
-          </button>
-        ) : (
+      {(isOpen || showTriggerButton) && (
+        <div
+          id={AGENT_UI_ID}
+          className="fixed top-4 right-4 z-[10000] flex flex-col items-end text-sm"
+        >
+          {isOpen ? (
           <div
             className={`w-80 overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-2xl ${
               isAwaitingFeedback ? 'border-amber-400/60' : 'border-white/10'
@@ -469,10 +517,7 @@ const GhostAgent: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (isRunningRef.current) {
-                    stopAgent('⏹️ Agent closed.');
-                  }
-                  setIsOpen(false);
+                  closeAgent();
                 }}
                 className="rounded-full p-1 text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label="Close agent"
@@ -588,10 +633,24 @@ const GhostAgent: React.FC = () => {
               )}
             </div>
           </div>
-        )}
-      </div>
+          ) : (
+            showTriggerButton && (
+              <button
+                type="button"
+                onClick={() => setIsOpen(true)}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-900/80 shadow-lg backdrop-blur transition hover:bg-slate-900"
+                aria-label="Open Creative Atlas ghost agent"
+              >
+                <SparklesIcon className="h-6 w-6 text-indigo-300" />
+              </button>
+            )
+          )}
+        </div>
+      )}
     </>
   );
-};
+});
+
+GhostAgent.displayName = 'GhostAgent';
 
 export default GhostAgent;
