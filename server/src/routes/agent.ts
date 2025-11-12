@@ -137,7 +137,9 @@ const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 
 const FUNCTION_NAMES = TOOLS.flatMap((tool) => {
   if ('functionDeclarations' in tool && Array.isArray(tool.functionDeclarations)) {
-    return tool.functionDeclarations.map((declaration) => declaration.name);
+    return tool.functionDeclarations
+      .map((declaration: FunctionDeclaration) => declaration.name)
+      .filter((name): name is string => typeof name === 'string' && name.length > 0);
   }
 
   return [];
