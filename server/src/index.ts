@@ -6,6 +6,7 @@ import workspaceRouter from './routes/workspace.js';
 import githubRouter from './routes/github.js';
 import aiRouter from './routes/ai.js';
 import historyRouter from './routes/history.js';
+import agentRouter from './routes/agent.js';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'https://creative-atlas.web.app')
   .split(',')
@@ -68,6 +69,7 @@ app.get('/', (_req, res) => {
 app.use('/api/github', githubRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/agent', agentRouter);
 app.use('/api', workspaceRouter);
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  GoogleGenerativeAI,
+  type GoogleGenerativeAI,
   type GenerationConfig,
   type GenerateContentResponse,
   HarmCategory,
@@ -12,24 +12,9 @@ import {
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { extractTextFromResponse } from './geminiResponse.js';
+import { getGeminiClient } from '../utils/geminiClient.js';
 
 const router = Router();
-
-let cachedClient: GoogleGenerativeAI | null = null;
-
-const getClient = (): GoogleGenerativeAI => {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured on the server.');
-  }
-
-  if (!cachedClient) {
-    cachedClient = new GoogleGenerativeAI(apiKey);
-  }
-
-  return cachedClient;
-};
 
 const generationConfigSchema = z
   .object({
@@ -324,7 +309,7 @@ router.post(
 
     let client: GoogleGenerativeAI;
     try {
-      client = getClient();
+      client = getGeminiClient();
     } catch (error) {
       console.error('Failed to initialize Gemini client', error);
       res.status(500).json({
