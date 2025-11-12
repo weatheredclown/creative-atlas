@@ -110,13 +110,18 @@ const GhostAgent: React.FC = () => {
   const [objective, setObjective] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [isAwaitingFeedback, setIsAwaitingFeedback] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [isClicking, setIsClicking] = useState(false);
 
   const objectiveFieldId = useId();
+  const feedbackFieldId = useId();
 
   const isRunningRef = useRef(false);
   const historyRef = useRef<GhostAgentHistoryEntry[]>([]);
+  const stepCountRef = useRef(0);
   const html2CanvasRef = useRef<Html2CanvasFn | null>(null);
 
   const addLog = useCallback((message: string) => {
@@ -164,6 +169,11 @@ const GhostAgent: React.FC = () => {
   const stopAgent = useCallback((message?: string) => {
     isRunningRef.current = false;
     setIsRunning(false);
+    setIsAwaitingFeedback(false);
+    setPendingQuestion(null);
+    setFeedbackInput('');
+    stepCountRef.current = 0;
+    historyRef.current = [];
     if (message) {
       addLog(message);
     }
@@ -174,10 +184,10 @@ const GhostAgent: React.FC = () => {
   }, []);
 
   const executeAction = useCallback(
-    async (action: GhostAgentAction | null): Promise<boolean> => {
+    async (action: GhostAgentAction | null): Promise<'continue' | 'pause' | 'stop'> => {
       if (!action) {
         addLog('❌ Agent returned an empty action.');
-        return false;
+        return 'stop';
       }
 
       const actionLabel = action.action;
@@ -189,7 +199,17 @@ const GhostAgent: React.FC = () => {
 
       if (actionLabel === 'done') {
         addLog('✅ Objective complete.');
-        return false;
+        return 'stop';
+      }
+
+      if (actionLabel === 'ask') {
+        const prompt = typeof action.prompt === 'string' ? action.prompt.trim() : '';
+        const guidanceMessage = prompt.length > 0 ? prompt : 'The agent needs additional instructions from the user.';
+        addLog(`🟠 ${guidanceMessage}`);
+        setPendingQuestion(guidanceMessage);
+        setIsAwaitingFeedback(true);
+        setFeedbackInput('');
+        return 'pause';
       }
 
       if (actionLabel === 'scroll') {
@@ -198,7 +218,7 @@ const GhostAgent: React.FC = () => {
 
         if (targetY === null) {
           addLog('⚠️ Scroll action was missing coordinates.');
-          return true;
+          return 'continue';
         }
 
         window.scrollTo({
@@ -207,7 +227,7 @@ const GhostAgent: React.FC = () => {
           behavior: 'smooth',
         });
         await delay(CURSOR_MOVE_DELAY_MS / 2);
-        return true;
+        return 'continue';
       }
 
       const screenX = normalizeCoordinate(action.x, window.innerWidth);
@@ -215,21 +235,21 @@ const GhostAgent: React.FC = () => {
 
       if (screenX === null || screenY === null) {
         addLog('⚠️ Action was missing screen coordinates.');
-        return true;
+        return 'continue';
       }
 
       updateCursor(screenX, screenY);
       await delay(CURSOR_MOVE_DELAY_MS);
 
       if (!isRunningRef.current) {
-        return false;
+        return 'stop';
       }
 
       const target = document.elementFromPoint(screenX, screenY);
 
       if (!(target instanceof HTMLElement)) {
         addLog('⚠️ No interactive element found at the requested location.');
-        return true;
+        return 'continue';
       }
 
       if (actionLabel === 'click') {
@@ -240,10 +260,8 @@ const GhostAgent: React.FC = () => {
         target.click();
         await delay(180);
         setIsClicking(false);
-        if (target instanceof HTMLElement) {
-          target.focus({ preventScroll: true });
-        }
-        return true;
+        target.focus({ preventScroll: true });
+        return 'continue';
       }
 
       if (actionLabel === 'type') {
@@ -251,90 +269,141 @@ const GhostAgent: React.FC = () => {
 
         if (text.length === 0) {
           addLog('⚠️ Type action did not include any text.');
-          return true;
+          return 'continue';
         }
 
         if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
           target.focus({ preventScroll: true });
           setReactInputValue(target, text);
-          return true;
+          return 'continue';
         }
 
         if (target.isContentEditable) {
           target.focus({ preventScroll: true });
           document.execCommand('selectAll', false, undefined);
           document.execCommand('insertText', false, text);
-          return true;
+          return 'continue';
         }
 
         target.textContent = text;
-        return true;
+        return 'continue';
       }
 
       addLog(`⚠️ Unsupported action received: ${actionLabel}`);
-      return true;
+      return 'continue';
     },
-    [addLog, updateCursor],
+    [addLog, setFeedbackInput, setIsAwaitingFeedback, setPendingQuestion, updateCursor],
   );
 
-  const runAgentLoop = useCallback(async () => {
-    const trimmedObjective = objective.trim();
-    if (!trimmedObjective) {
-      return;
-    }
-
-    setLogs([]);
-    addLog(`🎯 Objective: ${trimmedObjective}`);
-    setIsRunning(true);
-    isRunningRef.current = true;
-    historyRef.current = [];
-
-    try {
-      for (let step = 0; step < MAX_STEPS && isRunningRef.current; step += 1) {
-        const screenshot = await captureScreen();
-
-        if (!screenshot) {
-          stopAgent('❌ Agent stopped because the screenshot could not be captured.');
-          return;
-        }
-
-        let action: GhostAgentAction | null = null;
-        try {
-          action = await requestGhostAgentStep({
-            objective: trimmedObjective,
-            screenshotBase64: screenshot,
-            screenWidth: window.innerWidth,
-            screenHeight: window.innerHeight,
-            history: historyRef.current,
-          });
-        } catch (error) {
-          console.error('Ghost agent request failed', error);
-          const message =
-            error instanceof Error && error.message.length > 0
-              ? error.message
-              : 'Ghost agent request failed.';
-          stopAgent(`❌ ${message}`);
-          return;
-        }
-
-        historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), action];
-
-        const shouldContinue = await executeAction(action);
-
-        if (!shouldContinue || !isRunningRef.current) {
-          break;
-        }
-
-        await delay(POST_ACTION_DELAY_MS);
+  const runAgentLoop = useCallback(
+    async ({ isResuming = false }: { isResuming?: boolean } = {}) => {
+      const trimmedObjective = objective.trim();
+      if (!trimmedObjective) {
+        return;
       }
-    } finally {
-      stopAgent();
-    }
-  }, [addLog, captureScreen, executeAction, objective, stopAgent]);
+
+      if (!isResuming) {
+        setLogs([]);
+        addLog(`🎯 Objective: ${trimmedObjective}`);
+        historyRef.current = [];
+        stepCountRef.current = 0;
+      } else {
+        addLog('🔄 Agent resuming with your guidance.');
+      }
+
+      setIsRunning(true);
+      isRunningRef.current = true;
+      setIsAwaitingFeedback(false);
+      setPendingQuestion(null);
+
+      let pausedForFeedback = false;
+      let shouldAutoStop = true;
+
+      try {
+        while (stepCountRef.current < MAX_STEPS && isRunningRef.current) {
+          const screenshot = await captureScreen();
+
+          if (!screenshot) {
+            stopAgent('❌ Agent stopped because the screenshot could not be captured.');
+            shouldAutoStop = false;
+            return;
+          }
+
+          let action: GhostAgentAction | null = null;
+          try {
+            action = await requestGhostAgentStep({
+              objective: trimmedObjective,
+              screenshotBase64: screenshot,
+              screenWidth: window.innerWidth,
+              screenHeight: window.innerHeight,
+              history: historyRef.current,
+            });
+          } catch (error) {
+            console.error('Ghost agent request failed', error);
+            const message =
+              error instanceof Error && error.message.length > 0
+                ? error.message
+                : 'Ghost agent request failed.';
+            stopAgent(`❌ ${message}`);
+            shouldAutoStop = false;
+            return;
+          }
+
+          const historyEntry: GhostAgentHistoryEntry = {
+            role: 'agent',
+            step: stepCountRef.current + 1,
+            action,
+          };
+          historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), historyEntry];
+          stepCountRef.current += 1;
+
+          const result = await executeAction(action);
+
+          if (result === 'stop' || !isRunningRef.current) {
+            break;
+          }
+
+          if (result === 'pause') {
+            pausedForFeedback = true;
+            break;
+          }
+
+          await delay(POST_ACTION_DELAY_MS);
+        }
+      } finally {
+        if (pausedForFeedback) {
+          isRunningRef.current = false;
+        } else if (shouldAutoStop) {
+          stopAgent();
+        }
+      }
+    },
+    [addLog, captureScreen, executeAction, objective, setIsAwaitingFeedback, setPendingQuestion, stopAgent],
+  );
 
   const handleStop = useCallback(() => {
     stopAgent('⏹️ Agent paused.');
   }, [stopAgent]);
+
+  const handleFeedbackSubmit = useCallback(() => {
+    const trimmed = feedbackInput.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+
+    const historyEntry: GhostAgentHistoryEntry = {
+      role: 'user',
+      message: trimmed,
+    };
+
+    historyRef.current = [...historyRef.current.slice(-(HISTORY_LIMIT - 1)), historyEntry];
+    addLog(`🧭 You: ${trimmed}`);
+    setFeedbackInput('');
+    setIsAwaitingFeedback(false);
+    setPendingQuestion(null);
+
+    void runAgentLoop({ isResuming: true });
+  }, [addLog, feedbackInput, runAgentLoop]);
 
   useEffect(() => {
     return () => {
@@ -343,6 +412,14 @@ const GhostAgent: React.FC = () => {
   }, []);
 
   const isStartDisabled = useMemo(() => isRunning || objective.trim().length === 0, [isRunning, objective]);
+
+  const statusAccentClass = isAwaitingFeedback ? 'text-amber-200' : 'text-indigo-200';
+  const statusDotClass = isAwaitingFeedback ? 'bg-amber-300' : 'bg-indigo-300';
+  const statusText = isAwaitingFeedback ? 'Agent needs your guidance' : 'Agent is working...';
+  const logContainerClass = isAwaitingFeedback
+    ? 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-amber-300/40 bg-amber-950/40 p-3 font-mono text-[11px] leading-relaxed text-amber-100'
+    : 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/50 p-3 font-mono text-[11px] leading-relaxed text-slate-200';
+  const logDividerClass = isAwaitingFeedback ? 'border-amber-300/40' : 'border-white/10';
 
   return (
     <>
@@ -375,8 +452,16 @@ const GhostAgent: React.FC = () => {
             <SparklesIcon className="h-6 w-6 text-indigo-300" />
           </button>
         ) : (
-          <div className="w-80 overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 text-slate-100 shadow-2xl">
-            <div className="flex items-center justify-between bg-indigo-600/90 px-4 py-3 text-sm font-semibold text-white">
+          <div
+            className={`w-80 overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-2xl ${
+              isAwaitingFeedback ? 'border-amber-400/60' : 'border-white/10'
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between px-4 py-3 text-sm font-semibold text-white ${
+                isAwaitingFeedback ? 'bg-amber-500/90' : 'bg-indigo-600/90'
+              }`}
+            >
               <span className="flex items-center gap-2">
                 <SparklesIcon className="h-4 w-4" />
                 Creative Atlas Agent
@@ -414,25 +499,80 @@ const GhostAgent: React.FC = () => {
 
               {isRunning ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-indigo-200">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-300" />
-                    Agent is working...
+                  <div className={`flex items-center gap-2 ${statusAccentClass}`}>
+                    <span className={`h-2 w-2 animate-pulse rounded-full ${statusDotClass}`} />
+                    {statusText}
                   </div>
-                  <div className="ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/50 p-3 font-mono text-[11px] leading-relaxed text-slate-200">
+                  <div className={logContainerClass}>
                     {logs.map((entry, index) => (
-                      <div key={`${entry}-${index}`} className="border-b border-white/10 pb-1 last:border-0 last:pb-0">
+                      <div
+                        key={`${entry}-${index}`}
+                        className={`border-b pb-1 last:border-0 last:pb-0 ${logDividerClass}`}
+                      >
                         {entry}
                       </div>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleStop}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 font-medium text-red-200 transition hover:bg-red-500/20"
-                  >
-                    <StopIcon className="h-4 w-4" />
-                    Stop agent
-                  </button>
+                  {isAwaitingFeedback ? (
+                    <div className="space-y-3">
+                      {pendingQuestion ? (
+                        <div className="rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+                            Agent request
+                          </div>
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-amber-100">{pendingQuestion}</p>
+                        </div>
+                      ) : null}
+                      <div className="space-y-2">
+                        <label
+                          className="block text-xs font-semibold uppercase tracking-wide text-amber-200"
+                          htmlFor={feedbackFieldId}
+                        >
+                          Your guidance
+                        </label>
+                        <textarea
+                          id={feedbackFieldId}
+                          className="h-24 w-full resize-none rounded-lg border border-amber-300/40 bg-amber-950/40 p-3 text-sm text-amber-100 shadow-inner focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                          placeholder="Describe what the agent should try next..."
+                          value={feedbackInput}
+                          onChange={event => setFeedbackInput(event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                              event.preventDefault();
+                              handleFeedbackSubmit();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleFeedbackSubmit}
+                          className="flex-1 rounded-lg bg-amber-400 px-3 py-2 font-semibold text-slate-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={feedbackInput.trim().length === 0}
+                        >
+                          Send reply
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleStop}
+                          className="flex items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 font-medium text-red-200 transition hover:bg-red-500/20"
+                        >
+                          <StopIcon className="h-4 w-4" />
+                          Stop agent
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStop}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 font-medium text-red-200 transition hover:bg-red-500/20"
+                    >
+                      <StopIcon className="h-4 w-4" />
+                      Stop agent
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button

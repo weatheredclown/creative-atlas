@@ -32,11 +32,12 @@ const agentResponseSchema: Schema = {
     action: {
       type: SchemaType.STRING,
       format: 'enum',
-      enum: ['click', 'type', 'scroll', 'done'],
+      enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
     x: { type: SchemaType.NUMBER },
     y: { type: SchemaType.NUMBER },
     text: { type: SchemaType.STRING },
+    prompt: { type: SchemaType.STRING },
     reasoning: { type: SchemaType.STRING },
   },
 };
@@ -54,7 +55,8 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
     `Current objective: ${objective}`,
     `Screen resolution: ${screenWidth}x${screenHeight}. Coordinates must align with this screenshot.`,
     historyLines,
-    'Return the next single UI action as JSON. Choose one of: "click", "type", "scroll", or "done".',
+    'Return the next single UI action as JSON. Choose one of: "click", "type", "scroll", "ask", or "done".',
+    'Use "ask" when you need additional human guidance. Include a "prompt" message explaining what you need from the user.',
     'Always provide the reasoning string explaining why the action progresses the goal.',
     'For "click" and "type" actions include absolute pixel coordinates {"x","y"}. Provide the complete text to insert for "type" actions.',
     'For "scroll" actions include coordinates indicating the viewport location to scroll toward.',
