@@ -11,6 +11,7 @@ import {
   Artifact,
   MemorySyncConversation,
   MemorySyncStatus,
+  NpcMemoryRun,
   Project,
   ProjectStatus,
   UserProfile,
@@ -29,6 +30,8 @@ import {
   fetchProfile,
   fetchProjectArtifacts,
   fetchProjects,
+  type MemorySyncOverviewResponse,
+  fetchMemorySyncOverview,
   incrementProfileXp,
   isDataApiConfigured,
   updateArtifactViaApi,
@@ -71,6 +74,7 @@ interface UserDataContextValue {
   deleteArtifact: (artifactId: string) => Promise<boolean>;
   mergeArtifacts: (projectId: string, artifacts: Artifact[]) => void;
   memoryConversations: MemorySyncConversation[];
+  npcMemoryRuns: NpcMemoryRun[];
   updateMemorySuggestionStatus: (
     conversationId: string,
     suggestionId: string,
@@ -164,6 +168,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [memoryConversations, setMemoryConversations] = useState<MemorySyncConversation[]>([]);
+  const [npcMemoryRuns, setNpcMemoryRuns] = useState<NpcMemoryRun[]>([]);
   const artifactResidueStoreRef = useRef(createArtifactResidueStore());
 
   const clearResidueField = useCallback((artifactId: string, field: keyof ArtifactResidue) => {
@@ -195,6 +200,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setArtifactPageTokens({});
     setProfile(null);
     setMemoryConversations([]);
+    setNpcMemoryRuns([]);
     setLoading(false);
     setError(null);
     artifactResidueStoreRef.current.reset();
@@ -242,6 +248,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setProjectPageToken(null);
         setProfile(createDefaultProfile(guestId, null, 'Guest Creator', null, seed.xp));
         setMemoryConversations(seed.memoryConversations);
+        setNpcMemoryRuns(seed.npcMemoryRuns);
         setLoading(false);
       }
       return () => {
@@ -256,6 +263,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setProjectPageToken(undefined);
       setProfile(null);
       setMemoryConversations([]);
+      setNpcMemoryRuns([]);
       setLoading(false);
       return () => {
         cancelled = true;
@@ -274,6 +282,13 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           fetchProfile(token),
           fetchProjects(token),
         ]);
+
+        let memoryData: MemorySyncOverviewResponse | null = null;
+        try {
+          memoryData = await fetchMemorySyncOverview(token);
+        } catch (memoryError) {
+          console.warn('Failed to load memory sync data', memoryError);
+        }
         if (cancelled) {
           return;
         }
@@ -282,7 +297,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setProjectPageToken(projectData.nextPageToken ?? null);
         setArtifactsByProject({});
         setArtifactPageTokens({});
-        setMemoryConversations([]);
+        setMemoryConversations(memoryData?.conversations ?? []);
+        setNpcMemoryRuns(memoryData?.npcMemoryRuns ?? []);
         setError(null);
       } catch (error) {
         reportError(
@@ -298,6 +314,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setArtifactPageTokens({});
           setProjectPageToken(null);
           setMemoryConversations([]);
+          setNpcMemoryRuns([]);
         }
       } finally {
         if (!cancelled) {
@@ -443,6 +460,12 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateMemorySuggestionStatus = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
+      let affectedSuggestion: {
+        artifactId?: string;
+        previousStatus: MemorySyncStatus;
+        nextStatus: MemorySyncStatus;
+      } | null = null;
+
       setMemoryConversations((previous) =>
         previous.map((conversation) => {
           if (conversation.id !== conversationId) {
@@ -458,6 +481,11 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return suggestion;
             }
             suggestionChanged = true;
+            affectedSuggestion = {
+              artifactId: suggestion.artifactId,
+              previousStatus: suggestion.status,
+              nextStatus: status,
+            };
             return {
               ...suggestion,
               status,
@@ -484,6 +512,42 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           };
         }),
       );
+
+      if (affectedSuggestion?.artifactId) {
+        setNpcMemoryRuns((current) =>
+          current.map((run) => {
+            if (run.npcArtifactId !== affectedSuggestion?.artifactId) {
+              return run;
+            }
+
+            let pending = run.pendingSuggestions;
+            let approved = run.approvedSuggestions;
+            if (affectedSuggestion.previousStatus === 'pending') {
+              pending = Math.max(0, pending - 1);
+            } else if (affectedSuggestion.previousStatus === 'approved') {
+              approved = Math.max(0, approved - 1);
+            }
+
+            if (affectedSuggestion.nextStatus === 'pending') {
+              pending += 1;
+            } else if (affectedSuggestion.nextStatus === 'approved') {
+              approved += 1;
+            }
+
+            const lastApprovedAt =
+              affectedSuggestion.nextStatus === 'approved'
+                ? new Date().toISOString()
+                : run.lastApprovedAt;
+
+            return {
+              ...run,
+              pendingSuggestions: pending,
+              approvedSuggestions: approved,
+              lastApprovedAt,
+            };
+          }),
+        );
+      }
     },
     [],
   );
@@ -1001,6 +1065,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       deleteArtifact,
       mergeArtifacts,
       memoryConversations,
+      npcMemoryRuns,
       updateMemorySuggestionStatus,
       updateProfile,
       addXp,
@@ -1027,6 +1092,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       deleteArtifact,
       mergeArtifacts,
       memoryConversations,
+      npcMemoryRuns,
       updateMemorySuggestionStatus,
       updateProfile,
       addXp,

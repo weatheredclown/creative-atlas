@@ -1,6 +1,8 @@
 import type {
   Artifact,
   ConlangLexeme,
+  MemorySyncConversation,
+  NpcMemoryRun,
   Project,
   ProjectShareStatus,
   SharedProjectPayload,
@@ -89,6 +91,11 @@ export interface ArtifactListResponse {
   nextPageToken?: string;
 }
 
+export interface MemorySyncOverviewResponse {
+  conversations: MemorySyncConversation[];
+  npcMemoryRuns: NpcMemoryRun[];
+}
+
 export type ArtifactDraft = {
   id?: string;
   type: Artifact['type'];
@@ -102,6 +109,10 @@ export type ArtifactDraft = {
 
 export const fetchProfile = async (token: string | null): Promise<UserProfile> =>
   sendJson<UserProfile>(token, '/api/profile', { method: 'GET' });
+
+export const fetchMemorySyncOverview = async (
+  token: string | null,
+): Promise<MemorySyncOverviewResponse> => sendJson<MemorySyncOverviewResponse>(token, '/api/memory-sync', { method: 'GET' });
 
 export const updateProfileViaApi = async (
   token: string | null,

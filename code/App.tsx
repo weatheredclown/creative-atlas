@@ -81,6 +81,7 @@ export default function App() {
     error,
     clearError,
     memoryConversations,
+    npcMemoryRuns,
     updateMemorySuggestionStatus,
     addXp,
     updateProfile,
@@ -134,6 +135,13 @@ export default function App() {
   const projectArtifacts = useMemo(
     () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
     [artifacts, selectedProjectId],
+  );
+  const projectNpcRuns = useMemo(
+    () =>
+      npcMemoryRuns.filter((run) =>
+        selectedProjectId ? run.projectId === selectedProjectId : false,
+      ),
+    [npcMemoryRuns, selectedProjectId],
   );
   const githubAuthSuccessMessage =
     'GitHub authorization complete. Select a repository to publish your site.';
@@ -671,6 +679,7 @@ export default function App() {
               level={level}
               xpProgress={xpProgress}
               projectConversations={projectConversations}
+              projectNpcRuns={projectNpcRuns}
               onMemoryStatusChange={handleMemoryStatusChange}
               milestoneProgress={milestoneProgress}
               upcomingMilestoneOverview={upcomingMilestoneOverview}

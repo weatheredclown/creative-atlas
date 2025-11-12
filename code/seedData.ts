@@ -11,6 +11,7 @@ import {
   WikiData,
   TimelineData,
   MemorySyncConversation,
+  NpcMemoryRun,
 } from './types';
 import { createTamenzutMagicSystemData } from './utils/magicSystem';
 
@@ -19,6 +20,7 @@ export interface SeedWorkspace {
   artifacts: Artifact[];
   xp: number;
   memoryConversations: MemorySyncConversation[];
+  npcMemoryRuns: NpcMemoryRun[];
 }
 
 export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
@@ -386,6 +388,26 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       data: [],
     },
     {
+      id: 'art-18',
+      ownerId,
+      projectId: 'proj-4',
+      type: ArtifactType.Character,
+      title: 'Rustwatch Captain Sel',
+      summary: 'Leads the Rustwatch patrol keeping the Dustland hub secure.',
+      status: 'draft',
+      tags: ['npc', 'dustland'],
+      relations: [
+        { toId: 'art-11', kind: 'PATROLS' },
+      ],
+      data: {
+        bio: 'Sel orchestrates overlapping patrol routes and decides when to escalate incursions near the players\' hub.',
+        traits: [
+          { id: 'sel-trait-1', key: 'Role', value: 'Rustwatch captain' },
+          { id: 'sel-trait-2', key: 'Tension', value: 'Balancing hub safety with player freedom.' },
+        ],
+      } as CharacterData,
+    },
+    {
       id: 'art-12',
       ownerId,
       projectId: 'proj-1',
@@ -462,6 +484,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       title: 'Gemini sync — Kaelen and the Dawn Gate incident',
       summary:
         'Gemini flagged pivotal beats from the latest Tamenzut session and suggested which artifacts should absorb the memories.',
+      scope: 'global',
       updatedAt: '2024-07-12T15:30:00Z',
       transcript: [
         {
@@ -493,6 +516,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           artifactId: 'art-2',
           artifactTitle: 'Kaelen',
           tags: ['character', 'memory'],
+          canonicalSensitivity: 'high',
         },
         {
           id: 'mem-sug-2',
@@ -504,6 +528,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           artifactId: 'art-9',
           artifactTitle: 'Glossary of Darv Terms',
           tags: ['language', 'ritual'],
+          canonicalSensitivity: 'moderate',
         },
       ],
       lastSyncedAt: '2024-07-12T15:34:12Z',
@@ -514,6 +539,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
       title: 'Dustland — NPC patrol routes refresh',
       summary:
         'Gemini highlighted patrol data for Dustland NPCs so the retro CRT encounter tables stay aligned with the latest playtest.',
+      scope: 'npc',
       updatedAt: '2024-06-18T19:12:00Z',
       transcript: [
         {
@@ -539,8 +565,37 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
           artifactId: 'art-11',
           artifactTitle: 'The Sunken City',
           tags: ['module', 'encounter'],
+          canonicalSensitivity: 'moderate',
         },
       ],
+    },
+  ];
+
+  const npcMemoryRuns: NpcMemoryRun[] = [
+    {
+      id: 'npc-run-1',
+      projectId: 'proj-1',
+      npcArtifactId: 'art-2',
+      npcName: 'Kaelen',
+      npcType: ArtifactType.Character,
+      scope: 'npc',
+      pendingSuggestions: 1,
+      approvedSuggestions: 1,
+      highestCanonicalSensitivity: 'high',
+      lastRunAt: '2024-07-12T15:30:00Z',
+      lastApprovedAt: '2024-07-12T15:34:12Z',
+    },
+    {
+      id: 'npc-run-2',
+      projectId: 'proj-4',
+      npcArtifactId: 'art-18',
+      npcName: 'Rustwatch Captain Sel',
+      npcType: ArtifactType.Character,
+      scope: 'npc',
+      pendingSuggestions: 1,
+      approvedSuggestions: 0,
+      highestCanonicalSensitivity: 'moderate',
+      lastRunAt: '2024-06-18T19:12:00Z',
     },
   ];
 
@@ -549,6 +604,7 @@ export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
     artifacts,
     xp: 25,
     memoryConversations,
+    npcMemoryRuns,
   };
 };
 

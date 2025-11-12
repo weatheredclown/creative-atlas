@@ -58,3 +58,57 @@ export interface UserProfile {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type MemorySyncStatus = 'pending' | 'approved' | 'rejected';
+
+export type MemorySyncScope = 'npc' | 'global';
+
+export type CanonicalSensitivityLevel = 'low' | 'moderate' | 'high';
+
+export interface MemorySyncSuggestion {
+  id: string;
+  statement: string;
+  rationale: string;
+  status: MemorySyncStatus;
+  createdAt: string;
+  updatedAt?: string;
+  artifactId?: string;
+  artifactTitle?: string;
+  tags?: string[];
+  canonicalSensitivity: CanonicalSensitivityLevel;
+}
+
+export type ConversationRole = 'creator' | 'gemini';
+
+export interface ConversationMessage {
+  id: string;
+  role: ConversationRole;
+  text: string;
+  timestamp: string;
+}
+
+export interface MemorySyncConversation {
+  id: string;
+  projectId: string;
+  title: string;
+  summary: string;
+  scope: MemorySyncScope;
+  updatedAt: string;
+  lastSyncedAt?: string;
+  transcript: ConversationMessage[];
+  suggestions: MemorySyncSuggestion[];
+}
+
+export interface NpcMemoryRun {
+  id: string;
+  projectId: string;
+  npcArtifactId: string;
+  npcName: string;
+  npcType: string;
+  scope: MemorySyncScope;
+  pendingSuggestions: number;
+  approvedSuggestions: number;
+  highestCanonicalSensitivity: CanonicalSensitivityLevel;
+  lastRunAt?: string;
+  lastApprovedAt?: string;
+}

@@ -11,6 +11,7 @@ import {
   type InspirationCard,
   type MemorySyncConversation,
   type MemorySyncStatus,
+  type NpcMemoryRun,
   type Project,
   type ProjectActivity,
   type ProjectComponentKey,
@@ -55,6 +56,7 @@ interface ProjectWorkspaceProps {
   level: number;
   xpProgress: number;
   projectConversations: MemorySyncConversation[];
+  projectNpcRuns: NpcMemoryRun[];
   onMemoryStatusChange: (conversationId: string, suggestionId: string, status: MemorySyncStatus) => void;
   milestoneProgress: MilestoneProgressOverview[];
   upcomingMilestoneOverview: MilestoneProgressOverview | null;
@@ -90,6 +92,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   level,
   xpProgress,
   projectConversations,
+  projectNpcRuns,
   onMemoryStatusChange,
   milestoneProgress,
   upcomingMilestoneOverview,
@@ -769,8 +772,9 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         publishHistoryRecord={publishHistoryRecord}
         lastPublishedAtLabel={lastPublishedAtLabel}
         addXp={addXp}
-        projectConversations={projectConversations}
-        onMemoryStatusChange={onMemoryStatusChange}
+          projectConversations={projectConversations}
+          projectNpcRuns={projectNpcRuns}
+          onMemoryStatusChange={onMemoryStatusChange}
         markProjectActivity={markProjectActivity}
         milestoneProgress={milestoneProgress}
         upcomingMilestoneOverview={upcomingMilestoneOverview}

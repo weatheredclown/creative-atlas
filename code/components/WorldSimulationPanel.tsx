@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Artifact } from '../types';
+import { Artifact, type NpcMemoryRun } from '../types';
 import {
   analyzeWorldSimulation,
   ConstraintAnnotation,
@@ -27,13 +27,17 @@ interface WorldSimulationPanelProps {
   artifacts: Artifact[];
   allArtifacts: Artifact[];
   projectTitle: string;
+  npcMemoryRuns: NpcMemoryRun[];
   onSelectArtifact?: (artifactId: string) => void;
+  onFocusNpcMemories?: () => void;
 }
 
 const badgeClassNames = {
   anchor: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/60',
   crossWorld: 'bg-violet-500/20 text-violet-200 border-violet-400/60',
   linking: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/60',
+  review: 'bg-amber-500/20 text-amber-200 border-amber-400/60',
+  risk: 'bg-rose-500/20 text-rose-200 border-rose-500/60',
 };
 
 const constraintStatusClassNames: Record<ConstraintStatus, string> = {
@@ -54,15 +58,31 @@ const factionStabilityClassNames: Record<FactionStability, string> = {
   volatile: 'bg-rose-500/10 text-rose-200 border-rose-500/50',
 };
 
+const formatRunTimestamp = (value?: string): string | null => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};
+
 const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
   artifacts,
   allArtifacts,
   projectTitle,
+  npcMemoryRuns,
   onSelectArtifact,
+  onFocusNpcMemories,
 }) => {
   const analysis = useMemo<WorldSimulationAnalysis>(
-    () => analyzeWorldSimulation(artifacts, allArtifacts),
-    [artifacts, allArtifacts],
+    () => analyzeWorldSimulation(artifacts, allArtifacts, npcMemoryRuns),
+    [artifacts, allArtifacts, npcMemoryRuns],
   );
 
   const snapshot = useMemo(() => deriveWorldSimulationSnapshot(artifacts), [artifacts]);
@@ -70,7 +90,7 @@ const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
   const { worldAge, magicConstraints, factionNetwork, npcMemory } = analysis;
   const { constraints, ageProgression, factions } = snapshot;
 
-  const hasNpcSignal = npcMemory.entries.length > 0;
+  const hasNpcSignal = npcMemory.entries.length > 0 || npcMemory.runCount > 0;
 
   if (!analysis.hasData) {
     return (
@@ -138,8 +158,12 @@ const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
           title="NPC anchors"
           value={`${npcMemory.anchoredCount} of ${npcMemory.totalNpcCount}`}
           detail={
-            npcMemory.crossWorldActors > 0
+            npcMemory.highRiskNpcIds.length > 0
+              ? `${npcMemory.highRiskNpcIds.length} high-risk NPC${npcMemory.highRiskNpcIds.length === 1 ? '' : 's'} awaiting canon review`
+              : npcMemory.crossWorldActors > 0
               ? `${npcMemory.crossWorldActors} cross-world bridge${npcMemory.crossWorldActors === 1 ? '' : 's'}`
+              : npcMemory.runCount > 0
+              ? `${npcMemory.runCount} curated run${npcMemory.runCount === 1 ? '' : 's'} active`
               : 'Build ties so cast memories persist.'
           }
         />
@@ -154,19 +178,33 @@ const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
       </div>
 
       <section className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 p-4 space-y-3">
-        <header className="flex items-center gap-3">
-          <div className="rounded-lg bg-slate-950/60 p-2 text-cyan-200 border border-cyan-400/40">
-            <MapPinIcon className="w-4 h-4" />
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-slate-950/60 p-2 text-cyan-200 border border-cyan-400/40">
+              <MapPinIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-100">NPC memory map</h4>
+              <p className="text-xs text-cyan-200/80">Who remembers what, and where their ties reach.</p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-100">NPC memory map</h4>
-            <p className="text-xs text-cyan-200/80">Who remembers what, and where their ties reach.</p>
-          </div>
+          {onFocusNpcMemories ? (
+            <button
+              type="button"
+              onClick={onFocusNpcMemories}
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-400/50 bg-cyan-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-100 transition hover:bg-cyan-500/30"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              Review NPC memories
+            </button>
+          ) : null}
         </header>
         {hasNpcSignal ? (
           <div className="space-y-3 text-sm text-cyan-50">
             {npcMemory.entries.map((entry) => {
               const status = determineNpcStatus(entry);
+              const lastApprovalLabel = formatRunTimestamp(entry.memoryRun?.lastApprovedAt);
+              const lastRunLabel = formatRunTimestamp(entry.memoryRun?.lastRunAt);
               return (
                 <article key={entry.id} className="rounded-lg border border-cyan-400/30 bg-slate-950/60 p-3 space-y-2">
                   <div className="flex items-start justify-between gap-3">
@@ -182,6 +220,14 @@ const WorldSimulationPanel: React.FC<WorldSimulationPanelProps> = ({
                     {entry.relationCount} link{entry.relationCount === 1 ? '' : 's'} · {entry.crossWorldCount}{' '}
                     cross-world bridge{entry.crossWorldCount === 1 ? '' : 's'}
                   </p>
+                  {entry.memoryRun ? (
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-cyan-100/80">
+                      <span>{entry.memoryRun.pendingSuggestions} pending</span>
+                      <span>{entry.memoryRun.approvedSuggestions} approved</span>
+                      {lastApprovalLabel && <span>Last approval {lastApprovalLabel}</span>}
+                      {!lastApprovalLabel && lastRunLabel && <span>Last run {lastRunLabel}</span>}
+                    </div>
+                  ) : null}
                   {entry.linkedArtifacts.length > 0 && (
                     <p className="text-[11px] text-slate-500">Links: {entry.linkedArtifacts.join(', ')}</p>
                   )}
@@ -423,6 +469,12 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ icon, title, value, detail })
 const determineNpcStatus = (
   entry: ReturnType<typeof analyzeWorldSimulation>['npcMemory']['entries'][number],
 ): { label: string; badge: string } => {
+  if (entry.memoryRun && entry.memoryRun.pendingSuggestions > 0) {
+    if (entry.memoryRun.highestCanonicalSensitivity === 'high') {
+      return { label: 'High-risk review', badge: badgeClassNames.risk };
+    }
+    return { label: 'Needs review', badge: badgeClassNames.review };
+  }
   if (entry.crossWorldCount > 0) {
     return { label: 'Cross-world anchor', badge: badgeClassNames.crossWorld };
   }
