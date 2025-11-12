@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Artifact, ArtifactType, CharacterData, CharacterTrait, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, UserCircleIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
@@ -32,15 +32,46 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
   onAddRelation,
   onRemoveRelation,
 }) => {
-  const data = (artifact.data as CharacterData) || { bio: '', traits: [] };
-  const [bio, setBio] = useState(data.bio);
-  const [traits, setTraits] = useState<CharacterTrait[]>(data.traits);
+  const characterData = useMemo<CharacterData>(() => {
+    const rawData = (artifact.data as CharacterData) ?? { bio: '', traits: [] };
+
+    return {
+      bio: rawData.bio ?? '',
+      traits: rawData.traits ?? [],
+      progression: rawData.progression,
+    };
+  }, [artifact]);
+
+  const [bio, setBio] = useState(characterData.bio);
+  const [traits, setTraits] = useState<CharacterTrait[]>(characterData.traits);
   const [newTraitKey, setNewTraitKey] = useState('');
   const [newTraitValue, setNewTraitValue] = useState('');
   const { showDetailedFields } = useDepthPreferences();
 
+  const traitsMatch = (a: CharacterTrait[], b: CharacterTrait[]) => {
+    if (a.length !== b.length) return false;
+    return a.every((trait, index) => {
+      const comparison = b[index];
+      return (
+        trait.id === comparison?.id &&
+        trait.key === comparison?.key &&
+        trait.value === comparison?.value
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (bio !== characterData.bio) {
+      setBio(characterData.bio);
+    }
+
+    if (!traitsMatch(traits, characterData.traits)) {
+      setTraits(characterData.traits);
+    }
+  }, [artifact.id, bio, characterData.bio, characterData.traits, traits]);
+
   const handleUpdate = (updatedData: Partial<CharacterData>) => {
-    onUpdateArtifactData(artifact.id, { ...data, ...updatedData });
+    onUpdateArtifactData(artifact.id, { ...characterData, ...updatedData });
   };
 
   const handleBioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
