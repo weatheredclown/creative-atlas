@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import {
   FunctionCallingMode,
-  SchemaType,
   type FunctionDeclaration,
   type FunctionDeclarationSchema,
   type Schema,
@@ -39,19 +38,19 @@ const COMPUTER_USE_TOOL = {
 } as unknown as Tool;
 
 const agentResponseSchema: Schema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   required: ['action', 'reasoning'],
   properties: {
     action: {
-      type: SchemaType.STRING,
+      type: 'string',
       format: 'enum',
       enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
-    x: { type: SchemaType.NUMBER },
-    y: { type: SchemaType.NUMBER },
-    text: { type: SchemaType.STRING },
-    prompt: { type: SchemaType.STRING },
-    reasoning: { type: SchemaType.STRING },
+    x: { type: 'number' },
+    y: { type: 'number' },
+    text: { type: 'string' },
+    prompt: { type: 'string' },
+    reasoning: { type: 'string' },
   },
 };
 
