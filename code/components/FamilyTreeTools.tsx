@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { Artifact, ArtifactType, CharacterData } from '../types';
+import { Artifact, ArtifactType, CharacterData, ArcStageId } from '../types';
 import {
-  CharacterArcEvaluation,
-  evaluateCharacterArc,
+  ARC_STAGE_CONFIG,
+  buildCharacterArcMap,
   formatProgressionStatus,
   getArcStageBadgeClassName,
+  getArcStageProgressBarClasses,
 } from '../utils/characterProgression';
 import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
 
@@ -74,13 +75,23 @@ const extractCharacterDescriptor = (artifact: Artifact): string | undefined => {
 };
 
 const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCharacter, onCreateCharacter }) => {
-  const { characters, familyUnits, partnerClusters, independentCharacters, relationSummaries, stats, progressionMap } = useMemo(() => {
+  const {
+    characters,
+    familyUnits,
+    partnerClusters,
+    independentCharacters,
+    relationSummaries,
+    stats,
+    progressionMap,
+    stageDistribution,
+  } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const characters = artifacts
       .filter((artifact) => artifact.type === ArtifactType.Character)
       .sort((a, b) => a.title.localeCompare(b.title));
 
     const characterMap = new Map<string, Artifact>(characters.map((character) => [character.id, character]));
+    const progressionMap = buildCharacterArcMap(characters, artifactLookup);
 
     const parentMap: RelationshipMaps['parentMap'] = new Map();
     const childMap: RelationshipMaps['childMap'] = new Map();
@@ -145,7 +156,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       return a.localeCompare(b);
     };
 
-    const familyUnitMap = new Map<string, { parents: string[]; children: Set<string> }>();
+    const familyUnitMap = new Map<string, { parents: string[]; parentSet: Set<string>; children: Set<string> }>();
 
     characters.forEach((character) => {
       const rawParentIds = Array.from(parentMap.get(character.id) ?? []).filter((parentId) => characterMap.has(parentId));
@@ -156,13 +167,15 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       const parentIds = rawParentIds.sort(compareIds);
       const unitKey = parentIds.join('|');
       if (!familyUnitMap.has(unitKey)) {
-        familyUnitMap.set(unitKey, { parents: parentIds, children: new Set() });
+        familyUnitMap.set(unitKey, { parents: parentIds, parentSet: new Set(parentIds), children: new Set() });
       }
 
       familyUnitMap.get(unitKey)!.children.add(character.id);
     });
 
-    const familyUnits: FamilyUnit[] = Array.from(familyUnitMap.values())
+    const familyUnitEntries = Array.from(familyUnitMap.values());
+
+    const familyUnits: FamilyUnit[] = familyUnitEntries
       .map((unit, index) => ({
         id: `family:${index}`,
         parents: unit.parents.map((parentId) => characterMap.get(parentId)!).filter(Boolean),
@@ -188,9 +201,9 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       });
     });
 
-    const parentKeysWithChildren = new Set<string>(Array.from(familyUnitMap.keys()));
+    const familyUnitParentSets = familyUnitEntries.map((unit) => unit.parentSet);
     const partnerClusters: PartnerCluster[] = Array.from(partnerPairs.entries())
-      .filter(([key]) => !parentKeysWithChildren.has(key))
+      .filter(([, pair]) => !familyUnitParentSets.some((parentSet) => pair.members.every((member) => parentSet.has(member))))
       .map(([key, pair]) => ({
         id: `partners:${key}`,
         partners: pair.members.sort(compareIds).map((memberId) => characterMap.get(memberId)!).filter(Boolean),
@@ -232,9 +245,13 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       relationshipCount: parentEdges.size + partnerEdges.size + siblingEdges.size,
     };
 
-    const progressionMap = new Map<string, CharacterArcEvaluation>();
-    characters.forEach((character) => {
-      progressionMap.set(character.id, evaluateCharacterArc(character, artifactLookup));
+    const stageDistribution = ARC_STAGE_CONFIG.reduce<Record<ArcStageId, number>>((distribution, stage) => {
+      distribution[stage.id] = 0;
+      return distribution;
+    }, {} as Record<ArcStageId, number>);
+
+    progressionMap.forEach((evaluation) => {
+      stageDistribution[evaluation.stage.id] = (stageDistribution[evaluation.stage.id] ?? 0) + 1;
     });
 
     return {
@@ -245,6 +262,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       relationSummaries,
       stats,
       progressionMap,
+      stageDistribution,
     };
   }, [artifacts]);
 
@@ -331,6 +349,8 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
   const renderCharacterDetail = (artifact: Artifact, variant: ChipVariant) => {
     const descriptor = extractCharacterDescriptor(artifact);
     const arc = progressionMap.get(artifact.id);
+    const stageProgressClasses = arc ? getArcStageProgressBarClasses(arc.stage.id) : null;
+    const progressWidth = arc ? (arc.progressPercent > 0 ? Math.max(arc.progressPercent, 8) : 0) : 0;
 
     const accentStyles: Record<ChipVariant, string> = {
       parent: 'bg-cyan-500/10 text-cyan-300',
@@ -341,6 +361,17 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
 
     return (
       <div key={artifact.id} className="rounded-lg border border-slate-700/60 bg-slate-800/50 p-3 shadow-sm shadow-slate-950/10">
+        {arc && stageProgressClasses && (
+          <div
+            className={`mb-3 h-1.5 w-full overflow-hidden rounded-full ${stageProgressClasses.track}`}
+            aria-hidden="true"
+          >
+            <div
+              className={`h-full rounded-full ${stageProgressClasses.fill}`}
+              style={{ width: `${progressWidth}%` }}
+            />
+          </div>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <button
@@ -416,6 +447,47 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
           <dd className="mt-2 text-2xl font-semibold text-slate-100">{stats.relationshipCount}</dd>
         </div>
       </dl>
+
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Arc progression overlay</h4>
+          <p className="text-xs text-slate-400">
+            Track how characters advance through their arcs and spot households clustered in the same stage.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {ARC_STAGE_CONFIG.map((stage) => {
+            const count = stageDistribution[stage.id] ?? 0;
+            const percentage = characters.length > 0 ? Math.round((count / characters.length) * 100) : 0;
+            const { track, fill } = getArcStageProgressBarClasses(stage.id);
+            const overlayWidth = count > 0 ? Math.max(percentage, 8) : 0;
+
+            return (
+              <div
+                key={stage.id}
+                className="rounded-xl border border-slate-700/70 bg-slate-800/60 p-4 shadow-sm shadow-slate-950/10"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className={getArcStageBadgeClassName(stage.id)}>{stage.label}</span>
+                  <span className="text-lg font-semibold text-slate-100">{count}</span>
+                </div>
+                <div
+                  className={`mt-3 h-1.5 w-full overflow-hidden rounded-full ${track}`}
+                  aria-hidden="true"
+                >
+                  <div
+                    className={`h-full rounded-full ${fill}`}
+                    style={{ width: `${overlayWidth}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  {percentage}% of tracked characters are anchoring this stage.
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="space-y-4">
         <div>

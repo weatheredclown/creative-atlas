@@ -87,6 +87,33 @@ export const getArcStageBadgeClassName = (stageId: ArcStageId): string => {
   return `${ARC_STAGE_BADGE_BASE_CLASSES} ${ARC_STAGE_BADGE_COLOR_CLASSES[stageId]}`;
 };
 
+export const ARC_STAGE_PROGRESS_BAR_CLASSES: Record<ArcStageId, { track: string; fill: string }> = {
+  spark: {
+    track: 'bg-cyan-500/10',
+    fill: 'bg-gradient-to-r from-cyan-400/80 via-cyan-300/70 to-cyan-200/80',
+  },
+  rising: {
+    track: 'bg-violet-500/10',
+    fill: 'bg-gradient-to-r from-violet-400/80 via-violet-300/70 to-violet-200/80',
+  },
+  crisis: {
+    track: 'bg-amber-500/10',
+    fill: 'bg-gradient-to-r from-amber-400/80 via-amber-300/70 to-amber-200/80',
+  },
+  transformation: {
+    track: 'bg-emerald-500/10',
+    fill: 'bg-gradient-to-r from-emerald-400/80 via-emerald-300/70 to-emerald-200/80',
+  },
+  legacy: {
+    track: 'bg-pink-500/10',
+    fill: 'bg-gradient-to-r from-pink-400/80 via-pink-300/70 to-pink-200/80',
+  },
+};
+
+export const getArcStageProgressBarClasses = (stageId: ArcStageId): { track: string; fill: string } => {
+  return ARC_STAGE_PROGRESS_BAR_CLASSES[stageId];
+};
+
 const ARC_STAGE_STATUS_MAP: Record<ArcStageId, CharacterProgressionStatus> = {
   spark: 'inciting',
   rising: 'escalating',
@@ -327,5 +354,21 @@ export const evaluateCharacterArc = (
     score,
     progression,
   } satisfies CharacterArcEvaluation;
+};
+
+export const buildCharacterArcMap = (
+  artifacts: Artifact[],
+  artifactLookup?: Map<string, Artifact>,
+): Map<string, CharacterArcEvaluation> => {
+  const lookup = artifactLookup ?? new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
+  const progressionMap = new Map<string, CharacterArcEvaluation>();
+
+  artifacts.forEach((artifact) => {
+    if (artifact.type === ArtifactType.Character) {
+      progressionMap.set(artifact.id, evaluateCharacterArc(artifact, lookup));
+    }
+  });
+
+  return progressionMap;
 };
 
