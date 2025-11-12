@@ -19,6 +19,7 @@ import {
 } from '../utils/importExport.js';
 import type {
   Artifact,
+  CanonicalSensitivityLevel,
   ConlangLexeme,
   MemorySyncConversation,
   MemorySyncSuggestion,

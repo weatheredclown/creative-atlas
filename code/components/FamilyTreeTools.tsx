@@ -2,10 +2,12 @@ import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, CharacterData, ArcStageId } from '../types';
 import {
   ARC_STAGE_CONFIG,
-  buildCharacterArcMap,
+  buildCharacterArcEvaluationMap,
   formatProgressionStatus,
   getArcStageBadgeClassName,
+  getArcStageOverlayClassName,
   getArcStageProgressBarClasses,
+  type CharacterArcEvaluation,
 } from '../utils/characterProgression';
 import { UserCircleIcon, LinkIcon, PlusIcon } from './Icons';
 
@@ -13,6 +15,7 @@ type FamilyTreeToolsProps = {
   artifacts: Artifact[];
   onSelectCharacter?: (id: string) => void;
   onCreateCharacter?: () => void;
+  characterProgressionMap?: Map<string, CharacterArcEvaluation>;
 };
 
 type RelationshipSummary = {
@@ -45,6 +48,8 @@ type ChipVariant = 'parent' | 'child' | 'partner' | 'independent';
 
 const PARTNER_RELATION_KINDS = new Set(['PARTNER_OF', 'MARRIED_TO', 'SPOUSE_OF']);
 
+const MIN_OVERLAY_PERCENT = 12;
+
 const ensureSet = (map: Map<string, Set<string>>, key: string): Set<string> => {
   if (!map.has(key)) {
     map.set(key, new Set());
@@ -74,7 +79,12 @@ const extractCharacterDescriptor = (artifact: Artifact): string | undefined => {
   return undefined;
 };
 
-const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCharacter, onCreateCharacter }) => {
+const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({
+  artifacts,
+  onSelectCharacter,
+  onCreateCharacter,
+  characterProgressionMap,
+}) => {
   const {
     characters,
     familyUnits,
@@ -82,16 +92,12 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     independentCharacters,
     relationSummaries,
     stats,
-    progressionMap,
-    stageDistribution,
   } = useMemo(() => {
-    const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const characters = artifacts
       .filter((artifact) => artifact.type === ArtifactType.Character)
       .sort((a, b) => a.title.localeCompare(b.title));
 
     const characterMap = new Map<string, Artifact>(characters.map((character) => [character.id, character]));
-    const progressionMap = buildCharacterArcMap(characters, artifactLookup);
 
     const parentMap: RelationshipMaps['parentMap'] = new Map();
     const childMap: RelationshipMaps['childMap'] = new Map();
@@ -244,16 +250,6 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       familyCount: familyUnits.length,
       relationshipCount: parentEdges.size + partnerEdges.size + siblingEdges.size,
     };
-
-    const stageDistribution = ARC_STAGE_CONFIG.reduce<Record<ArcStageId, number>>((distribution, stage) => {
-      distribution[stage.id] = 0;
-      return distribution;
-    }, {} as Record<ArcStageId, number>);
-
-    progressionMap.forEach((evaluation) => {
-      stageDistribution[evaluation.stage.id] = (stageDistribution[evaluation.stage.id] ?? 0) + 1;
-    });
-
     return {
       characters,
       familyUnits,
@@ -261,10 +257,32 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
       independentCharacters,
       relationSummaries,
       stats,
-      progressionMap,
-      stageDistribution,
     };
   }, [artifacts]);
+
+  const progressionMap = useMemo<Map<string, CharacterArcEvaluation>>(() => {
+    if (characterProgressionMap) {
+      return characterProgressionMap;
+    }
+
+    return buildCharacterArcEvaluationMap(artifacts);
+  }, [artifacts, characterProgressionMap]);
+
+  const stageDistribution = useMemo(() => {
+    const distribution = ARC_STAGE_CONFIG.reduce<Record<ArcStageId, number>>((acc, stage) => {
+      acc[stage.id] = 0;
+      return acc;
+    }, {} as Record<ArcStageId, number>);
+
+    characters.forEach((character) => {
+      const evaluation = progressionMap.get(character.id);
+      if (evaluation) {
+        distribution[evaluation.stage.id] = (distribution[evaluation.stage.id] ?? 0) + 1;
+      }
+    });
+
+    return distribution;
+  }, [characters, progressionMap]);
 
   if (characters.length === 0) {
     return (
@@ -350,7 +368,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     const descriptor = extractCharacterDescriptor(artifact);
     const arc = progressionMap.get(artifact.id);
     const stageProgressClasses = arc ? getArcStageProgressBarClasses(arc.stage.id) : null;
-    const progressWidth = arc ? (arc.progressPercent > 0 ? Math.max(arc.progressPercent, 8) : 0) : 0;
+    const overlayWidth = arc ? Math.min(100, Math.max(MIN_OVERLAY_PERCENT, arc.progressPercent)) : 0;
 
     const accentStyles: Record<ChipVariant, string> = {
       parent: 'bg-cyan-500/10 text-cyan-300',
@@ -360,19 +378,18 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
     };
 
     return (
-      <div key={artifact.id} className="rounded-lg border border-slate-700/60 bg-slate-800/50 p-3 shadow-sm shadow-slate-950/10">
-        {arc && stageProgressClasses && (
+      <div
+        key={artifact.id}
+        className="relative overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/50 p-3 shadow-sm shadow-slate-950/10"
+      >
+        {arc ? (
           <div
-            className={`mb-3 h-1.5 w-full overflow-hidden rounded-full ${stageProgressClasses.track}`}
+            className={getArcStageOverlayClassName(arc.stage.id)}
+            style={{ width: `${overlayWidth}%` }}
             aria-hidden="true"
-          >
-            <div
-              className={`h-full rounded-full ${stageProgressClasses.fill}`}
-              style={{ width: `${progressWidth}%` }}
-            />
-          </div>
-        )}
-        <div className="flex items-start justify-between gap-3">
+          />
+        ) : null}
+        <div className="relative flex items-start justify-between gap-3">
           <div className="space-y-1">
             <button
               type="button"
@@ -382,7 +399,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
               {artifact.title}
             </button>
             {descriptor && <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{descriptor}</p>}
-            {artifact.summary && <p className="text-xs text-slate-400 line-clamp-2">{artifact.summary}</p>}
+            {artifact.summary && <p className="text-xs text-slate-300/90 line-clamp-2">{artifact.summary}</p>}
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className={`rounded-full p-2 ${accentStyles[variant]}`}>
@@ -391,18 +408,29 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
             {arc && (
               <div className="flex flex-col items-end gap-1 text-right">
                 <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-200/80">
                   {formatProgressionStatus(arc.progression.status)}
                 </span>
               </div>
             )}
           </div>
         </div>
-        {arc && (
-          <p className="mt-2 text-[11px] text-slate-500">
-            {arc.progressPercent}% toward {arc.nextStage ? arc.nextStage.label : 'Legacy'}
-          </p>
-        )}
+        {arc && stageProgressClasses ? (
+          <div className="relative mt-3 space-y-1">
+            <div
+              className={`h-1.5 w-full overflow-hidden rounded-full ${stageProgressClasses.track}`}
+              aria-hidden="true"
+            >
+              <div
+                className={`h-full rounded-full ${stageProgressClasses.fill}`}
+                style={{ width: `${arc.progressPercent}%` }}
+              />
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-200/80">
+              {arc.progressPercent}% toward {arc.nextStage ? arc.nextStage.label : 'Legacy'}
+            </p>
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -614,7 +642,7 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({ artifacts, onSelectCh
                   {arc && (
                     <div className="flex flex-wrap items-center gap-1">
                       <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-200/80">
                         {formatProgressionStatus(arc.progression.status)}
                       </span>
                     </div>

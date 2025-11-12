@@ -27,6 +27,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - ✅ Family tree tools now display progression badges derived from shared arc analysis so stage overlays are consistent with the tracker.
   - ✅ Rendered progression overlays within the family tree and ensured the relationship graph consumes the shared state without duplication.
+  - ✅ Character progression metrics are now computed once in the workspace container and reused across the family tree and graph views to prevent drift.
   - Introduce stage filters in the graph view so editors can spotlight characters in a specific arc phase.
 - ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
