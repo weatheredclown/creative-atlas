@@ -72,7 +72,7 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
       const artifactCount = artifacts.length;
       const relationCount = artifacts.reduce((total, artifact) => total + artifact.relations.length, 0);
       if (artifactCount === 0) {
-        return { status: 'not-started', detail: 'No artifacts seeded yet.' };
+        return { status: 'not-started', detail: 'No artifacts created yet.' };
       }
       if (relationCount > 0) {
         return { status: 'complete', detail: `${relationCount} total links created.` };
@@ -83,10 +83,10 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
       const artifactCount = artifacts.length;
       const sawGraph = activity.viewedGraph;
       if (artifactCount === 0) {
-        return { status: 'not-started', detail: 'Seed artifacts to explore views.' };
+        return { status: 'not-started', detail: 'Create artifacts to explore views.' };
       }
       if (artifactCount >= 3 && sawGraph) {
-        return { status: 'complete', detail: `${artifactCount} artifacts seeded and graph view explored.` };
+        return { status: 'complete', detail: `${artifactCount} artifacts created and graph view explored.` };
       }
       const detail = `${artifactCount} artifacts captured${sawGraph ? '; graph view explored' : '; open the graph view to complete.'}`;
       return { status: 'in-progress', detail };
@@ -120,7 +120,7 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
       const status: ObjectiveStatus = fulfilled === 0 ? 'not-started' : fulfilled === 3 ? 'complete' : 'in-progress';
       const detail = [
         describeChecklist('Conlang editor', hasConlang),
-        describeChecklist('Storyboard seeds', hasStoryboard),
+        describeChecklist('Storyboard artifacts', hasStoryboard),
         describeChecklist('Kanban view', sawKanban),
       ].join(' · ');
       return { status, detail };
@@ -193,7 +193,7 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
       }
       return {
         status: 'in-progress',
-        detail: 'Codex seeded—document volatile principles, taboos, or forbidden laws to finish.',
+        detail: 'Codex captured—document volatile principles, taboos, or forbidden laws to finish.',
       };
     }
     case 'world-age': {
@@ -235,7 +235,7 @@ const computeObjectiveStatus = (metric: MilestoneMetric | undefined, context: Ev
       }
       return {
         status: 'in-progress',
-        detail: 'Factions seeded—add relationships to map tension.',
+        detail: 'Factions captured—add relationships to map tension.',
       };
     }
     case 'npc-memory': {

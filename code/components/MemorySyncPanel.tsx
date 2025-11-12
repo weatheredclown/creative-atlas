@@ -159,7 +159,7 @@ const MemorySyncPanel: React.FC<MemorySyncPanelProps> = ({
 
   const emptyStateMessage =
     conversations.length === 0
-      ? 'No Gemini conversations are waiting for review in this project yet. Run a chat or import playtest logs to seed the queue.'
+      ? 'No Gemini conversations are waiting for review in this project yet. Run a chat or import playtest logs to populate the queue.'
       : 'No conversations match the current scope. Switch filters to review other memory threads.';
 
   return (

@@ -7,7 +7,7 @@ export const templateLibrary: TemplateCategory[] = [
     {
         id: 'tamenzut',
         title: 'Tamenzut Series',
-        description: 'High-fantasy seeds that keep the Tamenzut saga consistent from novel to novel.',
+        description: 'High-fantasy artifacts that keep the Tamenzut saga consistent from novel to novel.',
         recommendedFor: ['Tamenzut'],
         relatedProjectTemplateIds: ['conlang-workbench', 'world-wiki-launchpad', 'tamenzut-series-bible'],
         templates: [

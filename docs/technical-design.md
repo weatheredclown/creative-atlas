@@ -1,5 +1,5 @@
 ## 1) Vision & Design Tenets
-**Vision:** A single “creative universe” that lets you seed ideas quickly, grow them into linked artifacts, and ship them — while feeling like you’re playing a game.
+**Vision:** A single “creative universe” that lets you capture ideas quickly, grow them into linked artifacts, and ship them — while feeling like you’re playing a game.
 
 **Tenets**
 - **Play First:** Progress feels like leveling up. Micro‑wins, streaks, quests.
@@ -12,7 +12,7 @@
 ---
 
 ## 2) Primary Use Cases & Personas
-**Tim the Solo Creator** (core): Seeds ideas, links Dustland (game) ↔ Spatch (comic) ↔ Tamenzut (novels) ↔ Darv (conlang), ships updates, exports tables.
+**Tim the Solo Creator** (core): Captures ideas, links Dustland (game) ↔ Spatch (comic) ↔ Tamenzut (novels) ↔ Darv (conlang), ships updates, exports tables.
 
 **Collaborator/Contractor:** Receives a scoped “questline,” contributes assets, PR links, and notes.
 
@@ -21,7 +21,7 @@
 ---
 
 ## 3) Progressive Complexity Model (Layered UX)
-- **Layer 1 — Seed:** Quick capture cards (idea, character, scene, mechanic, lexeme). Tags + light links.
+- **Layer 1 — Capture:** Quick capture cards (idea, character, scene, mechanic, lexeme). Tags + light links.
 - **Layer 2 — Grow:** Project dashboards, tables, Kanban, milestone tracker, basic graph view.
 - **Layer 3 — Forge:** Rich editors (conlang lexicon, storyboard, world wiki), release pipelines, integrations.
 - **Layer 4 — Showcase:** Publish static sites/wiki docs, export bundles, public gallery.
@@ -154,7 +154,7 @@ Reveal advanced controls as users “level up” or when data density crosses th
 **XP Sources:** capture idea (+5), link two artifacts (+2), close task (+8), publish (+25), write 500 words (+10), add 10 lexemes (+10).
 
 **Quests:**
-- **Daily Forge:** add one seed + one link.
+- **Daily Forge:** add one artifact + one link.
 - **Lore Drop:** document a character/location.
 - **Patch Day:** merge one repo PR and annotate the change.
 
@@ -271,7 +271,7 @@ creative-atlas publish static --project tamenzut --target gh-pages
 ## 15) Milestones & Roadmap (12–16 weeks)
 **M1 — MVP (Weeks 1–4)**
 - Core graph model, Projects/Artifacts/Relations
-- Seed capture, Table view, basic Graph view
+- Artifact capture, Table view, basic Graph view
 - CSV import/export (artifacts, relations)
 - GitHub read‑only import (repos/issues/releases)
 
@@ -292,7 +292,7 @@ creative-atlas publish static --project tamenzut --target gh-pages
 ---
 
 ## 16) Success Metrics (local & qualitative)
-- Time‑to‑first‑seed (<30s), daily streak length, tasks closed/week
+- Time‑to‑first artifact capture (<30s), daily streak length, tasks closed/week
 - Linked‑artifact ratio (>0.6), export frequency, publish frequency
 - Subjective: “feels like play” score (creator survey)
 

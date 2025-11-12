@@ -548,7 +548,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             </div>
           ) : (
             <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
-              Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without overthinking the full seed form.
+              Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without overthinking the full artifact form.
             </p>
           )}
         </div>

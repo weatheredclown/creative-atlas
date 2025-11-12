@@ -186,7 +186,7 @@ const DUSTLAND_DETAILS: Record<
     ],
     missions: [
       'escort a caravan calibrating PIT-resistant shields',
-      'decode a caravan broadcast seeded with PIT war songs',
+      'decode a caravan broadcast loaded with PIT war songs',
       'negotiate safe passage with Dustland traders fearing PIT spores',
     ],
     rewards: [

@@ -196,7 +196,7 @@ const SharedProjectPage: React.FC = () => {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Artifacts</p>
                 <p className="mt-2 text-3xl font-semibold text-white">{artifacts.length}</p>
                 <p className="mt-2 text-xs text-slate-400">
-                  Total creative seeds currently shared from this project.
+                  Total creative artifacts currently shared from this project.
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg">
@@ -232,7 +232,7 @@ const SharedProjectPage: React.FC = () => {
 
               {groupedArtifacts.length === 0 ? (
                 <div className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 text-sm text-slate-400">
-                  No artifacts are currently shared. The author may be preparing their first seeds.
+                  No artifacts are currently shared. The author may be preparing their first entries.
                 </div>
               ) : (
                 <div className="space-y-6">

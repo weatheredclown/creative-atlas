@@ -557,7 +557,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                 type="button"
               >
                 <PlusIcon className="h-5 w-5" />
-                New Seed
+                New Artifact
               </button>
             </div>
           </div>
