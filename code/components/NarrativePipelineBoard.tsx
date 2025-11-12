@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Artifact, ArtifactType, Scene, isNarrativeArtifactType } from '../types';
+import { Artifact, ArtifactType, Scene, SceneArtifactData, isNarrativeArtifactType } from '../types';
 import { MegaphoneIcon, ShareIcon, SparklesIcon } from './Icons';
 
 interface NarrativePipelineBoardProps {
@@ -46,6 +46,33 @@ const determineStage = (status: string): PipelineStage => {
 };
 
 const getScenes = (artifact: Artifact): Scene[] => {
+  if (artifact.type === ArtifactType.Scene) {
+    const data = artifact.data as SceneArtifactData | undefined;
+    if (!data) {
+      return [];
+    }
+    const summary = data.synopsis?.trim() || artifact.summary || '';
+    if (Array.isArray(data.dialogue) && data.dialogue.length > 0) {
+      const firstLine = data.dialogue[0];
+      return [
+        {
+          id: firstLine?.id ?? artifact.id,
+          title: artifact.title,
+          summary,
+        },
+      ];
+    }
+    return summary.trim().length > 0
+      ? [
+          {
+            id: artifact.id,
+            title: artifact.title,
+            summary,
+          },
+        ]
+      : [];
+  }
+
   const data = artifact.data as Scene[] | undefined;
   if (!Array.isArray(data)) {
     return [];

@@ -11,6 +11,7 @@ import LocationEditor from '../LocationEditor';
 import MagicSystemBuilder from '../MagicSystemBuilder';
 import RevealDepthToggle from '../RevealDepthToggle';
 import StoryEditor from '../StoryEditor';
+import SceneDialogGenerator from '../SceneDialogGenerator';
 import TaskEditor from '../TaskEditor';
 import TimelineEditor from '../TimelineEditor';
 import WikiEditor from '../WikiEditor';
@@ -26,6 +27,7 @@ import { type Artifact, ArtifactType, type Project, type CharacterData, type Cha
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
+import { sanitizeSceneArtifactData } from '../../utils/sceneArtifacts';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 
 interface WorkspaceArtifactPanelProps {
@@ -80,6 +82,7 @@ const RECOVERABLE_TYPES = new Set<ArtifactType>([
   ArtifactType.Task,
   ArtifactType.Timeline,
   ArtifactType.MagicSystem,
+  ArtifactType.Scene,
 ]);
 
 const VALID_TASK_STATES = new Set<string>(Object.values(TASK_STATE));
@@ -339,6 +342,8 @@ const recoverArtifactData = (artifact: Artifact, timestamp: number): Artifact['d
         return sanitizeWikiData(artifact);
       case ArtifactType.MagicSystem:
         return normalizeMagicSystemData(artifact.data as Partial<MagicSystemData> | undefined, artifact.title);
+      case ArtifactType.Scene:
+        return sanitizeSceneArtifactData(artifact.data, timestamp);
       default:
         return null;
     }
@@ -791,6 +796,17 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                   conlangName={project.title}
                   onLexemesChange={(id, lexemes) => onUpdateArtifactData(id, lexemes)}
                   addXp={addXp}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Scene ? (
+                <SceneDialogGenerator
+                  project={project}
+                  artifact={selectedArtifact}
+                  projectArtifacts={projectArtifacts}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  addXp={(amount) => {
+                    void addXp(amount);
+                  }}
                 />
               ) : null}
               {isNarrativeArtifactType(selectedArtifact.type) ? (

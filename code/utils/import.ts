@@ -15,15 +15,14 @@ import {
     ReleaseData,
     isNarrativeArtifactType,
 } from '../types';
+import { createEmptySceneArtifactData, sanitizeSceneArtifactData } from './sceneArtifacts';
 
 const TAB_DELIMITER = '\t';
 
 const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
-    if (isNarrativeArtifactType(type)) {
-        return [];
-    }
-
     switch (type) {
+        case ArtifactType.Scene:
+            return createEmptySceneArtifactData();
         case ArtifactType.Conlang:
             return [];
         case ArtifactType.Task:
@@ -63,7 +62,7 @@ const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
                 prerelease: false,
             };
         default:
-            return {};
+            return isNarrativeArtifactType(type) ? [] : {};
     }
 };
 
@@ -150,6 +149,14 @@ const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data
                 }
                 return getDefaultDataForType(type);
             }
+            case ArtifactType.Scene:
+                if (parsed && typeof parsed === 'object') {
+                    return sanitizeSceneArtifactData(parsed, Date.now());
+                }
+                if (Array.isArray(parsed)) {
+                    return sanitizeSceneArtifactData(parsed, Date.now());
+                }
+                return getDefaultDataForType(type);
             default:
                 if (isNarrativeArtifactType(type)) {
                     return Array.isArray(parsed) ? parsed as Scene[] : getDefaultDataForType(type);
