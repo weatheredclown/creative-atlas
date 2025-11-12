@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  type GoogleGenerativeAI,
+  type GoogleGenAI,
   type GenerationConfig,
   type GenerateContentResponse,
   HarmCategory,
@@ -8,7 +8,7 @@ import {
   BlockReason,
   FinishReason,
   HarmProbability,
-} from '@google/generative-ai';
+} from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { extractTextFromResponse } from './geminiResponse.js';
@@ -307,7 +307,7 @@ router.post(
 
     const { model, prompt, config } = parsed.data;
 
-    let client: GoogleGenerativeAI;
+    let client: GoogleGenAI;
     try {
       client = getGeminiClient();
     } catch (error) {
