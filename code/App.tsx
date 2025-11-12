@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Artifact,
@@ -10,7 +10,7 @@ import {
   type ProjectComponentKey,
   type ProjectVisibilitySettings,
 } from './types';
-import { CubeIcon } from './components/Icons';
+import { CubeIcon, SparklesIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateProjectForm from './components/CreateProjectForm';
@@ -44,7 +44,7 @@ import { getDefaultDataForType } from './utils/artifactDefaults';
 import { useGitHubPublish } from './hooks/useGitHubPublish';
 import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
-import GhostAgent from './components/GhostAgent';
+import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -98,6 +98,7 @@ export default function App() {
     loadMoreProjects,
   } = useUserData();
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
+  const ghostAgentRef = useRef<GhostAgentHandle>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -200,6 +201,10 @@ export default function App() {
     () => selectDailyQuestsForDate(dailyQuestDayKey),
     [dailyQuestDayKey],
   );
+
+  const handleToggleGhostAgent = useCallback(() => {
+    ghostAgentRef.current?.toggle();
+  }, []);
 
   const projectConversations = useMemo(
     () =>
@@ -619,14 +624,24 @@ export default function App() {
         onSignOut={signOutUser}
         onStartTutorial={handleStartTutorial}
         adminAction={
-          !isGuestMode ? (
-            <Link
-              to="/admin/timeline-heatmap"
-              className="px-3 py-1.5 text-xs font-semibold text-cyan-200 border border-cyan-500/60 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+          <div className="flex items-center gap-2">
+            {!isGuestMode ? (
+              <Link
+                to="/admin/timeline-heatmap"
+                className="px-3 py-1.5 text-xs font-semibold text-cyan-200 border border-cyan-500/60 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+              >
+                Publish timelines
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleToggleGhostAgent}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-200 border border-indigo-500/60 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors"
             >
-              Publish timelines
-            </Link>
-          ) : null
+              <SparklesIcon className="h-4 w-4" />
+              Creative Atlas Agent
+            </button>
+          </div>
         }
       />
       {error && (
@@ -726,7 +741,7 @@ export default function App() {
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
       />
-      <GhostAgent />
+      <GhostAgent ref={ghostAgentRef} showTriggerButton={false} />
         </div>
       </DepthPreferencesProvider>
     </TutorialLanguageProvider>
