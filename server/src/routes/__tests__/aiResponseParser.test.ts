@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { EnhancedGenerateContentResponse } from '@google/generative-ai';
+import type { GenerateContentResponse } from '@google/genai';
 import { extractTextFromResponse } from '../geminiResponse.js';
 
 const createResponse = (
-  overrides: Partial<EnhancedGenerateContentResponse> & { text?: () => string } = {},
-): EnhancedGenerateContentResponse => {
+  overrides: Partial<GenerateContentResponse> & { text?: () => string } = {},
+): GenerateContentResponse => {
   const base = {
     text: () => '',
     candidates: [],
-  } satisfies Partial<EnhancedGenerateContentResponse> & { text: () => string };
+  } satisfies Partial<GenerateContentResponse> & { text: () => string };
 
   return {
     ...base,
     ...overrides,
-  } as EnhancedGenerateContentResponse;
+  } as GenerateContentResponse;
 };
 
 describe('extractTextFromResponse', () => {
@@ -44,7 +44,7 @@ describe('extractTextFromResponse', () => {
           },
         },
       ],
-    } as EnhancedGenerateContentResponse);
+    } as GenerateContentResponse);
 
     expect(extractTextFromResponse(response)).toBe(
       JSON.stringify({
@@ -75,11 +75,10 @@ describe('extractTextFromResponse', () => {
           },
         },
       ],
-    } as EnhancedGenerateContentResponse);
+    } as GenerateContentResponse);
 
     expect(extractTextFromResponse(response)).toBe(
       '{"fact":"Sky caravans drift between floating markets."}\n\n{"followUp":"Chart their trade routes next."}',
     );
   });
 });
-

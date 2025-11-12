@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
-let cachedClient: GoogleGenerativeAI | null = null;
+let cachedClient: GoogleGenAI | null = null;
 
-export const getGeminiClient = (): GoogleGenerativeAI => {
+export const getGeminiClient = (): GoogleGenAI => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -10,7 +10,7 @@ export const getGeminiClient = (): GoogleGenerativeAI => {
   }
 
   if (!cachedClient) {
-    cachedClient = new GoogleGenerativeAI(apiKey);
+    cachedClient = new GoogleGenAI({ apiKey });
   }
 
   return cachedClient;

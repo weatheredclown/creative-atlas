@@ -1,27 +1,26 @@
 
-import { SchemaType } from '@google/generative-ai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
 import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   properties: {
     lemma: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: 'The base form of the word in the constructed language.'
     },
     pos: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: 'The part of speech (e.g., \'noun\', \'verb\', \'adjective\').'
     },
     gloss: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: 'A brief English definition or translation of the word.'
     },
     etymology: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: 'A brief, plausible-sounding origin story for the word within the fictional world.'
     }
   },
@@ -48,30 +47,30 @@ const GENERATED_ARTIFACT_TYPES: ArtifactType[] = [
 ];
 
 const projectArtifactSchema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   properties: {
     title: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: 'Artifact title. Should highlight a unique element such as a character, location, or lore entry.',
     },
     type: {
-      type: SchemaType.STRING,
+      type: 'string',
       description:
         `Artifact type. Choose from: ${GENERATED_ARTIFACT_TYPES.map((value) => `'${value}'`).join(', ')}.`,
     },
     summary: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: '1-3 sentence pitch that captures the hook and role of this artifact.',
     },
     status: {
-      type: SchemaType.STRING,
+      type: 'string',
       description: "Optional status label such as 'idea', 'draft', or 'active'.",
     },
     tags: {
-      type: SchemaType.ARRAY,
+      type: 'array',
       description: 'Optional short tags (1-2 words) describing themes or functions.',
       items: {
-        type: SchemaType.STRING,
+        type: 'string',
         description: 'Single descriptive tag.',
       },
     },
@@ -80,28 +79,28 @@ const projectArtifactSchema = {
 };
 
 const projectBlueprintSchema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   properties: {
     title: {
-      type: SchemaType.STRING,
+      type: 'string',
       description:
         'A concise, compelling project title. Prefer proper nouns and limit to 60 characters.',
     },
     summary: {
-      type: SchemaType.STRING,
+      type: 'string',
       description:
         'A short project summary (2-3 sentences) highlighting the premise, tone, or core goal.',
     },
     tags: {
-      type: SchemaType.ARRAY,
+      type: 'array',
       description: '1-6 short descriptive tags that help classify the project.',
       items: {
-        type: SchemaType.STRING,
+        type: 'string',
         description: 'A single descriptive tag (one or two words).',
       },
     },
     artifacts: {
-      type: SchemaType.ARRAY,
+      type: 'array',
       description:
         '3-6 starter artifacts that would give the creator a head start. Focus on key characters, factions, locations, plot arcs, or lore documents.',
       items: projectArtifactSchema,
@@ -111,15 +110,15 @@ const projectBlueprintSchema = {
 };
 
 const quickFactInspirationSchema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   properties: {
     fact: {
-      type: SchemaType.STRING,
+      type: 'string',
       description:
         'A concise quick fact (1-2 sentences) that can be saved directly into the project lore.',
     },
     spark: {
-      type: SchemaType.STRING,
+      type: 'string',
       description:
         'An optional follow-up note that suggests how to elaborate on or apply the fact inside the atlas.',
     },
@@ -163,14 +162,14 @@ export const generateLexemes = async (
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-          type: SchemaType.ARRAY,
+          type: 'array',
           items: lexemeSchema,
         },
         temperature: 0.8,
       },
     })).trim();
     const generatedItems = JSON.parse(jsonText) as Omit<ConlangLexeme, 'id'>[];
-    
+
     if (!Array.isArray(generatedItems)) {
         throw new Error('AI response is not a valid array.');
     }
@@ -843,36 +842,36 @@ export interface GeneratedSceneDialogue {
 }
 
 const sceneDialogueSchema = {
-    type: SchemaType.OBJECT,
+    type: 'object',
     properties: {
         synopsis: {
-            type: SchemaType.STRING,
+            type: 'string',
             description: '1-2 sentence recap of the scene outcome.',
         },
         beats: {
-            type: SchemaType.ARRAY,
+            type: 'array',
             description: 'Ordered beat summaries to expand the scene.',
             items: {
-                type: SchemaType.STRING,
+                type: 'string',
                 description: 'Single beat or turning point description.',
             },
         },
         dialogue: {
-            type: SchemaType.ARRAY,
+            type: 'array',
             description: 'Ordered dialogue lines with optional stage direction metadata.',
             items: {
-                type: SchemaType.OBJECT,
+                type: 'object',
                 properties: {
                     speaker: {
-                        type: SchemaType.STRING,
+                        type: 'string',
                         description: 'Name of the speaking character.',
                     },
                     line: {
-                        type: SchemaType.STRING,
+                        type: 'string',
                         description: 'Spoken line of dialogue.',
                     },
                     direction: {
-                        type: SchemaType.STRING,
+                        type: 'string',
                         description: 'Optional stage direction or emotional cue.',
                     },
                 },

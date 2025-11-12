@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import {
   FunctionCallingMode,
-  SchemaType,
   type FunctionDeclaration,
   type FunctionDeclarationSchema,
   type Schema,
   type ToolConfig,
   type Tool,
-} from '@google/generative-ai';
+} from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { getGeminiClient } from '../utils/geminiClient.js';
@@ -39,19 +38,19 @@ const COMPUTER_USE_TOOL = {
 } as unknown as Tool;
 
 const agentResponseSchema: Schema = {
-  type: SchemaType.OBJECT,
+  type: 'object',
   required: ['action', 'reasoning'],
   properties: {
     action: {
-      type: SchemaType.STRING,
+      type: 'string',
       format: 'enum',
       enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
-    x: { type: SchemaType.NUMBER },
-    y: { type: SchemaType.NUMBER },
-    text: { type: SchemaType.STRING },
-    prompt: { type: SchemaType.STRING },
-    reasoning: { type: SchemaType.STRING },
+    x: { type: 'number' },
+    y: { type: 'number' },
+    text: { type: 'string' },
+    prompt: { type: 'string' },
+    reasoning: { type: 'string' },
   },
 };
 
@@ -110,7 +109,7 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
     'Always include a concise reasoning string explaining how the action advances the objective.',
     'For "click" and "type" actions include absolute pixel coordinates {"x","y"}. Provide the full text to insert for "type" actions.',
     'For "scroll" actions set {"x","y"} to the viewport coordinates that should be brought into view.',
-    'Do not return raw JSON or natural language answers—always call the tool.',    
+    'Do not return raw JSON or natural language answers—always call the tool.',
   ].join('\n\n');
 };
 
@@ -262,8 +261,7 @@ router.post(
     const prompt = buildPrompt(payload);
 
     try {
-      const response = await model.generateContent({
-        contents: [
+      const response = await model.generateContent([
           {
             role: 'user',
             parts: [
@@ -276,10 +274,7 @@ router.post(
               },
             ],
           },
-        ],
-        tools: TOOLS,
-        toolConfig: TOOL_CONFIG,
-      });
+        ]);
 
       const action = extractAction(response);
       res.json(action);
