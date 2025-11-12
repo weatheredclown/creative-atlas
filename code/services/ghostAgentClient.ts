@@ -7,7 +7,7 @@ const API_BASE_URL =
 
 const AGENT_ENDPOINT = '/api/agent/step';
 
-export type GhostAgentActionType = 'click' | 'type' | 'scroll' | 'ask' | 'done';
+export type GhostAgentActionType = 'click' | 'type' | 'scroll' | 'ask' | 'done' | 'plan';
 
 export interface GhostAgentAction {
   action: GhostAgentActionType;
@@ -16,6 +16,7 @@ export interface GhostAgentAction {
   text?: string;
   prompt?: string;
   reasoning?: string;
+  plan?: string[];
   [key: string]: unknown;
 }
 
@@ -27,6 +28,7 @@ export interface GhostAgentRequestPayload {
   screenWidth: number;
   screenHeight: number;
   history?: GhostAgentHistoryEntry[];
+  plan?: string[];
 }
 
 const buildAgentUrl = (): string => {
