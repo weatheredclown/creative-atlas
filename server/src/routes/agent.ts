@@ -102,7 +102,7 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
 
   return [
     'You are an automation agent driving the Creative Atlas web application for the user.',
-    `Current objective: ${objecti ve}`,
+    `Current objective: ${objective}`,
     `Screen resolution: ${screenWidth}x${screenHeight}. Coordinates must align with this screenshot.`,
     historyLines,
     `Call the \"${ACTION_FUNCTION_NAME}\" tool with the next action. Choose one of: "click", "type", "scroll", "ask", or "done".`,
