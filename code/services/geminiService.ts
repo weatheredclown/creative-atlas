@@ -883,27 +883,69 @@ const sceneDialogueSchema = {
     required: ['dialogue'],
 } as const;
 
+const truncateText = (text: string | undefined, maxLength: number): string => {
+    if (!text || maxLength <= 0) {
+        return '';
+    }
+
+    const trimmed = text.trim();
+    if (trimmed.length <= maxLength) {
+        return trimmed;
+    }
+
+    if (maxLength === 1) {
+        return '…';
+    }
+
+    return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
+};
+
+const MAX_SCENE_PROMPT_LENGTH = 2600;
+const MAX_SCENE_SUMMARY_LENGTH = 2000;
+const MAX_BEAT_COUNT = 10;
+const MAX_BEAT_LENGTH = 650;
+const MAX_BEATS_SECTION_LENGTH = 3000;
+const MAX_CAST_DETAIL_LENGTH = 550;
+const MAX_CAST_SECTION_LENGTH = 3400;
+const MAX_TRAITS = 16;
+
 const formatCastProfiles = (profiles: SceneDialogueCharacterProfile[]): string => {
     if (profiles.length === 0) {
         return 'No additional character biography provided.';
     }
 
-    return profiles
+    const formatted = profiles
         .map((profile) => {
             const segments: string[] = [];
             if (profile.summary && profile.summary.trim().length > 0) {
-                segments.push(`Summary: ${profile.summary.trim()}`);
+                segments.push(`Summary: ${truncateText(profile.summary, MAX_CAST_DETAIL_LENGTH)}`);
             }
             if (profile.bio && profile.bio.trim().length > 0) {
-                segments.push(`Bio: ${profile.bio.trim()}`);
+                segments.push(`Bio: ${truncateText(profile.bio, MAX_CAST_DETAIL_LENGTH)}`);
             }
             if (profile.traits && profile.traits.length > 0) {
-                segments.push(`Traits: ${profile.traits.join('; ')}`);
+                const trimmedTraits = profile.traits.slice(0, MAX_TRAITS).join('; ');
+                segments.push(`Traits: ${truncateText(trimmedTraits, MAX_CAST_DETAIL_LENGTH)}`);
             }
             const detail = segments.length > 0 ? segments.join(' | ') : 'No additional detail provided.';
             return `- ${profile.name}: ${detail}`;
         })
         .join('\n');
+
+    return truncateText(formatted, MAX_CAST_SECTION_LENGTH);
+};
+
+const formatBeatOutline = (existingBeats: string[] | undefined): string => {
+    if (!existingBeats || existingBeats.length === 0) {
+        return 'No prior beats logged.';
+    }
+
+    const beats = existingBeats
+        .slice(0, MAX_BEAT_COUNT)
+        .map((beat, index) => `${index + 1}. ${truncateText(beat, MAX_BEAT_LENGTH)}`)
+        .join('\n');
+
+    return truncateText(beats, MAX_BEATS_SECTION_LENGTH);
 };
 
 export const generateSceneDialogue = async ({
@@ -915,9 +957,7 @@ export const generateSceneDialogue = async ({
     existingBeats,
 }: GenerateSceneDialogueParams): Promise<GeneratedSceneDialogue> => {
     const castBlock = formatCastProfiles(characters);
-    const beatsBlock = existingBeats && existingBeats.length > 0
-        ? existingBeats.map((beat, index) => `${index + 1}. ${beat}`).join('\n')
-        : 'No prior beats logged.';
+    const beatsBlock = formatBeatOutline(existingBeats);
 
     const prompt = `
 You are Dialogue Forge, an Atlas Intelligence guide who writes grounded scene dialogue.
@@ -926,9 +966,9 @@ Project: ${projectTitle}
 Scene title: ${sceneTitle}
 
 Scene prompt:
-${scenePrompt}
+${truncateText(scenePrompt, MAX_SCENE_PROMPT_LENGTH)}
 
-Context summary: ${sceneSummary && sceneSummary.trim().length > 0 ? sceneSummary.trim() : 'None provided.'}
+Context summary: ${sceneSummary && sceneSummary.trim().length > 0 ? truncateText(sceneSummary, MAX_SCENE_SUMMARY_LENGTH) : 'None provided.'}
 
 Cast profiles:
 ${castBlock}
