@@ -135,18 +135,9 @@ const FUNCTION_DECLARATIONS_TOOL: Tool = {
 
 const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 
-const FUNCTION_NAMES = TOOLS.flatMap((tool) => {
-  if ('functionDeclarations' in tool && Array.isArray(tool.functionDeclarations)) {
-    return tool.functionDeclarations.map((declaration) => declaration.name);
-  }
-
-  return [];
-});
-
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
     mode: FunctionCallingConfigMode.ANY,
-    allowedFunctionNames: FUNCTION_NAMES,
   },
 };
 
