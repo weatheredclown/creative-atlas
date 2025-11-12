@@ -1,4 +1,4 @@
-import type { EnhancedGenerateContentResponse } from '@google/generative-ai';
+import type { GenerateContentResponse } from '@google/genai';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -31,7 +31,7 @@ const stringifyCandidatePart = (value: unknown): string | null => {
 };
 
 const getBlockedReason = (
-  response: EnhancedGenerateContentResponse,
+  response: GenerateContentResponse,
 ): string | null => {
   const { promptFeedback } = response;
   if (!promptFeedback) {
@@ -63,20 +63,19 @@ const getBlockedReason = (
 };
 
 export const extractTextFromResponse = (
-  response: EnhancedGenerateContentResponse,
+  response: GenerateContentResponse,
 ): string | null => {
   const blockedReason = getBlockedReason(response);
   if (blockedReason) {
     return blockedReason;
   }
 
-  try {
-    const directText = response.text().trim();
-    if (directText) {
-      return directText;
+  const directText = response.text;
+  if (typeof directText === 'string') {
+    const trimmed = directText.trim();
+    if (trimmed) {
+      return trimmed;
     }
-  } catch (error) {
-    // Swallow errors from the helper if Gemini blocked the prompt or returned no text.
   }
 
   const candidates = response.candidates;
