@@ -16,6 +16,7 @@ const router = Router();
 
 const AGENT_MODEL_ID = 'gemini-2.5-computer-use-preview-10-2025';
 const ACTION_FUNCTION_NAME = 'ghost_agent_action';
+const PLAN_FUNCTION_NAME = 'create_agent_plan';
 
 const COMPUTER_USE_TOOL = {
   computerUse: {
@@ -55,6 +56,19 @@ const agentResponseSchema: Schema = {
   },
 };
 
+const planResponseSchema: Schema = {
+  type: SchemaType.OBJECT,
+  required: ['plan'],
+  properties: {
+    plan: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.STRING,
+      },
+    },
+  },
+};
+
 const ACTION_FUNCTION_DECLARATION: FunctionDeclaration = {
   name: ACTION_FUNCTION_NAME,
   description:
@@ -62,8 +76,14 @@ const ACTION_FUNCTION_DECLARATION: FunctionDeclaration = {
   parameters: agentResponseSchema as FunctionDeclarationSchema,
 };
 
+const PLAN_FUNCTION_DECLARATION: FunctionDeclaration = {
+  name: PLAN_FUNCTION_NAME,
+  description: 'Outline a plan to accomplish a complex objective. Respond with a concise, top-level list of tasks.',
+  parameters: planResponseSchema as FunctionDeclarationSchema,
+};
+
 const FUNCTION_DECLARATIONS_TOOL: Tool = {
-  functionDeclarations: [ACTION_FUNCTION_DECLARATION],
+  functionDeclarations: [ACTION_FUNCTION_DECLARATION, PLAN_FUNCTION_DECLARATION],
 };
 
 const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
@@ -71,7 +91,7 @@ const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
     mode: FunctionCallingMode.ANY,
-    allowedFunctionNames: [ACTION_FUNCTION_NAME],
+    allowedFunctionNames: [ACTION_FUNCTION_NAME, PLAN_FUNCTION_NAME],
   },
 };
 
@@ -87,12 +107,13 @@ const agentStepRequestSchema = z
     history: historySchema,
     screenWidth: z.number().int().positive().max(10000),
     screenHeight: z.number().int().positive().max(10000),
+    plan: z.array(z.string()).max(20).optional(),
   })
   .strict();
 
 type AgentStepRequest = z.infer<typeof agentStepRequestSchema>;
 
-const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentStepRequest): string => {
+const buildPrompt = ({ objective, screenWidth, screenHeight, history, plan }: AgentStepRequest): string => {
   const historyLines = history && history.length > 0
     ? `Recent actions (latest last):\n${history
         .slice(-10)
@@ -100,18 +121,35 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
         .join('\n')}`
     : 'No prior actions have been executed in this session.';
 
-  return [
+  const basePrompt = [
     'You are an automation agent driving the Creative Atlas web application for the user.',
-    `Current objective: ${objecti ve}`,
+    `Current objective: ${objective}`,
     `Screen resolution: ${screenWidth}x${screenHeight}. Coordinates must align with this screenshot.`,
     historyLines,
-    `Call the \"${ACTION_FUNCTION_NAME}\" tool with the next action. Choose one of: "click", "type", "scroll", "ask", or "done".`,
+  ];
+
+  if (plan && plan.length > 0) {
+    const planLines = plan.map((step, index) => `${index + 1}. ${step}`).join('\n');
+    basePrompt.push(
+      `Execution plan:\n${planLines}`,
+      `Review the current screenshot and execute the next step in the plan by calling the "${ACTION_FUNCTION_NAME}" tool.`,
+    );
+  } else {
+    basePrompt.push(
+      `The user has a complex objective. Your first step is to create a high-level plan by calling the "${PLAN_FUNCTION_NAME}" tool.`,
+      `If the objective is simple and can be completed in a single step, call the "${ACTION_FUNCTION_NAME}" tool instead.`,
+    );
+  }
+
+  basePrompt.push(
     'Use "ask" when you need additional human guidance. Include a "prompt" message explaining what you need from the user.',
     'Always include a concise reasoning string explaining how the action advances the objective.',
     'For "click" and "type" actions include absolute pixel coordinates {"x","y"}. Provide the full text to insert for "type" actions.',
     'For "scroll" actions set {"x","y"} to the viewport coordinates that should be brought into view.',
     'Do not return raw JSON or natural language answers—always call the tool.',    
-  ].join('\n\n');
+  );
+
+  return basePrompt.join('\n\n');
 };
 
 const coerceNumber = (value: unknown): number | undefined => {
@@ -167,6 +205,22 @@ const extractAction = (payload: unknown): Record<string, unknown> => {
       const functionCall = part?.functionCall;
       if (!functionCall || typeof functionCall !== 'object') {
         continue;
+      }
+
+      if (functionCall.name === PLAN_FUNCTION_NAME) {
+        const args = functionCall.args ?? {};
+        const plan = Array.isArray(args.plan)
+          ? args.plan.map((item) => String(item).trim()).filter((item) => item.length > 0)
+          : [];
+
+        if (plan.length === 0) {
+          throw new Error('Gemini agent returned an empty plan.');
+        }
+
+        return {
+          action: 'plan',
+          plan,
+        };
       }
 
       if (functionCall.name !== ACTION_FUNCTION_NAME) {

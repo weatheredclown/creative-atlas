@@ -81,12 +81,6 @@ export const XMarkIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-export const CheckCircleIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
-        <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z' clipRule='evenodd' />
-    </svg>
-);
-
 export const TrophyIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' className={className}>
         <path d='M15.5 2.5a3 3 0 00-5.84-.773.5.5 0 01-.82 0 3 3 0 00-5.84.774A.5.5 0 013 3V3.5a.5.5 0 01.5.5v1a.5.5 0 01-.5.5V6a.5.5 0 01.5.5v1a.5.5 0 01-.5.5V8.5a.5.5 0 01.5.5v1a.5.5 0 01-.5.5V11a.5.5 0 01.5.5v1a.5.5 0 01-.5.5V13a.5.5 0 01.5.5v1a.5.5 0 01-.5.5V15.5a.5.5 0 01.5.5v.5h13v-.5a.5.5 0 01.5-.5V15a.5.5 0 01-.5-.5v-1a.5.5 0 01.5-.5V12a.5.5 0 01-.5-.5v-1a.5.5 0 01.5-.5V9a.5.5 0 01-.5-.5v-1a.5.5 0 01.5-.5V6a.5.5 0 01-.5-.5v-1a.5.5 0 01.5-.5V3a.5.5 0 01-.5-.5z' />

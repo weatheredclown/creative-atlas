@@ -5,7 +5,7 @@ import {
   type GhostAgentAction,
   type GhostAgentHistoryEntry,
 } from '../services/ghostAgentClient';
-import { SparklesIcon, XMarkIcon } from './Icons';
+import { SparklesIcon, XMarkIcon, CheckCircleIcon } from './Icons';
 
 type Html2CanvasFn = typeof import('html2canvas')['default'];
 
@@ -115,6 +115,7 @@ const GhostAgent: React.FC = () => {
   const [feedbackInput, setFeedbackInput] = useState('');
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [isClicking, setIsClicking] = useState(false);
+  const [plan, setPlan] = useState<string[]>([]);
 
   const objectiveFieldId = useId();
   const feedbackFieldId = useId();
@@ -172,6 +173,7 @@ const GhostAgent: React.FC = () => {
     setIsAwaitingFeedback(false);
     setPendingQuestion(null);
     setFeedbackInput('');
+    setPlan([]);
     stepCountRef.current = 0;
     historyRef.current = [];
     if (message) {
@@ -195,6 +197,16 @@ const GhostAgent: React.FC = () => {
 
       if (reasoning) {
         addLog(`🤖 ${reasoning}`);
+      }
+
+      if (actionLabel === 'plan') {
+        const newPlan = Array.isArray(action.plan) ? action.plan : [];
+        if (newPlan.length > 0) {
+          addLog(`📝 Plan created:`);
+          newPlan.forEach((step, index) => addLog(`${index + 1}. ${step}`));
+          setPlan(newPlan);
+        }
+        return 'continue';
       }
 
       if (actionLabel === 'done') {
@@ -337,6 +349,7 @@ const GhostAgent: React.FC = () => {
               screenWidth: window.innerWidth,
               screenHeight: window.innerHeight,
               history: historyRef.current,
+              plan,
             });
           } catch (error) {
             console.error('Ghost agent request failed', error);
@@ -413,9 +426,14 @@ const GhostAgent: React.FC = () => {
 
   const isStartDisabled = useMemo(() => isRunning || objective.trim().length === 0, [isRunning, objective]);
 
+  const isExecutingPlan = isRunning && plan.length > 0;
   const statusAccentClass = isAwaitingFeedback ? 'text-amber-200' : 'text-indigo-200';
   const statusDotClass = isAwaitingFeedback ? 'bg-amber-300' : 'bg-indigo-300';
-  const statusText = isAwaitingFeedback ? 'Agent needs your guidance' : 'Agent is working...';
+  const statusText = isAwaitingFeedback
+    ? 'Agent needs your guidance'
+    : isExecutingPlan
+      ? 'Executing plan...'
+      : 'Agent is working...';
   const logContainerClass = isAwaitingFeedback
     ? 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-amber-300/40 bg-amber-950/40 p-3 font-mono text-[11px] leading-relaxed text-amber-100'
     : 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/50 p-3 font-mono text-[11px] leading-relaxed text-slate-200';
@@ -503,6 +521,23 @@ const GhostAgent: React.FC = () => {
                     <span className={`h-2 w-2 animate-pulse rounded-full ${statusDotClass}`} />
                     {statusText}
                   </div>
+                  {isExecutingPlan ? (
+                    <div className="space-y-2 rounded-lg border border-indigo-300/20 bg-indigo-950/30 p-3 text-xs">
+                      <div className="font-semibold uppercase tracking-wide text-indigo-200">
+                        Execution plan
+                      </div>
+                      <ul className="space-y-1.5">
+                        {plan.map((step, index) => (
+                          <li key={`${step}-${index}`} className="flex items-start gap-2">
+                            <span className="pt-0.5">
+                              <CheckCircleIcon className="h-4 w-4 text-indigo-300" />
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <div className={logContainerClass}>
                     {logs.map((entry, index) => (
                       <div
