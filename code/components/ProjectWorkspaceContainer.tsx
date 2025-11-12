@@ -6,6 +6,7 @@ import {
   InspirationCard,
   MemorySyncConversation,
   MemorySyncStatus,
+  NpcMemoryRun,
   Project,
   ProjectComponentKey,
   ProjectTemplate,
@@ -75,6 +76,7 @@ interface ProjectWorkspaceContainerProps {
   lastPublishedAtLabel: string | null;
   addXp: (xp: number) => Promise<void> | void;
   projectConversations: MemorySyncConversation[];
+  projectNpcRuns: NpcMemoryRun[];
   onMemoryStatusChange: (conversationId: string, suggestionId: string, status: MemorySyncStatus) => void;
   markProjectActivity: (updates: Partial<ProjectActivity>) => void;
   milestoneProgress: MilestoneProgressOverview[];
@@ -122,6 +124,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   lastPublishedAtLabel,
   addXp,
   projectConversations,
+  projectNpcRuns,
   onMemoryStatusChange,
   markProjectActivity,
   milestoneProgress,
@@ -374,6 +377,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
           projectArtifacts={projectArtifacts}
           allArtifacts={allArtifacts}
           projectConversations={projectConversations}
+          projectNpcRuns={projectNpcRuns}
           onMemoryStatusChange={onMemoryStatusChange}
           onCaptureInspirationCard={onCaptureInspirationCard}
           onSelectArtifact={onSelectArtifact}

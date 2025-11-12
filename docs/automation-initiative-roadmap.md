@@ -30,6 +30,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
+  - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
 - Address the usability fixes outlined in `docs/usability-improvement-tips.md`:
   - Refine artifact detail panel tabs with clear labelling and full keyboard support.

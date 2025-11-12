@@ -501,6 +501,10 @@ export interface InspirationCard {
 
 export type MemorySyncStatus = 'pending' | 'approved' | 'rejected';
 
+export type MemorySyncScope = 'npc' | 'global';
+
+export type CanonicalSensitivityLevel = 'low' | 'moderate' | 'high';
+
 export interface MemorySyncSuggestion {
   id: string;
   statement: string;
@@ -511,6 +515,7 @@ export interface MemorySyncSuggestion {
   artifactId?: string;
   artifactTitle?: string;
   tags?: string[];
+  canonicalSensitivity: CanonicalSensitivityLevel;
 }
 
 export type ConversationRole = 'creator' | 'gemini';
@@ -527,8 +532,23 @@ export interface MemorySyncConversation {
   projectId: string;
   title: string;
   summary: string;
+  scope: MemorySyncScope;
   updatedAt: string;
   lastSyncedAt?: string;
   transcript: ConversationMessage[];
   suggestions: MemorySyncSuggestion[];
+}
+
+export interface NpcMemoryRun {
+  id: string;
+  projectId: string;
+  npcArtifactId: string;
+  npcName: string;
+  npcType: ArtifactType.Character | ArtifactType.Faction;
+  scope: MemorySyncScope;
+  pendingSuggestions: number;
+  approvedSuggestions: number;
+  highestCanonicalSensitivity: CanonicalSensitivityLevel;
+  lastRunAt?: string;
+  lastApprovedAt?: string;
 }

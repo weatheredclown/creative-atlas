@@ -1,10 +1,12 @@
 import {
   Artifact,
   ArtifactType,
+  CanonicalSensitivityLevel,
   LocationData,
   MagicSystemData,
   MagicSystemPrinciple,
   MagicSystemTaboo,
+  NpcMemoryRun,
   TimelineData,
   TimelineEvent,
 } from '../types';
@@ -73,6 +75,13 @@ export interface NpcMemoryEntry {
   relationCount: number;
   crossWorldCount: number;
   linkedArtifacts: string[];
+  memoryRun?: {
+    pendingSuggestions: number;
+    approvedSuggestions: number;
+    highestCanonicalSensitivity: CanonicalSensitivityLevel;
+    lastRunAt: string;
+    lastApprovedAt?: string;
+  };
 }
 
 export interface NpcMemorySummary {
@@ -80,6 +89,8 @@ export interface NpcMemorySummary {
   anchoredCount: number;
   crossWorldActors: number;
   totalNpcCount: number;
+  runCount: number;
+  highRiskNpcIds: string[];
 }
 
 export interface WorldSimulationAnalysis {
@@ -381,11 +392,20 @@ export const summarizeFactionNetwork = (
 export const summarizeNpcMemory = (
   projectArtifacts: Artifact[],
   allArtifacts: Artifact[] = projectArtifacts,
+  npcRuns: NpcMemoryRun[] = [],
 ): NpcMemorySummary => {
   const lookup = buildArtifactLookup(allArtifacts);
   const npcs = projectArtifacts.filter((artifact) =>
     artifact.type === ArtifactType.Character || artifact.type === ArtifactType.Faction,
   );
+  const projectIds = new Set(projectArtifacts.map((artifact) => artifact.projectId));
+  const relevantRuns = npcRuns.filter((run) => projectIds.has(run.projectId));
+  const runByNpcId = new Map<string, NpcMemoryRun>();
+  for (const run of relevantRuns) {
+    if (!runByNpcId.has(run.npcArtifactId)) {
+      runByNpcId.set(run.npcArtifactId, run);
+    }
+  }
 
   const entries: NpcMemoryEntry[] = npcs.map((npc) => {
     const linkedArtifacts = npc.relations
@@ -400,6 +420,7 @@ export const summarizeNpcMemory = (
     );
 
     const linkedNames = linkedArtifacts.slice(0, 4).map((related) => `${related.title} (${related.type})`);
+    const run = runByNpcId.get(npc.id);
 
     return {
       id: npc.id,
@@ -409,22 +430,41 @@ export const summarizeNpcMemory = (
       relationCount,
       crossWorldCount: crossWorldIds.size,
       linkedArtifacts: linkedNames,
+      memoryRun: run
+        ? {
+            pendingSuggestions: Math.max(0, run.pendingSuggestions),
+            approvedSuggestions: Math.max(0, run.approvedSuggestions),
+            highestCanonicalSensitivity: run.highestCanonicalSensitivity,
+            lastRunAt: run.lastRunAt,
+            lastApprovedAt: run.lastApprovedAt,
+          }
+        : undefined,
     };
   });
 
   const sortedEntries = entries
-    .filter((entry) => entry.relationCount > 0)
-    .sort((a, b) => b.relationCount - a.relationCount || b.crossWorldCount - a.crossWorldCount || a.title.localeCompare(b.title))
+    .filter((entry) => entry.relationCount > 0 || entry.memoryRun)
+    .sort(
+      (a, b) =>
+        b.relationCount - a.relationCount ||
+        b.crossWorldCount - a.crossWorldCount ||
+        a.title.localeCompare(b.title),
+    )
     .slice(0, 6);
 
   const anchoredCount = entries.filter((entry) => entry.relationCount >= 2).length;
   const crossWorldActors = entries.filter((entry) => entry.crossWorldCount > 0).length;
+  const highRiskNpcIds = relevantRuns
+    .filter((run) => run.highestCanonicalSensitivity === 'high' && run.pendingSuggestions > 0)
+    .map((run) => run.npcArtifactId);
 
   return {
     entries: sortedEntries,
     anchoredCount,
     crossWorldActors,
     totalNpcCount: npcs.length,
+    runCount: relevantRuns.length,
+    highRiskNpcIds,
   };
 };
 
@@ -1032,18 +1072,20 @@ export const deriveWorldSimulationSnapshot = (artifacts: Artifact[]): WorldSimul
 export const analyzeWorldSimulation = (
   projectArtifacts: Artifact[],
   allArtifacts: Artifact[] = projectArtifacts,
+  npcRuns: NpcMemoryRun[] = [],
 ): WorldSimulationAnalysis => {
   const worldAge = summarizeWorldAge(projectArtifacts);
   const magicConstraints = summarizeMagicConstraints(projectArtifacts);
   const factionNetwork = summarizeFactionNetwork(projectArtifacts, allArtifacts);
-  const npcMemory = summarizeNpcMemory(projectArtifacts, allArtifacts);
+  const npcMemory = summarizeNpcMemory(projectArtifacts, allArtifacts, npcRuns);
 
   const hasData =
     worldAge.timelineCount > 0 ||
     worldAge.totalEvents > 0 ||
     magicConstraints.codexCount > 0 ||
     factionNetwork.factionCount > 0 ||
-    npcMemory.entries.length > 0;
+    npcMemory.entries.length > 0 ||
+    npcMemory.runCount > 0;
 
   return {
     worldAge,

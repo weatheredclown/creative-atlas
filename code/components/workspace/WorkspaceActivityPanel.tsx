@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import AICopilotPanel from '../AICopilotPanel';
 import CharacterArcTracker from '../CharacterArcTracker';
@@ -22,7 +22,9 @@ import {
   ArtifactType,
   type InspirationCard,
   type MemorySyncConversation,
+  type MemorySyncScope,
   type MemorySyncStatus,
+  type NpcMemoryRun,
   type Project,
   type ProjectActivity,
   type ProjectVisibilitySettings,
@@ -46,6 +48,7 @@ interface WorkspaceActivityPanelProps {
   projectArtifacts: Artifact[];
   allArtifacts: Artifact[];
   projectConversations: MemorySyncConversation[];
+  projectNpcRuns: NpcMemoryRun[];
   onMemoryStatusChange: (conversationId: string, suggestionId: string, status: MemorySyncStatus) => void;
   onCaptureInspirationCard: (card: InspirationCard) => Promise<void> | void;
   onSelectArtifact: (artifactId: string | null) => void;
@@ -82,6 +85,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   projectArtifacts,
   allArtifacts,
   projectConversations,
+  projectNpcRuns,
   onMemoryStatusChange,
   onCaptureInspirationCard,
   onSelectArtifact,
@@ -99,6 +103,24 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   onApplyProjectTemplate,
   onSelectTemplate,
 }) => {
+  const [memoryScope, setMemoryScope] = useState<MemorySyncScope | 'all'>('all');
+
+  useEffect(() => {
+    setMemoryScope('all');
+  }, [project.id]);
+
+  const handleMemoryScopeChange = useCallback((scope: MemorySyncScope | 'all') => {
+    setMemoryScope(scope);
+  }, []);
+
+  const focusNpcMemories = useCallback(() => {
+    setMemoryScope('npc');
+    if (typeof window !== 'undefined') {
+      const target = document.getElementById('memory-sync-panel');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   const toolTabs = useMemo<ToolTab[]>(() => {
     const tabs: ToolTab[] = [];
 
@@ -127,7 +149,9 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
             artifacts={projectArtifacts}
             allArtifacts={allArtifacts}
             projectTitle={project.title}
+            npcMemoryRuns={projectNpcRuns}
             onSelectArtifact={onSelectArtifact}
+            onFocusNpcMemories={focusNpcMemories}
           />
         ),
       });
@@ -141,7 +165,9 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
     projectArtifacts,
     allArtifacts,
     project.title,
+    projectNpcRuns,
     onSelectArtifact,
+    focusNpcMemories,
   ]);
 
   const [activeToolTab, setActiveToolTab] = useState<string | null>(null);
@@ -216,7 +242,13 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
       </div>
       <div className="space-y-6">
         {visibilitySettings.memorySync ? (
-          <MemorySyncPanel conversations={projectConversations} onStatusChange={onMemoryStatusChange} />
+          <MemorySyncPanel
+            conversations={projectConversations}
+            npcRuns={projectNpcRuns}
+            scopeFilter={memoryScope}
+            onScopeChange={handleMemoryScopeChange}
+            onStatusChange={onMemoryStatusChange}
+          />
         ) : null}
         {visibilitySettings.openTasks ? (
           <OpenTasksPanel

@@ -17,7 +17,18 @@ import {
   parseConlangLexemesFromMarkdown,
   timestampToIso,
 } from '../utils/importExport.js';
-import type { Artifact, ConlangLexeme, Project, UserProfile } from '../types.js';
+import type {
+  Artifact,
+  ConlangLexeme,
+  MemorySyncConversation,
+  MemorySyncSuggestion,
+  ConversationMessage,
+  MemorySyncScope,
+  MemorySyncStatus,
+  NpcMemoryRun,
+  Project,
+  UserProfile,
+} from '../types.js';
 import {
   assertArtifactContentCompliance,
   assertProjectContentCompliance,
@@ -70,6 +81,193 @@ const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: str
     data: data.data ?? {},
     createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
     updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
+  };
+};
+
+const toIsoString = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value && typeof value === 'object' && 'toDate' in value) {
+    return timestampToIso(value as Timestamp);
+  }
+  return undefined;
+};
+
+const isMemorySyncStatus = (value: unknown): value is MemorySyncStatus =>
+  value === 'pending' || value === 'approved' || value === 'rejected';
+
+const isMemorySyncScope = (value: unknown): value is MemorySyncScope => value === 'npc' || value === 'global';
+
+const mapTranscriptEntry = (value: unknown): ConversationMessage | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const { id, role, text, timestamp } = value as {
+    id?: unknown;
+    role?: unknown;
+    text?: unknown;
+    timestamp?: unknown;
+  };
+
+  if (typeof id !== 'string') {
+    return null;
+  }
+
+  if (role !== 'creator' && role !== 'gemini') {
+    return null;
+  }
+
+  if (typeof text !== 'string' || text.trim().length === 0) {
+    return null;
+  }
+
+  return {
+    id,
+    role,
+    text,
+    timestamp: toIsoString(timestamp) ?? new Date().toISOString(),
+  };
+};
+
+const mapMemorySuggestion = (value: unknown): MemorySyncSuggestion | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const {
+    id,
+    statement,
+    rationale,
+    status,
+    createdAt,
+    updatedAt,
+    artifactId,
+    artifactTitle,
+    tags,
+    canonicalSensitivity,
+  } = value as {
+    id?: unknown;
+    statement?: unknown;
+    rationale?: unknown;
+    status?: unknown;
+    createdAt?: unknown;
+    updatedAt?: unknown;
+    artifactId?: unknown;
+    artifactTitle?: unknown;
+    tags?: unknown;
+    canonicalSensitivity?: unknown;
+  };
+
+  if (typeof id !== 'string' || typeof statement !== 'string') {
+    return null;
+  }
+
+  const suggestionStatus: MemorySyncStatus = isMemorySyncStatus(status) ? status : 'pending';
+  const normalizedTags = Array.isArray(tags)
+    ? (tags as unknown[]).filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    : [];
+
+  const sensitivity: CanonicalSensitivityLevel =
+    canonicalSensitivity === 'high'
+      ? 'high'
+      : canonicalSensitivity === 'moderate'
+        ? 'moderate'
+        : 'low';
+
+  return {
+    id,
+    statement,
+    rationale: typeof rationale === 'string' ? rationale : '',
+    status: suggestionStatus,
+    createdAt: toIsoString(createdAt) ?? new Date().toISOString(),
+    updatedAt: toIsoString(updatedAt),
+    artifactId: typeof artifactId === 'string' ? artifactId : undefined,
+    artifactTitle: typeof artifactTitle === 'string' ? artifactTitle : undefined,
+    tags: normalizedTags.length > 0 ? normalizedTags : undefined,
+    canonicalSensitivity: sensitivity,
+  };
+};
+
+const mapMemoryConversationDoc = (doc: QueryDocumentSnapshot): MemorySyncConversation | null => {
+  const data = doc.data() ?? {};
+  const projectId = typeof (data as { projectId?: unknown }).projectId === 'string'
+    ? (data as { projectId: string }).projectId
+    : '';
+
+  if (!projectId) {
+    return null;
+  }
+
+  const transcript = Array.isArray((data as { transcript?: unknown }).transcript)
+    ? ((data as { transcript?: unknown[] }).transcript ?? [])
+        .map(mapTranscriptEntry)
+        .filter((entry): entry is ConversationMessage => entry !== null)
+    : [];
+
+  const suggestions = Array.isArray((data as { suggestions?: unknown }).suggestions)
+    ? ((data as { suggestions?: unknown[] }).suggestions ?? [])
+        .map(mapMemorySuggestion)
+        .filter((suggestion): suggestion is MemorySyncSuggestion => suggestion !== null)
+    : [];
+
+  const scope = isMemorySyncScope((data as { scope?: unknown }).scope) ? ((data as { scope?: MemorySyncScope }).scope as MemorySyncScope) : 'global';
+
+  return {
+    id: doc.id,
+    projectId,
+    title: typeof (data as { title?: unknown }).title === 'string' ? (data as { title: string }).title : 'Gemini sync',
+    summary: typeof (data as { summary?: unknown }).summary === 'string' ? (data as { summary: string }).summary : '',
+    scope,
+    updatedAt: toIsoString((data as { updatedAt?: unknown }).updatedAt) ?? new Date().toISOString(),
+    lastSyncedAt: toIsoString((data as { lastSyncedAt?: unknown }).lastSyncedAt),
+    transcript,
+    suggestions,
+  };
+};
+
+const mapNpcMemoryRunDoc = (doc: QueryDocumentSnapshot): NpcMemoryRun | null => {
+  const data = doc.data() ?? {};
+  const projectId = typeof (data as { projectId?: unknown }).projectId === 'string'
+    ? (data as { projectId: string }).projectId
+    : '';
+  const npcArtifactId = typeof (data as { npcArtifactId?: unknown }).npcArtifactId === 'string'
+    ? (data as { npcArtifactId: string }).npcArtifactId
+    : '';
+
+  if (!projectId || !npcArtifactId) {
+    return null;
+  }
+
+  const pending = typeof (data as { pendingSuggestions?: unknown }).pendingSuggestions === 'number'
+    ? (data as { pendingSuggestions: number }).pendingSuggestions
+    : 0;
+  const approved = typeof (data as { approvedSuggestions?: unknown }).approvedSuggestions === 'number'
+    ? (data as { approvedSuggestions: number }).approvedSuggestions
+    : 0;
+
+  const sensitivity: CanonicalSensitivityLevel =
+    (data as { highestCanonicalSensitivity?: unknown }).highestCanonicalSensitivity === 'high'
+      ? 'high'
+      : (data as { highestCanonicalSensitivity?: unknown }).highestCanonicalSensitivity === 'moderate'
+        ? 'moderate'
+        : 'low';
+
+  const scope = isMemorySyncScope((data as { scope?: unknown }).scope) ? ((data as { scope?: MemorySyncScope }).scope as MemorySyncScope) : 'npc';
+
+  return {
+    id: doc.id,
+    projectId,
+    npcArtifactId,
+    npcName: typeof (data as { npcName?: unknown }).npcName === 'string' ? (data as { npcName: string }).npcName : 'Unnamed NPC',
+    npcType: typeof (data as { npcType?: unknown }).npcType === 'string' ? (data as { npcType: string }).npcType : 'Character',
+    scope,
+    pendingSuggestions: Math.max(0, pending),
+    approvedSuggestions: Math.max(0, approved),
+    highestCanonicalSensitivity: sensitivity,
+    lastRunAt: toIsoString((data as { lastRunAt?: unknown }).lastRunAt),
+    lastApprovedAt: toIsoString((data as { lastApprovedAt?: unknown }).lastApprovedAt),
   };
 };
 
@@ -166,6 +364,32 @@ router.get(
 );
 
 router.use(authenticate);
+
+router.get(
+  '/memory-sync',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const ownerId = req.user?.uid;
+    if (!ownerId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const [conversationSnapshot, npcRunsSnapshot] = await Promise.all([
+      firestore.collection('memorySyncConversations').where('ownerId', '==', ownerId).get(),
+      firestore.collection('npcMemoryRuns').where('ownerId', '==', ownerId).get(),
+    ]);
+
+    const conversations = conversationSnapshot.docs
+      .map(mapMemoryConversationDoc)
+      .filter((conversation): conversation is MemorySyncConversation => conversation !== null);
+
+    const npcMemoryRuns = npcRunsSnapshot.docs
+      .map(mapNpcMemoryRunDoc)
+      .filter((run): run is NpcMemoryRun => run !== null);
+
+    res.json({ conversations, npcMemoryRuns });
+  }),
+);
 
 const MAX_BATCH_SIZE = 400;
 
