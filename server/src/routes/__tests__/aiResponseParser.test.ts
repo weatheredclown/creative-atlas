@@ -1,19 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import type { GenerateContentResponse } from '@google/genai';
+import type {
+  EnhancedGenerateContentResponse,
+  GenerateContentCandidate,
+  Part,
+} from '@google/generative-ai';
 import { extractTextFromResponse } from '../geminiResponse.js';
 
+const createCandidate = (parts: Array<Record<string, unknown>>): GenerateContentCandidate => ({
+  index: 0,
+  content: {
+    role: 'model',
+    parts: parts as unknown as Part[],
+  },
+});
+
 const createResponse = (
-  overrides: Partial<GenerateContentResponse> & { text?: () => string } = {},
-): GenerateContentResponse => {
-  const base = {
+  overrides: Partial<EnhancedGenerateContentResponse> = {},
+): EnhancedGenerateContentResponse => {
+  const base: EnhancedGenerateContentResponse = {
     text: () => '',
+    functionCall: () => undefined,
+    functionCalls: () => undefined,
     candidates: [],
-  } satisfies Partial<GenerateContentResponse> & { text: () => string };
+  };
 
   return {
     ...base,
     ...overrides,
-  } as GenerateContentResponse;
+  } as EnhancedGenerateContentResponse;
 };
 
 describe('extractTextFromResponse', () => {
@@ -28,23 +42,19 @@ describe('extractTextFromResponse', () => {
   it('stringifies function call arguments when Gemini returns structured data', () => {
     const response = createResponse({
       candidates: [
-        {
-          content: {
-            parts: [
-              {
-                functionCall: {
-                  name: 'respond',
-                  args: {
-                    fact: 'The Dustlands Archive glows brighter when strangers share a secret.',
-                    spark: 'Log a follow-up entry exploring who tends the archive flames.',
-                  },
-                },
+        createCandidate([
+          {
+            functionCall: {
+              name: 'respond',
+              args: {
+                fact: 'The Dustlands Archive glows brighter when strangers share a secret.',
+                spark: 'Log a follow-up entry exploring who tends the archive flames.',
               },
-            ],
+            },
           },
-        },
+        ]),
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       JSON.stringify({
@@ -58,24 +68,22 @@ describe('extractTextFromResponse', () => {
     const response = createResponse({
       text: () => '',
       candidates: [
-        {
-          content: {
-            parts: [
-              { text: '   ' },
-              {
-                functionCall: {
-                  name: 'respond',
-                  args: '{"fact":"Sky caravans drift between floating markets."}',
-                },
-              },
-              {
-                data: { followUp: 'Chart their trade routes next.' },
-              },
-            ],
+        createCandidate([
+          { text: '   ' },
+          {
+            functionCall: {
+              name: 'respond',
+              args: '{"fact":"Sky caravans drift between floating markets."}',
+            },
           },
-        },
+          {
+            // Use a loose cast so the test can simulate inline data structures
+            // that are not described by the official Gemini typings yet.
+            data: { followUp: 'Chart their trade routes next.' },
+          },
+        ]),
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       '{"fact":"Sky caravans drift between floating markets."}\n\n{"followUp":"Chart their trade routes next."}',
