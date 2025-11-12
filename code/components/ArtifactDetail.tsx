@@ -3,7 +3,17 @@ import { Artifact, Relation } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
 import { getStatusClasses, formatStatusLabel } from '../utils/status';
-import { SparklesIcon, Spinner, LinkIcon, PlusIcon, ArrowDownTrayIcon, XMarkIcon, ChevronDownIcon, FolderPlusIcon } from './Icons';
+import {
+  SparklesIcon,
+  Spinner,
+  LinkIcon,
+  PlusIcon,
+  ArrowDownTrayIcon,
+  XMarkIcon,
+  ChevronDownIcon,
+  FolderPlusIcon,
+  PencilIcon,
+} from './Icons';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
 
 interface ArtifactDetailProps {
@@ -70,8 +80,12 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(artifact.title);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const { showDetailedFields } = useDepthPreferences();
   const tagInputRef = useRef<HTMLInputElement | null>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
 
   const artifactTags = useMemo(
     () => normalizeTagList(artifact.tags as unknown),
@@ -96,7 +110,10 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     setExpandError(null);
     setRelationTargetId('');
     setRelationKind('RELATES_TO');
-  }, [artifact.id, artifact.summary]);
+    setRenameValue(artifact.title);
+    setIsRenaming(false);
+    setRenameError(null);
+  }, [artifact.id, artifact.summary, artifact.title]);
 
   useEffect(() => {
     if (!showDetailedFields) {
@@ -105,6 +122,8 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
       setShowActions(false);
       setIsAddingTag(false);
       setTagInput('');
+      setIsRenaming(false);
+      setRenameError(null);
     }
   }, [showDetailedFields]);
 
@@ -113,6 +132,13 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
       tagInputRef.current?.focus();
     }
   }, [isAddingTag]);
+
+  useEffect(() => {
+    if (isRenaming) {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }
+  }, [isRenaming]);
 
   const statusOptions = Array.from(
     new Set([artifact.status, ...BASE_STATUS_OPTIONS].filter((status): status is string => Boolean(status)))
@@ -203,6 +229,47 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     setTagInput('');
   };
 
+  const handleRenameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRenameValue(event.target.value);
+    if (renameError) {
+      setRenameError(null);
+    }
+  };
+
+  const handleRenameSubmit = () => {
+    const trimmedValue = renameValue.trim();
+    if (trimmedValue.length === 0) {
+      setRenameError('Artifact name cannot be empty.');
+      return;
+    }
+
+    if (trimmedValue === artifact.title) {
+      setIsRenaming(false);
+      setRenameError(null);
+      return;
+    }
+
+    onUpdateArtifact(artifact.id, { title: trimmedValue });
+    setIsRenaming(false);
+    setRenameError(null);
+  };
+
+  const handleCancelRename = () => {
+    setRenameValue(artifact.title);
+    setIsRenaming(false);
+    setRenameError(null);
+  };
+
+  const handleRenameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleRenameSubmit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      handleCancelRename();
+    }
+  };
+
   const availableTargets = projectArtifactsList.filter(
     (candidate) =>
       candidate.id !== artifact.id &&
@@ -222,14 +289,49 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 divide-y divide-slate-700/50">
       <div className="p-6 space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div>
+          <div className="space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <h3 className="text-2xl font-bold text-white">{artifact.title}</h3>
+              {isRenaming ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                  <label htmlFor="artifact-title" className="sr-only">
+                    Artifact name
+                  </label>
+                  <input
+                    ref={renameInputRef}
+                    id="artifact-title"
+                    type="text"
+                    value={renameValue}
+                    onChange={handleRenameChange}
+                    onKeyDown={handleRenameKeyDown}
+                    className="w-full sm:w-64 bg-slate-900/70 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                    placeholder="Enter artifact name"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRenameSubmit}
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
+                    >
+                      Save Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelRename}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-700/70 hover:bg-slate-600/70 rounded-md transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <h3 className="text-2xl font-bold text-white">{artifact.title}</h3>
+              )}
               <span className={`px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded-full ${getStatusClasses(artifact.status)}`}>
                 {formatStatusLabel(artifact.status)}
               </span>
             </div>
-            <p className="text-sm text-slate-400 mt-2">Type: <span className="font-semibold text-cyan-400">{artifact.type}</span></p>
+            {isRenaming && renameError && <p className="text-xs font-semibold text-rose-400">{renameError}</p>}
+            <p className="text-sm text-slate-400">Type: <span className="font-semibold text-cyan-400">{artifact.type}</span></p>
           </div>
           {showDetailedFields && (
             <div className="relative">
@@ -249,6 +351,18 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
                   >
                     <ArrowDownTrayIcon className="w-4 h-4" /> Export .md
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenameValue(artifact.title);
+                      setRenameError(null);
+                      setIsRenaming(true);
+                      setShowActions(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+                  >
+                    <PencilIcon className="w-4 h-4" /> Rename
                   </button>
                   <button
                     type="button"
