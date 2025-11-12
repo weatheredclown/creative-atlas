@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import {
-  FunctionCallingMode,
+  FunctionCallingConfigMode,
   type FunctionDeclaration,
-  type FunctionDeclarationSchema,
   type Schema,
   type ToolConfig,
   type Tool,
+  Type,
 } from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -38,12 +38,12 @@ const COMPUTER_USE_TOOL = {
 } as unknown as Tool;
 
 const createCoordinateSchema = (description: string): Schema => ({
-  type: 'number',
+  type: Type.NUMBER,
   description,
 });
 
 const createReasoningSchema = (description: string): Schema => ({
-  type: 'string',
+  type: Type.STRING,
   description,
 });
 
@@ -52,14 +52,14 @@ const CLICK_ELEMENT_FUNCTION: FunctionDeclaration = {
   description:
     'Click the Creative Atlas UI at the provided 1000x1000 grid coordinates (0 = top/left, 1000 = bottom/right).',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     required: ['x', 'y', 'reasoning'],
     properties: {
       x: createCoordinateSchema('Horizontal position within the 1000x1000 grid.'),
       y: createCoordinateSchema('Vertical position within the 1000x1000 grid.'),
       reasoning: createReasoningSchema('Explain how this click advances the objective.'),
-    },
-  } as FunctionDeclarationSchema,
+    } as Record<string, Schema>,
+  } satisfies Schema,
 };
 
 const TYPE_TEXT_FUNCTION: FunctionDeclaration = {
@@ -67,60 +67,60 @@ const TYPE_TEXT_FUNCTION: FunctionDeclaration = {
   description:
     'Type text at the given 1000x1000 grid coordinates. Include the full text to insert into the focused element.',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     required: ['x', 'y', 'text', 'reasoning'],
     properties: {
       x: createCoordinateSchema('Horizontal position within the 1000x1000 grid.'),
       y: createCoordinateSchema('Vertical position within the 1000x1000 grid.'),
       text: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Exact text to enter at the target element.',
       },
       reasoning: createReasoningSchema('Explain how this typing advances the objective.'),
-    },
-  } as FunctionDeclarationSchema,
+    } as Record<string, Schema>,
+  } satisfies Schema,
 };
 
 const SCROLL_VIEWPORT_FUNCTION: FunctionDeclaration = {
   name: 'scroll_viewport',
   description: 'Scroll the viewport so the provided 1000x1000 grid coordinates move into view.',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     required: ['x', 'y', 'reasoning'],
     properties: {
       x: createCoordinateSchema('Horizontal position within the 1000x1000 grid to bring into view.'),
       y: createCoordinateSchema('Vertical position within the 1000x1000 grid to bring into view.'),
       reasoning: createReasoningSchema('Explain why this scroll is needed.'),
-    },
-  } as FunctionDeclarationSchema,
+    } as Record<string, Schema>,
+  } satisfies Schema,
 };
 
 const ASK_HUMAN_FUNCTION: FunctionDeclaration = {
   name: 'ask_human',
   description: 'Request clarification or additional input from the human collaborator.',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     required: ['prompt', 'reasoning'],
     properties: {
       prompt: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Message to display to the human for guidance.',
       },
       reasoning: createReasoningSchema('Explain why human guidance is required.'),
-    },
-  } as FunctionDeclarationSchema,
+    } as Record<string, Schema>,
+  } satisfies Schema,
 };
 
 const COMPLETE_OBJECTIVE_FUNCTION: FunctionDeclaration = {
   name: 'complete_objective',
   description: 'Declare that the current objective is complete and summarize the outcome.',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     required: ['reasoning'],
     properties: {
       reasoning: createReasoningSchema('Summarize the work performed and why the objective is complete.'),
-    },
-  } as FunctionDeclarationSchema,
+    } as Record<string, Schema>,
+  } satisfies Schema,
 };
 
 const FUNCTION_DECLARATIONS_TOOL: Tool = {
@@ -135,9 +135,18 @@ const FUNCTION_DECLARATIONS_TOOL: Tool = {
 
 const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 
+const FUNCTION_NAMES = TOOLS.flatMap((tool) => {
+  if ('functionDeclarations' in tool && Array.isArray(tool.functionDeclarations)) {
+    return tool.functionDeclarations.map((declaration) => declaration.name);
+  }
+
+  return [];
+});
+
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
-    mode: FunctionCallingMode.ANY,
+    mode: FunctionCallingConfigMode.ANY,
+    allowedFunctionNames: FUNCTION_NAMES,
   },
 };
 
@@ -230,18 +239,18 @@ const extractAction = (payload: unknown, request: AgentStepRequest): Record<stri
     throw new Error('Gemini returned an empty response.');
   }
 
-  const candidates = (payload as {
-    response?: {
-      candidates?: Array<{
-        content?: {
-          parts?: Array<{
-            text?: unknown;
-            functionCall?: { name?: unknown; args?: Record<string, unknown> };
-          }>;
-        };
-      }>;
-    };
-  }).response?.candidates;
+  const rawResponse = (payload as { response?: unknown }).response ?? payload;
+
+  const candidates = (rawResponse as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{
+          text?: unknown;
+          functionCall?: { name?: unknown; args?: Record<string, unknown> };
+        }>;
+      };
+    }>;
+  }).candidates;
 
   if (!Array.isArray(candidates)) {
     throw new Error('Gemini response did not contain any candidates.');
@@ -374,14 +383,9 @@ router.post(
 
     const payload = parsed.data;
 
-    let model;
+    let client: ReturnType<typeof getGeminiClient>;
     try {
-      const client = getGeminiClient();
-      model = client.getGenerativeModel({
-        model: AGENT_MODEL_ID,
-        tools: TOOLS,
-        toolConfig: TOOL_CONFIG,
-      });
+      client = getGeminiClient();
     } catch (error) {
       console.error('Failed to initialize Gemini client', error);
       res.status(500).json({
@@ -393,20 +397,27 @@ router.post(
     const prompt = buildPrompt(payload);
 
     try {
-      const response = await model.generateContent([
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: payload.screenshotBase64,
+      const response = await client.models.generateContent({
+        model: AGENT_MODEL_ID,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: payload.screenshotBase64,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        config: {
+          tools: TOOLS,
+          toolConfig: TOOL_CONFIG,
         },
-      ]);
+      });
 
       const action = extractAction(response, payload);
       res.json(action);

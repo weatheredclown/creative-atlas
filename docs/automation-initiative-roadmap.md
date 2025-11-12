@@ -20,6 +20,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Interoperability & Collaboration (Connect People & Tools)
 - Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
+  - Updated Gemini SDK usage in the agent proxy to match the 1.x API, keeping `/api/agent/step` functional after upstream changes.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
   - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
 - Document decisions required for collaboration scope (real-time vs. turn-based) and list dependencies before implementation begins.

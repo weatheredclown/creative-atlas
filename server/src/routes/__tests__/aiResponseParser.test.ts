@@ -1,25 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import type { GenerateContentResponse } from '@google/genai';
+import { GenerateContentResponse } from '@google/genai';
 import { extractTextFromResponse } from '../geminiResponse.js';
 
 const createResponse = (
-  overrides: Partial<GenerateContentResponse> & { text?: () => string } = {},
+  overrides: Partial<GenerateContentResponse> = {},
 ): GenerateContentResponse => {
-  const base = {
-    text: () => '',
-    candidates: [],
-  } satisfies Partial<GenerateContentResponse> & { text: () => string };
+  const response =
+    typeof GenerateContentResponse === 'function'
+      ? new GenerateContentResponse()
+      : ({} as GenerateContentResponse);
 
-  return {
-    ...base,
-    ...overrides,
-  } as GenerateContentResponse;
+  Object.assign(response, { candidates: [] }, overrides);
+  return response;
 };
 
 describe('extractTextFromResponse', () => {
   it('returns trimmed text when the response includes direct text output', () => {
     const response = createResponse({
-      text: () => '  Quick fact ready to save.  ',
+      candidates: [
+        {
+          content: {
+            parts: [{ text: '  Quick fact ready to save.  ' }],
+          },
+        },
+      ],
     });
 
     expect(extractTextFromResponse(response)).toBe('Quick fact ready to save.');
@@ -44,7 +48,7 @@ describe('extractTextFromResponse', () => {
           },
         },
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       JSON.stringify({
@@ -56,7 +60,6 @@ describe('extractTextFromResponse', () => {
 
   it('combines multiple parts and ignores empty text segments', () => {
     const response = createResponse({
-      text: () => '',
       candidates: [
         {
           content: {
@@ -65,7 +68,7 @@ describe('extractTextFromResponse', () => {
               {
                 functionCall: {
                   name: 'respond',
-                  args: '{"fact":"Sky caravans drift between floating markets."}',
+                  args: '{"fact":"Sky caravans drift between floating markets."}' as unknown as Record<string, unknown>,
                 },
               },
               {
@@ -73,9 +76,9 @@ describe('extractTextFromResponse', () => {
               },
             ],
           },
-        },
+        } as unknown as NonNullable<GenerateContentResponse['candidates']>[number],
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       '{"fact":"Sky caravans drift between floating markets."}\n\n{"followUp":"Chart their trade routes next."}',

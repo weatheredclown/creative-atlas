@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import {
-  type GoogleGenAI,
-  type GenerationConfig,
+  type GenerateContentConfig,
   type GenerateContentResponse,
+  type GoogleGenAI,
   HarmCategory,
   HarmBlockThreshold,
-  BlockReason,
+  BlockedReason,
   FinishReason,
   HarmProbability,
 } from '@google/genai';
@@ -39,7 +39,7 @@ type SafetyRating = {
 };
 
 type PromptFeedback = {
-  blockReason?: BlockReason | string;
+  blockReason?: BlockedReason | string;
   blockReasonMessage?: string;
   safetyRatings?: SafetyRating[];
 };
@@ -49,13 +49,13 @@ type Candidate = {
   safetyRatings?: SafetyRating[];
 };
 
-const normalizeBlockReason = (reason: unknown): BlockReason | null => {
+const normalizeBlockReason = (reason: unknown): BlockedReason | null => {
   if (typeof reason !== 'string') {
     return null;
   }
 
-  if (Object.values(BlockReason).includes(reason as BlockReason)) {
-    return reason as BlockReason;
+  if (Object.values(BlockedReason).includes(reason as BlockedReason)) {
+    return reason as BlockedReason;
   }
 
   return null;
@@ -100,7 +100,7 @@ const SAFETY_FINISH_REASONS = new Set<FinishReason | string>([
   FinishReason.SPII,
   FinishReason.MALFORMED_FUNCTION_CALL,
   FinishReason.OTHER,
-  FinishReason.LANGUAGE,
+  'LANGUAGE',
   'IMAGE_SAFETY',
 ]);
 
@@ -227,7 +227,7 @@ const resolveSafetyIssue = (response: GenerateContentResponse):
 
   const promptBlocked = Boolean(
     promptFeedback?.blockReason &&
-      promptFeedback.blockReason !== BlockReason.BLOCKED_REASON_UNSPECIFIED,
+      promptFeedback.blockReason !== BlockedReason.BLOCKED_REASON_UNSPECIFIED,
   );
 
   const candidateFinishReasons = Array.from(
@@ -344,19 +344,42 @@ router.post(
       },
     ];
 
-    const generativeModel = client.getGenerativeModel({ model, safetySettings });
-
-    const payload: Parameters<typeof generativeModel.generateContent>[0] = {
-      contents,
+    const generationConfig: GenerateContentConfig = {
+      safetySettings,
     };
 
     if (config) {
-      payload.generationConfig = config as GenerationConfig;
+      if (config.temperature !== undefined) {
+        generationConfig.temperature = config.temperature;
+      }
+
+      if (config.topP !== undefined) {
+        generationConfig.topP = config.topP;
+      }
+
+      if (config.topK !== undefined) {
+        generationConfig.topK = config.topK;
+      }
+
+      if (config.maxOutputTokens !== undefined) {
+        generationConfig.maxOutputTokens = config.maxOutputTokens;
+      }
+
+      if (config.responseMimeType !== undefined) {
+        generationConfig.responseMimeType = config.responseMimeType;
+      }
+
+      if (config.responseSchema !== undefined) {
+        generationConfig.responseSchema = config.responseSchema as GenerateContentConfig['responseSchema'];
+      }
     }
 
     try {
-      const result = await generativeModel.generateContent(payload);
-      const response = result.response;
+      const response = await client.models.generateContent({
+        model,
+        contents,
+        config: generationConfig,
+      });
       const safetyIssue = resolveSafetyIssue(response);
 
       if (safetyIssue) {
