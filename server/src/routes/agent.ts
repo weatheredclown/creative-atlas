@@ -70,7 +70,6 @@ const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
     mode: FunctionCallingMode.ANY,
-    allowedFunctionNames: [ACTION_FUNCTION_NAME],
   },
 };
 
