@@ -29,12 +29,14 @@ import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
 import { sanitizeSceneArtifactData } from '../../utils/sceneArtifacts';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
+import type { CharacterArcEvaluation } from '../../utils/characterProgression';
 
 interface WorkspaceArtifactPanelProps {
   featureGroup: WorkspaceFeatureGroup;
   isVisible: boolean;
   project: Project;
   projectArtifacts: Artifact[];
+  characterProgressionMap: Map<string, CharacterArcEvaluation>;
   filteredArtifacts: Artifact[];
   quickFactPreview: Artifact[];
   totalQuickFacts: number;
@@ -362,6 +364,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   isVisible,
   project,
   projectArtifacts,
+  characterProgressionMap,
   filteredArtifacts,
   quickFactPreview,
   totalQuickFacts,
@@ -679,14 +682,15 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
             </div>
           ) : null}
 
-          {viewMode === 'graph' ? (
-            <GraphView
-              artifacts={projectArtifacts}
-              onSelectArtifact={onSelectArtifact}
-              selectedArtifactId={selectedArtifactId}
-              projectId={project.id}
-            />
-          ) : null}
+        {viewMode === 'graph' ? (
+          <GraphView
+            artifacts={projectArtifacts}
+            onSelectArtifact={onSelectArtifact}
+            selectedArtifactId={selectedArtifactId}
+            projectId={project.id}
+            characterProgressionMap={characterProgressionMap}
+          />
+        ) : null}
 
           {viewMode === 'kanban' ? (
             <KanbanBoard artifacts={filteredArtifacts} onUpdateArtifactData={onUpdateArtifactData} />

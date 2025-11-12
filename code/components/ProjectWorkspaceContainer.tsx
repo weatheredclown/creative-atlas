@@ -39,6 +39,7 @@ import WorkspaceSectionIndex from './workspace/WorkspaceSectionIndex';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
 import type { QuickFactModalOptions } from './workspace/types';
 import { logAnalyticsEvent } from '../services/analytics';
+import { buildCharacterArcEvaluationMap } from '../utils/characterProgression';
 
 interface ProjectWorkspaceContainerProps {
   profile: UserProfile;
@@ -141,6 +142,11 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     [projectArtifacts],
   );
   const quickFactPreview = useMemo(() => quickFacts.slice(0, 4), [quickFacts]);
+
+  const characterProgressionMap = useMemo(
+    () => buildCharacterArcEvaluationMap(projectArtifacts),
+    [projectArtifacts],
+  );
 
   const projectHeroStats = useMemo(() => {
     const tagSet = new Set<string>();
@@ -327,6 +333,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
             project,
             allArtifacts,
             projectArtifacts,
+            characterProgressionMap,
             filteredArtifacts,
             quickFactPreview,
             totalQuickFacts: quickFacts.length,
@@ -394,6 +401,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
           onGitHubArtifactsImported={onGitHubArtifactsImported}
           onApplyProjectTemplate={onApplyProjectTemplate}
           onSelectTemplate={onSelectTemplate}
+          characterProgressionMap={characterProgressionMap}
         />
       </div>
 
