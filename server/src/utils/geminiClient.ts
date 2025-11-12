@@ -1,7 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
 
-let cachedClient: GoogleGenAI | null = null;
-
 export const getGeminiClient = (): GoogleGenAI => {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -9,11 +7,7 @@ export const getGeminiClient = (): GoogleGenAI => {
     throw new Error('GEMINI_API_KEY is not configured on the server.');
   }
 
-  if (!cachedClient) {
-    cachedClient = new GoogleGenAI({ apiKey });
-  }
-
-  return cachedClient;
+  return new GoogleGenAI({ apiKey });
 };
 
 export default getGeminiClient;

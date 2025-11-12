@@ -3,23 +3,28 @@ import type { GenerateContentResponse } from '@google/genai';
 import { extractTextFromResponse } from '../geminiResponse.js';
 
 const createResponse = (
-  overrides: Partial<GenerateContentResponse> & { text?: () => string } = {},
+  overrides: {
+    text?: string;
+    candidates?: unknown[];
+    promptFeedback?: unknown;
+  } = {},
 ): GenerateContentResponse => {
   const base = {
-    text: () => '',
+    text: '',
     candidates: [],
-  } satisfies Partial<GenerateContentResponse> & { text: () => string };
+    promptFeedback: undefined,
+  };
 
   return {
     ...base,
     ...overrides,
-  } as GenerateContentResponse;
+  } as unknown as GenerateContentResponse;
 };
 
 describe('extractTextFromResponse', () => {
   it('returns trimmed text when the response includes direct text output', () => {
     const response = createResponse({
-      text: () => '  Quick fact ready to save.  ',
+      text: '  Quick fact ready to save.  ',
     });
 
     expect(extractTextFromResponse(response)).toBe('Quick fact ready to save.');
@@ -44,7 +49,7 @@ describe('extractTextFromResponse', () => {
           },
         },
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       JSON.stringify({
@@ -56,7 +61,6 @@ describe('extractTextFromResponse', () => {
 
   it('combines multiple parts and ignores empty text segments', () => {
     const response = createResponse({
-      text: () => '',
       candidates: [
         {
           content: {
@@ -75,7 +79,7 @@ describe('extractTextFromResponse', () => {
           },
         },
       ],
-    } as GenerateContentResponse);
+    });
 
     expect(extractTextFromResponse(response)).toBe(
       '{"fact":"Sky caravans drift between floating markets."}\n\n{"followUp":"Chart their trade routes next."}',

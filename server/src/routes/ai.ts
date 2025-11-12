@@ -5,7 +5,7 @@ import {
   type GenerateContentResponse,
   HarmCategory,
   HarmBlockThreshold,
-  BlockReason,
+  BlockedReason,
   FinishReason,
   HarmProbability,
 } from '@google/genai';
@@ -39,7 +39,7 @@ type SafetyRating = {
 };
 
 type PromptFeedback = {
-  blockReason?: BlockReason | string;
+  blockReason?: BlockedReason | string;
   blockReasonMessage?: string;
   safetyRatings?: SafetyRating[];
 };
@@ -49,13 +49,13 @@ type Candidate = {
   safetyRatings?: SafetyRating[];
 };
 
-const normalizeBlockReason = (reason: unknown): BlockReason | null => {
+const normalizeBlockReason = (reason: unknown): BlockedReason | null => {
   if (typeof reason !== 'string') {
     return null;
   }
 
-  if (Object.values(BlockReason).includes(reason as BlockReason)) {
-    return reason as BlockReason;
+  if (Object.values(BlockedReason).includes(reason as BlockedReason)) {
+    return reason as BlockedReason;
   }
 
   return null;
@@ -227,7 +227,7 @@ const resolveSafetyIssue = (response: GenerateContentResponse):
 
   const promptBlocked = Boolean(
     promptFeedback?.blockReason &&
-      promptFeedback.blockReason !== BlockReason.BLOCKED_REASON_UNSPECIFIED,
+      promptFeedback.blockReason !== BlockedReason.BLOCKED_REASON_UNSPECIFIED,
   );
 
   const candidateFinishReasons = Array.from(
@@ -344,19 +344,17 @@ router.post(
       },
     ];
 
-    const generativeModel = client.getGenerativeModel({ model, safetySettings });
-
-    const payload: Parameters<typeof generativeModel.generateContent>[0] = {
-      contents,
-    };
-
-    if (config) {
-      payload.generationConfig = config as GenerationConfig;
-    }
-
     try {
-      const result = await generativeModel.generateContent(payload);
-      const response = result.response;
+      const genAI = getGeminiClient();
+      const result = await genAI.models.generateContent({
+        model,
+        contents,
+        config: {
+          safetySettings,
+          ...config,
+        },
+      });
+      const response = result;
       const safetyIssue = resolveSafetyIssue(response);
 
       if (safetyIssue) {

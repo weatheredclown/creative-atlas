@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import {
-  FunctionCallingMode,
+  FunctionCallingConfigMode,
   type FunctionDeclaration,
-  type FunctionDeclarationSchema,
   type Schema,
   type ToolConfig,
   type Tool,
+  Type,
 } from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -38,19 +38,19 @@ const COMPUTER_USE_TOOL = {
 } as unknown as Tool;
 
 const agentResponseSchema: Schema = {
-  type: 'object',
+  type: Type.OBJECT,
   required: ['action', 'reasoning'],
   properties: {
     action: {
-      type: 'string',
+      type: Type.STRING,
       format: 'enum',
       enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
-    x: { type: 'number' },
-    y: { type: 'number' },
-    text: { type: 'string' },
-    prompt: { type: 'string' },
-    reasoning: { type: 'string' },
+    x: { type: Type.NUMBER },
+    y: { type: Type.NUMBER },
+    text: { type: Type.STRING },
+    prompt: { type: Type.STRING },
+    reasoning: { type: Type.STRING },
   },
 };
 
@@ -58,7 +58,7 @@ const ACTION_FUNCTION_DECLARATION: FunctionDeclaration = {
   name: ACTION_FUNCTION_NAME,
   description:
     'Report the next Creative Atlas UI action. Always populate the reasoning field with a concise justification.',
-  parameters: agentResponseSchema as FunctionDeclarationSchema,
+  parameters: agentResponseSchema,
 };
 
 const FUNCTION_DECLARATIONS_TOOL: Tool = {
@@ -69,7 +69,7 @@ const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
-    mode: FunctionCallingMode.ANY,
+    mode: FunctionCallingConfigMode.ANY,
     allowedFunctionNames: [ACTION_FUNCTION_NAME],
   },
 };
@@ -242,26 +242,13 @@ router.post(
 
     const payload = parsed.data;
 
-    let model;
-    try {
-      const client = getGeminiClient();
-      model = client.getGenerativeModel({
-        model: AGENT_MODEL_ID,
-        tools: TOOLS,
-        toolConfig: TOOL_CONFIG,
-      });
-    } catch (error) {
-      console.error('Failed to initialize Gemini client', error);
-      res.status(500).json({
-        error: 'Gemini agent integration is not configured on the server.',
-      });
-      return;
-    }
-
     const prompt = buildPrompt(payload);
 
     try {
-      const response = await model.generateContent([
+      const genAI = getGeminiClient();
+      const response = await genAI.models.generateContent({
+        model: AGENT_MODEL_ID,
+        contents: [
           {
             role: 'user',
             parts: [
@@ -274,7 +261,12 @@ router.post(
               },
             ],
           },
-        ]);
+        ],
+        config: {
+          tools: TOOLS,
+          toolConfig: TOOL_CONFIG,
+        },
+      });
 
       const action = extractAction(response);
       res.json(action);
