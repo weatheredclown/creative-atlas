@@ -14,9 +14,10 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
 import {
-  evaluateCharacterArc,
+  buildCharacterArcEvaluationMap,
   formatProgressionStatus,
   getArcStageBadgeClassName,
+  type CharacterArcEvaluation,
 } from '../utils/characterProgression';
 
 interface GraphViewProps {
@@ -24,6 +25,7 @@ interface GraphViewProps {
   onSelectArtifact: (id: string) => void;
   selectedArtifactId: string | null;
   projectId: string;
+  characterProgressionMap?: Map<string, CharacterArcEvaluation>;
 }
 
 const nodeColor = (type: ArtifactType): string => {
@@ -138,13 +140,19 @@ const layoutGraph = (nodes: Node<GraphNodeData>[], edges: Edge[]) => {
   });
 };
 
-const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, selectedArtifactId, projectId }) => {
+const GraphView: React.FC<GraphViewProps> = ({
+  artifacts,
+  onSelectArtifact,
+  selectedArtifactId,
+  projectId,
+  characterProgressionMap,
+}) => {
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
-    const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
-    const artifactIds = new Set(artifactLookup.keys());
+    const artifactIds = new Set(artifacts.map((artifact) => artifact.id));
+    const progressionById = characterProgressionMap ?? buildCharacterArcEvaluationMap(artifacts);
     const nodes: Node<GraphNodeData>[] = artifacts.map((artifact) => {
       const arc = artifact.type === ArtifactType.Character
-        ? evaluateCharacterArc(artifact, artifactLookup)
+        ? progressionById.get(artifact.id) ?? null
         : null;
 
       return {
@@ -170,8 +178,8 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
     });
 
     const edges: Edge[] = [];
-    artifacts.forEach(sourceArtifact => {
-      sourceArtifact.relations.forEach(relation => {
+    artifacts.forEach((sourceArtifact) => {
+      sourceArtifact.relations.forEach((relation) => {
         if (artifactIds.has(relation.toId)) {
           edges.push({
             id: `e-${sourceArtifact.id}-${relation.toId}`,
@@ -186,7 +194,7 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
     });
 
     return { nodes: layoutGraph(nodes, edges), edges };
-  }, [artifacts]);
+  }, [artifacts, characterProgressionMap]);
 
   const storageKey = useMemo(() => `${STORAGE_PREFIX}${projectId}`, [projectId]);
   const [storedPositions, setStoredPositions] = useState<StoredNodePositions>(() => loadStoredPositions(storageKey));

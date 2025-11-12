@@ -87,6 +87,20 @@ export const getArcStageBadgeClassName = (stageId: ArcStageId): string => {
   return `${ARC_STAGE_BADGE_BASE_CLASSES} ${ARC_STAGE_BADGE_COLOR_CLASSES[stageId]}`;
 };
 
+const ARC_STAGE_OVERLAY_BASE_CLASSES =
+  'absolute inset-y-0 left-0 pointer-events-none rounded-lg bg-gradient-to-r mix-blend-screen opacity-70';
+
+const ARC_STAGE_OVERLAY_COLOR_CLASSES: Record<ArcStageId, string> = {
+  spark: 'from-cyan-500/40 via-cyan-500/10 to-transparent',
+  rising: 'from-violet-500/40 via-violet-500/10 to-transparent',
+  crisis: 'from-amber-500/40 via-amber-500/10 to-transparent',
+  transformation: 'from-emerald-500/40 via-emerald-500/10 to-transparent',
+  legacy: 'from-pink-500/40 via-pink-500/10 to-transparent',
+};
+
+export const getArcStageOverlayClassName = (stageId: ArcStageId): string =>
+  `${ARC_STAGE_OVERLAY_BASE_CLASSES} ${ARC_STAGE_OVERLAY_COLOR_CLASSES[stageId]}`;
+
 const ARC_STAGE_STATUS_MAP: Record<ArcStageId, CharacterProgressionStatus> = {
   spark: 'inciting',
   rising: 'escalating',
@@ -327,5 +341,20 @@ export const evaluateCharacterArc = (
     score,
     progression,
   } satisfies CharacterArcEvaluation;
+};
+
+export const buildCharacterArcEvaluationMap = (artifacts: Artifact[]): Map<string, CharacterArcEvaluation> => {
+  const lookup = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
+  const entries = new Map<string, CharacterArcEvaluation>();
+
+  artifacts.forEach((artifact) => {
+    if (artifact.type !== ArtifactType.Character) {
+      return;
+    }
+
+    entries.set(artifact.id, evaluateCharacterArc(artifact, lookup));
+  });
+
+  return entries;
 };
 

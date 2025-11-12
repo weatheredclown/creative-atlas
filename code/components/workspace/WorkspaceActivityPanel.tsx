@@ -37,6 +37,7 @@ import { aiAssistants } from '../../src/data/aiAssistants';
 import type { MilestoneProgressOverview } from '../../utils/milestoneProgress';
 import type { ProjectPublishRecord } from '../../utils/publishHistory';
 import type { WorkspaceFeatureGroup } from './types';
+import type { CharacterArcEvaluation } from '../../utils/characterProgression';
 
 interface WorkspaceActivityPanelProps {
   analyticsGroup: WorkspaceFeatureGroup;
@@ -65,6 +66,7 @@ interface WorkspaceActivityPanelProps {
   onGitHubArtifactsImported: (artifacts: Artifact[]) => Promise<void> | void;
   onApplyProjectTemplate: (template: ProjectTemplate) => Promise<void> | void;
   onSelectTemplate: (template: TemplateEntry) => Promise<void> | void;
+  characterProgressionMap: Map<string, CharacterArcEvaluation>;
 }
 
 const featuredAssistant = aiAssistants[0];
@@ -102,6 +104,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   onGitHubArtifactsImported,
   onApplyProjectTemplate,
   onSelectTemplate,
+  characterProgressionMap,
 }) => {
   const [memoryScope, setMemoryScope] = useState<MemorySyncScope | 'all'>('all');
 
@@ -263,6 +266,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
             artifacts={projectArtifacts}
             onSelectCharacter={onSelectArtifact}
             onCreateCharacter={() => onOpenCreateArtifactModal({ defaultType: ArtifactType.Character })}
+            characterProgressionMap={characterProgressionMap}
           />
         ) : null}
         {visibilitySettings.characterArcTracker ? <CharacterArcTracker artifacts={projectArtifacts} /> : null}

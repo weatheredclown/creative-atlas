@@ -29,6 +29,7 @@ import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
 import { sanitizeSceneArtifactData } from '../../utils/sceneArtifacts';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
+import type { CharacterArcEvaluation } from '../../utils/characterProgression';
 
 interface WorkspaceArtifactPanelProps {
   featureGroup: WorkspaceFeatureGroup;
@@ -72,6 +73,7 @@ interface WorkspaceArtifactPanelProps {
   canUseDataApi: boolean;
   detailSectionRef: React.MutableRefObject<HTMLDivElement | null>;
   onWorkspaceError: (message: string) => void;
+  characterProgressionMap: Map<string, CharacterArcEvaluation>;
 }
 
 const RECOVERABLE_TYPES = new Set<ArtifactType>([
@@ -399,6 +401,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   canUseDataApi,
   detailSectionRef,
   onWorkspaceError,
+  characterProgressionMap,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -685,6 +688,7 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
               onSelectArtifact={onSelectArtifact}
               selectedArtifactId={selectedArtifactId}
               projectId={project.id}
+              characterProgressionMap={characterProgressionMap}
             />
           ) : null}
 
