@@ -6,6 +6,7 @@ import {
   NarrativeNeedStatus,
   NARRATIVE_ARTIFACT_TYPES,
   Scene,
+  SceneArtifactData,
   TimelineData,
 } from '../types';
 
@@ -140,6 +141,16 @@ const isNarrativeArtifact = (artifact: Artifact): boolean =>
 const getSceneCount = (artifact: Artifact): number => {
   if (!isNarrativeArtifact(artifact)) {
     return 0;
+  }
+  if (artifact.type === ArtifactType.Scene) {
+    const data = artifact.data as SceneArtifactData | undefined;
+    if (!data) {
+      return 0;
+    }
+    if (Array.isArray(data.dialogue) && data.dialogue.length > 0) {
+      return 1;
+    }
+    return data.synopsis?.trim().length > 0 ? 1 : 0;
   }
   const data = artifact.data as Scene[] | undefined;
   if (!Array.isArray(data)) {

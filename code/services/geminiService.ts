@@ -814,3 +814,168 @@ export const generateReleaseNotes = async ({
         throw new Error(message);
     }
 };
+
+interface SceneDialogueCharacterProfile {
+    id: string;
+    name: string;
+    summary?: string;
+    bio?: string;
+    traits?: string[];
+}
+
+export interface GenerateSceneDialogueParams {
+    projectTitle: string;
+    sceneTitle: string;
+    scenePrompt: string;
+    sceneSummary?: string;
+    characters: SceneDialogueCharacterProfile[];
+    existingBeats?: string[];
+}
+
+export interface GeneratedSceneDialogue {
+    synopsis?: string;
+    beats?: string[];
+    dialogue: Array<{
+        speaker?: string;
+        line?: string;
+        direction?: string;
+    }>;
+}
+
+const sceneDialogueSchema = {
+    type: SchemaType.OBJECT,
+    properties: {
+        synopsis: {
+            type: SchemaType.STRING,
+            description: '1-2 sentence recap of the scene outcome.',
+        },
+        beats: {
+            type: SchemaType.ARRAY,
+            description: 'Ordered beat summaries to expand the scene.',
+            items: {
+                type: SchemaType.STRING,
+                description: 'Single beat or turning point description.',
+            },
+        },
+        dialogue: {
+            type: SchemaType.ARRAY,
+            description: 'Ordered dialogue lines with optional stage direction metadata.',
+            items: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    speaker: {
+                        type: SchemaType.STRING,
+                        description: 'Name of the speaking character.',
+                    },
+                    line: {
+                        type: SchemaType.STRING,
+                        description: 'Spoken line of dialogue.',
+                    },
+                    direction: {
+                        type: SchemaType.STRING,
+                        description: 'Optional stage direction or emotional cue.',
+                    },
+                },
+                required: ['line'],
+            },
+        },
+    },
+    required: ['dialogue'],
+} as const;
+
+const formatCastProfiles = (profiles: SceneDialogueCharacterProfile[]): string => {
+    if (profiles.length === 0) {
+        return 'No additional character biography provided.';
+    }
+
+    return profiles
+        .map((profile) => {
+            const segments: string[] = [];
+            if (profile.summary && profile.summary.trim().length > 0) {
+                segments.push(`Summary: ${profile.summary.trim()}`);
+            }
+            if (profile.bio && profile.bio.trim().length > 0) {
+                segments.push(`Bio: ${profile.bio.trim()}`);
+            }
+            if (profile.traits && profile.traits.length > 0) {
+                segments.push(`Traits: ${profile.traits.join('; ')}`);
+            }
+            const detail = segments.length > 0 ? segments.join(' | ') : 'No additional detail provided.';
+            return `- ${profile.name}: ${detail}`;
+        })
+        .join('\n');
+};
+
+export const generateSceneDialogue = async ({
+    projectTitle,
+    sceneTitle,
+    scenePrompt,
+    sceneSummary,
+    characters,
+    existingBeats,
+}: GenerateSceneDialogueParams): Promise<GeneratedSceneDialogue> => {
+    const castBlock = formatCastProfiles(characters);
+    const beatsBlock = existingBeats && existingBeats.length > 0
+        ? existingBeats.map((beat, index) => `${index + 1}. ${beat}`).join('\n')
+        : 'No prior beats logged.';
+
+    const prompt = `
+You are Dialogue Forge, an Atlas Intelligence guide who writes grounded scene dialogue.
+
+Project: ${projectTitle}
+Scene title: ${sceneTitle}
+
+Scene prompt:
+${scenePrompt}
+
+Context summary: ${sceneSummary && sceneSummary.trim().length > 0 ? sceneSummary.trim() : 'None provided.'}
+
+Cast profiles:
+${castBlock}
+
+Existing beat outline:
+${beatsBlock}
+
+Deliver a JSON payload with:
+- synopsis: 1-2 sentences describing the outcome of this exchange.
+- beats: 3-5 bullet summaries for potential follow-up beats.
+- dialogue: ordered lines containing the speaking character name, the spoken line, and an optional stage direction string describing tone or action.
+
+Keep the exchange tightly focused, respect each character's established voice, and avoid narrating camera directions. Stage directions should be short present-tense cues (e.g., "softly", "paces", "grips the railing").
+`;
+
+    try {
+        const jsonText = (await requestGeminiText({
+            prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: sceneDialogueSchema,
+                temperature: 0.7,
+                maxOutputTokens: 1536,
+            },
+        })).trim();
+
+        const parsed = JSON.parse(jsonText) as GeneratedSceneDialogue;
+        if (!parsed || !Array.isArray(parsed.dialogue)) {
+            throw new Error('AI response did not include a dialogue array.');
+        }
+
+        return {
+            synopsis: typeof parsed.synopsis === 'string' ? parsed.synopsis : undefined,
+            beats: Array.isArray(parsed.beats)
+                ? parsed.beats
+                      .map((beat) => (typeof beat === 'string' ? beat : ''))
+                      .filter((beat) => beat.trim().length > 0)
+                : undefined,
+            dialogue: parsed.dialogue.map((entry) => ({
+                speaker: typeof entry.speaker === 'string' ? entry.speaker : undefined,
+                line: typeof entry.line === 'string' ? entry.line : '',
+                direction: typeof entry.direction === 'string' ? entry.direction : undefined,
+            })),
+        } satisfies GeneratedSceneDialogue;
+    } catch (error) {
+        console.error('Error generating scene dialogue with Gemini:', error);
+        const message = getGeminiErrorMessage(error, 'Failed to generate scene dialogue.');
+        throw new Error(message);
+    }
+};

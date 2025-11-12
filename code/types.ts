@@ -112,6 +112,23 @@ export interface Scene {
     summary: string;
 }
 
+export interface SceneDialogueLine {
+    id: string;
+    speakerId?: string;
+    speakerName: string;
+    line: string;
+    direction?: string;
+}
+
+export interface SceneArtifactData {
+    prompt: string;
+    synopsis: string;
+    beats: string[];
+    characterIds: string[];
+    generatedAt?: string;
+    dialogue: SceneDialogueLine[];
+}
+
 export type EncounterIntensity = 'story' | 'skirmish' | 'gauntlet';
 
 export type EncounterObjective = 'recon' | 'extraction' | 'sabotage' | 'escort';
@@ -259,6 +276,7 @@ export interface Artifact {
   data:
     | ConlangLexeme[]
     | Scene[]
+    | SceneArtifactData
     | TaskData
     | CharacterData
     | WikiData
