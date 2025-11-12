@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import {
-  FunctionCallingMode,
+  FunctionCallingConfigMode,
   type FunctionDeclaration,
-  type FunctionDeclarationSchema,
   type Schema,
   type ToolConfig,
   type Tool,
+  Type,
 } from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
@@ -38,27 +38,27 @@ const COMPUTER_USE_TOOL = {
 } as unknown as Tool;
 
 const agentResponseSchema: Schema = {
-  type: 'object',
+  type: Type.OBJECT,
   required: ['action', 'reasoning'],
   properties: {
     action: {
-      type: 'string',
+      type: Type.STRING,
       format: 'enum',
       enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
-    x: { type: 'number' },
-    y: { type: 'number' },
-    text: { type: 'string' },
-    prompt: { type: 'string' },
-    reasoning: { type: 'string' },
-  },
+    x: { type: Type.NUMBER },
+    y: { type: Type.NUMBER },
+    text: { type: Type.STRING },
+    prompt: { type: Type.STRING },
+    reasoning: { type: Type.STRING },
+  } as Record<string, Schema>,
 };
 
 const ACTION_FUNCTION_DECLARATION: FunctionDeclaration = {
   name: ACTION_FUNCTION_NAME,
   description:
     'Report the next Creative Atlas UI action. Always populate the reasoning field with a concise justification.',
-  parameters: agentResponseSchema as FunctionDeclarationSchema,
+  parameters: agentResponseSchema,
 };
 
 const FUNCTION_DECLARATIONS_TOOL: Tool = {
@@ -69,7 +69,7 @@ const TOOLS: Tool[] = [FUNCTION_DECLARATIONS_TOOL, COMPUTER_USE_TOOL];
 
 const TOOL_CONFIG: ToolConfig = {
   functionCallingConfig: {
-    mode: FunctionCallingMode.ANY,
+    mode: FunctionCallingConfigMode.ANY,
     allowedFunctionNames: [ACTION_FUNCTION_NAME],
   },
 };
@@ -133,18 +133,18 @@ const extractAction = (payload: unknown): Record<string, unknown> => {
     throw new Error('Gemini returned an empty response.');
   }
 
-  const candidates = (payload as {
-    response?: {
-      candidates?: Array<{
-        content?: {
-          parts?: Array<{
-            text?: unknown;
-            functionCall?: { name?: unknown; args?: Record<string, unknown> };
-          }>;
-        };
-      }>;
-    };
-  }).response?.candidates;
+  const rawResponse = (payload as { response?: unknown }).response ?? payload;
+
+  const candidates = (rawResponse as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{
+          text?: unknown;
+          functionCall?: { name?: unknown; args?: Record<string, unknown> };
+        }>;
+      };
+    }>;
+  }).candidates;
 
   if (!Array.isArray(candidates)) {
     throw new Error('Gemini response did not contain any candidates.');
@@ -242,14 +242,9 @@ router.post(
 
     const payload = parsed.data;
 
-    let model;
+    let client;
     try {
-      const client = getGeminiClient();
-      model = client.getGenerativeModel({
-        model: AGENT_MODEL_ID,
-        tools: TOOLS,
-        toolConfig: TOOL_CONFIG,
-      });
+      client = getGeminiClient();
     } catch (error) {
       console.error('Failed to initialize Gemini client', error);
       res.status(500).json({
@@ -261,7 +256,9 @@ router.post(
     const prompt = buildPrompt(payload);
 
     try {
-      const response = await model.generateContent([
+      const response = await client.models.generateContent({
+        model: AGENT_MODEL_ID,
+        contents: [
           {
             role: 'user',
             parts: [
@@ -274,7 +271,12 @@ router.post(
               },
             ],
           },
-        ]);
+        ],
+        config: {
+          tools: TOOLS,
+          toolConfig: TOOL_CONFIG,
+        },
+      });
 
       const action = extractAction(response);
       res.json(action);
