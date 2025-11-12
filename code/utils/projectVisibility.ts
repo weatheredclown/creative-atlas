@@ -53,7 +53,7 @@ export const PROJECT_COMPONENT_DEFINITIONS: Record<ProjectComponentKey, Componen
   },
   projectInsights: {
     label: 'Project insights',
-    description: 'Auto-generated metrics across seeds, relationships, and quests.',
+    description: 'Auto-generated metrics across artifacts, relationships, and quests.',
     group: 'analytics',
   },
   aiCopilot: {

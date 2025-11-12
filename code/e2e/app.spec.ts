@@ -8,7 +8,7 @@ test.describe('Creative Atlas smoke test', () => {
     // The tutorial will be pointing at the "New Project" button, so we need to click it to advance.
     await page.locator('#create-new-project-button').click();
 
-    await expect(page.getByRole('button', { name: 'New Seed' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Artifact' })).toBeVisible();
     await expect(page.getByText('Daily Quests')).toBeVisible();
   });
 });

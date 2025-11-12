@@ -14,7 +14,7 @@ All template data is defined in [`code/App.tsx`](../code/App.tsx):
 - `projectTemplates: ProjectTemplate[]` – defines the multi-artifact kits shown in the "Project Templates" picker. Each template includes:
   - Metadata (`id`, `name`, `description`, `recommendedFor`, `projectTags`).
   - `relatedCategoryIds` – back-references into `templateLibrary` for consistent cross-linking.
-  - `artifacts` – the starter artifacts that will be cloned into the currently selected project when the template is applied. These objects mirror the `Artifact` shape from [`types.ts`](../code/types.ts) and can include seed `data` (e.g., wiki markdown, task state, conlang lexemes).
+  - `artifacts` – the starter artifacts that will be cloned into the currently selected project when the template is applied. These objects mirror the `Artifact` shape from [`types.ts`](../code/types.ts) and can include starter `data` (e.g., wiki markdown, task state, conlang lexemes).
 
 Because everything is declared inline, changes require a code edit and rebuild. There is no persistence layer or admin UI yet; the arrays function as curated sample content for demos.
 

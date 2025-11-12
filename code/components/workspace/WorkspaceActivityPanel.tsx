@@ -341,7 +341,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
                         Import from GitHub
                       </div>
                       <p className="text-sm text-slate-400">
-                        Bring in README files, quests, or lore straight from your repository to seed new artifacts without losing context.
+                        Bring in README files, quests, or lore straight from your repository to create new artifacts without losing context.
                       </p>
                     </header>
                     <GitHubImportPanel

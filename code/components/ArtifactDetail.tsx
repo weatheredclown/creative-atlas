@@ -258,7 +258,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                     }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
                   >
-                    <PlusIcon className="w-4 h-4" /> New Seed
+                    <PlusIcon className="w-4 h-4" /> New Artifact
                   </button>
                   <button
                     type="button"

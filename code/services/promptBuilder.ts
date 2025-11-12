@@ -737,7 +737,7 @@ const buildCallbackRecommendations: PromptBuilder = (args, context) => {
   const directive = [
     'Recommend callbacks the scene can echo to reinforce continuity and emotional payoff.',
     'For each callback, specify the source artifact, the callback detail, and the intended effect on readers.',
-    'Add one suggestion for an entirely new callback or motif to seed now.',
+    'Add one suggestion for an entirely new callback or motif to capture now.',
   ].join('\n');
 
   return {

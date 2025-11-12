@@ -49,7 +49,7 @@ export const aiAssistants: AIAssistant[] = [
     {
         id: 'muse-of-sparks',
         name: 'Muse of Sparks',
-        description: 'Combines inspiration cards into scene seeds, tone shifts, and sensory palettes on demand.',
+        description: 'Combines inspiration cards into scene starters, tone shifts, and sensory palettes on demand.',
         focus: 'Prompt alchemy & vibe modulation',
         promptSlots: [
             'blend_prompts(cardIds, desired_mood)',

@@ -5,7 +5,7 @@ This document outlines the development progress of the Creative Atlas applicatio
 
 ## Overall Status: Feature Complete (M1-M3)
 
-Development has reached a state of feature completeness for the primary milestones (M1-M3). The application successfully implements all core tenets of the product vision, providing a robust, gamified, and AI-enhanced platform for personal knowledge management and creative world-building. The core loop of seeding ideas, growing them into linked artifacts, and exporting them is fully functional.
+Development has reached a state of feature completeness for the primary milestones (M1-M3). The application successfully implements all core tenets of the product vision, providing a robust, gamified, and AI-enhanced platform for personal knowledge management and creative world-building. The core loop of capturing ideas, growing them into linked artifacts, and exporting them is fully functional.
 
 ---
 
@@ -16,7 +16,7 @@ Development has reached a state of feature completeness for the primary mileston
 - **Play First:** **Implemented**.
   - XP system is functional and provides immediate feedback.
   - Quests and Achievements are implemented, encouraging user engagement.
-  - Micro-wins (creating seeds, linking artifacts, completing tasks, using AI) grant XP.
+  - Micro-wins (creating artifacts, linking artifacts, completing tasks, using AI) grant XP.
 
 - **Graph Native:** **Implemented**.
   - The data model is built around Projects, Artifacts, and Relations.
@@ -24,7 +24,7 @@ Development has reached a state of feature completeness for the primary mileston
   - A visual, interactive graph view is a primary way to navigate project data.
 
 - **Progressive Depth:** **Implemented**.
-  - **Layer 1 (Seed):** Fully functional via the 'New Seed' modal for quick capture of any artifact type.
+  - **Layer 1 (Capture):** Fully functional via the 'New Artifact' modal for quick capture of any artifact type.
   - **Layer 2 (Grow):** Fully functional. Project dashboards include a Table view, Graph view, and a Kanban board for tasks.
   - **Layer 3 (Forge):** Implemented. Rich, contextual editors are available for `Conlang`, `Story`, `Character`, `Wiki`, and `Location` artifacts.
   - **Layer 4 (Showcase):** Implemented. Users can export all project artifacts to a single CSV file or export individual artifacts to self-contained Markdown files.
@@ -59,7 +59,7 @@ Development has reached a state of feature completeness for the primary mileston
 ### 4. Gamification System
 
 - **Stats (XP, Level):** **Implemented**.
-- **XP Sources:** **Implemented**. XP is awarded for creating seeds, linking artifacts, generating lexemes, and completing tasks.
+- **XP Sources:** **Implemented**. XP is awarded for creating artifacts, linking artifacts, generating lexemes, and completing tasks.
 - **Quests:** **Implemented**. A 'Daily Quests' component tracks short-term goals.
 - **Achievements:** **Implemented**. An `Achievements` component tracks long-term goals.
 

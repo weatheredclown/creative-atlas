@@ -5,7 +5,7 @@
 - Progress through play: quests, XP, and incremental additions turn lorebuilding into a game.
 - Reveal complexity gradually: start with notebook simplicity and expand toward wiki → database → living archive → game UI.
 - AI as a co-author (Gemini-first): it organizes, recommends links, and surfaces forgotten lore while Tim approves canon.
-- Exports always matter: every world can produce wikis, game seeds, bibles, sheets, lexicons, and more.
+- Exports always matter: every world can produce wikis, game modules, bibles, sheets, lexicons, and more.
 - Atlas ≠ Notion — Atlas = Lore engine + authoring pipeline.
 
 ### Phase 1 — Core Lore OS (MVP)

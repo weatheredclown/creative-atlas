@@ -14,7 +14,7 @@ Dustland is a hybrid of retro RPG, world-simulation framework, and interactive a
 - **World Memory System:** Persists environmental state, narrative consequences, and player choices across sessions.
 - **Effect Packs & Profiles:** Event-triggered bundles that reshape the world (weather shifts, NPC behavior, art overlays).
 - **CRT Overlay Engine:** Shader pipeline that produces phosphor glow, scanlines, ghosting, and distortion for a nostalgia-heavy presentation.
-- **AI Generators:** Portraits, dialogue, music loops, and pixel tiles seeded via local + cloud diffusion and Magenta/Tone.js workflows.
+- **AI Generators:** Portraits, dialogue, music loops, and pixel tiles generated via local + cloud diffusion and Magenta/Tone.js workflows.
 
 ## 3. Setting & Tone
 - Post-collapse desert world built on top of forgotten machines and eroded mythologies.

@@ -37,7 +37,7 @@ export const ARC_STAGE_CONFIG: ArcStageConfig[] = [
     id: 'spark',
     label: 'Spark',
     minScore: 0,
-    description: 'A character seed is planted. Their voice exists, but the first crucible is waiting.',
+    description: 'A character concept takes shape. Their voice exists, but the first crucible is waiting.',
     recommendation: 'Capture an inciting beat or relationship hook to ignite their journey.',
   },
   {

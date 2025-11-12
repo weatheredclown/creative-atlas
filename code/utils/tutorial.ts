@@ -82,15 +82,15 @@ const tutorialStepDefinitions: TutorialStepDefinition[] = [
     target: '#add-new-artifact-button',
     copy: {
       en: {
-        title: 'Seed your first artifact',
+        title: 'Create your first artifact',
         explanation:
-          'Artifacts store the stories, locations, mechanics, and relationships that define your world. Start by adding a wiki seed.',
+          'Artifacts store the stories, locations, mechanics, and relationships that define your world. Start by adding a wiki artifact.',
         action: 'Open the new artifact modal',
       },
       es: {
         title: 'Crea tu primer artefacto',
         explanation:
-          'Los artefactos guardan las historias, ubicaciones, mecánicas y relaciones que definen tu mundo. Comienza agregando una semilla de wiki.',
+          'Los artefactos guardan las historias, ubicaciones, mecánicas y relaciones que definen tu mundo. Comienza agregando un artefacto wiki.',
         action: 'Abre el modal de nuevo artefacto',
       },
     },
@@ -109,13 +109,13 @@ const tutorialStepDefinitions: TutorialStepDefinition[] = [
         title: 'Draft the wiki entry',
         explanation:
           'Every artifact can include summaries, tags, and structured data. Create the starter wiki entry to hold Aethelgard’s lore.',
-        action: 'Create the wiki seed',
+        action: 'Create the wiki artifact',
       },
       es: {
         title: 'Redacta la entrada de la wiki',
         explanation:
           'Cada artefacto puede incluir resúmenes, etiquetas y datos estructurados. Crea la entrada inicial de la wiki para contener el lore de Aethelgard.',
-        action: 'Crea la semilla de la wiki',
+        action: 'Crea el artefacto wiki',
       },
     },
   },
