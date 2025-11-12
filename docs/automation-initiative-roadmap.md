@@ -16,6 +16,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
 - Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
+  - ✅ Hardened the `/api/agent/step` Gemini request by attaching the Computer Use tool and a custom `ghost_agent_action` function so the API no longer returns 400 errors when the ghost agent runs.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
   - ✅ Artifact detail panel now tolerates malformed tag and relation arrays and defaults missing project artifact collections so workspace editors stay stable when wiki payloads arrive incomplete.
   - ✅ Artifact filter hook now tolerates artifacts missing tag arrays so wiki selections don't crash the explorer.
