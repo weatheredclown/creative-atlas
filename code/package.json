@@ -17,7 +17,7 @@
     "@floating-ui/dom": "^1.7.4",
     "@floating-ui/react": "^0.27.16",
     "@floating-ui/react-dom": "^2.1.6",
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^0.2.0",
     "dagre": "^0.8.5",
     "framer-motion": "^11.11.17",
     "firebase": "^12.4.0",

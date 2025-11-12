@@ -7,7 +7,7 @@ import {
   type Schema,
   type ToolConfig,
   type Tool,
-} from '@google/generative-ai';
+} from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { getGeminiClient } from '../utils/geminiClient.js';
@@ -110,7 +110,7 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
     'Always include a concise reasoning string explaining how the action advances the objective.',
     'For "click" and "type" actions include absolute pixel coordinates {"x","y"}. Provide the full text to insert for "type" actions.',
     'For "scroll" actions set {"x","y"} to the viewport coordinates that should be brought into view.',
-    'Do not return raw JSON or natural language answers—always call the tool.',    
+    'Do not return raw JSON or natural language answers—always call the tool.',
   ].join('\n\n');
 };
 
@@ -262,8 +262,7 @@ router.post(
     const prompt = buildPrompt(payload);
 
     try {
-      const response = await model.generateContent({
-        contents: [
+      const response = await model.generateContent([
           {
             role: 'user',
             parts: [
@@ -276,10 +275,7 @@ router.post(
               },
             ],
           },
-        ],
-        tools: TOOLS,
-        toolConfig: TOOL_CONFIG,
-      });
+        ]);
 
       const action = extractAction(response);
       res.json(action);

@@ -1,5 +1,5 @@
 
-import { SchemaType } from '@google/generative-ai';
+import { SchemaType } from '@google/genai';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
@@ -170,7 +170,7 @@ export const generateLexemes = async (
       },
     })).trim();
     const generatedItems = JSON.parse(jsonText) as Omit<ConlangLexeme, 'id'>[];
-    
+
     if (!Array.isArray(generatedItems)) {
         throw new Error('AI response is not a valid array.');
     }
