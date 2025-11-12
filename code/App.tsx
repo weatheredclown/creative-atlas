@@ -44,6 +44,7 @@ import { getDefaultDataForType } from './utils/artifactDefaults';
 import { useGitHubPublish } from './hooks/useGitHubPublish';
 import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
+import GhostAgent from './components/GhostAgent';
 
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
@@ -725,6 +726,7 @@ export default function App() {
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
       />
+      <GhostAgent />
         </div>
       </DepthPreferencesProvider>
     </TutorialLanguageProvider>
