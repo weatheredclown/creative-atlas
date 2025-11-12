@@ -14,9 +14,10 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
 import {
-  evaluateCharacterArc,
+  buildCharacterArcMap,
   formatProgressionStatus,
   getArcStageBadgeClassName,
+  getArcStageProgressBarClasses,
 } from '../utils/characterProgression';
 
 interface GraphViewProps {
@@ -142,19 +143,36 @@ const GraphView: React.FC<GraphViewProps> = ({ artifacts, onSelectArtifact, sele
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
+    const progressionMap = buildCharacterArcMap(artifacts, artifactLookup);
     const nodes: Node<GraphNodeData>[] = artifacts.map((artifact) => {
-      const arc = artifact.type === ArtifactType.Character
-        ? evaluateCharacterArc(artifact, artifactLookup)
-        : null;
+      const arc = progressionMap.get(artifact.id);
+      const stageProgressClasses = arc ? getArcStageProgressBarClasses(arc.stage.id) : null;
+      const progressWidth = arc ? (arc.progressPercent > 0 ? Math.max(arc.progressPercent, 8) : 0) : 0;
 
       return {
         id: artifact.id,
         data: {
           label: (
-            <div className="flex flex-col items-center gap-2 py-1">
+            <div
+              className="flex w-full flex-col items-center gap-2 py-1"
+              title={
+                arc
+                  ? `${artifact.title} — ${arc.stage.label} (${formatProgressionStatus(arc.progression.status)})`
+                  : artifact.title
+              }
+            >
               <span className="text-sm font-semibold text-slate-100">{artifact.title}</span>
-              {arc && (
+              {arc && stageProgressClasses && (
                 <>
+                  <div
+                    className={`h-1.5 w-full overflow-hidden rounded-full ${stageProgressClasses.track}`}
+                    aria-hidden="true"
+                  >
+                    <div
+                      className={`h-full rounded-full ${stageProgressClasses.fill}`}
+                      style={{ width: `${progressWidth}%` }}
+                    />
+                  </div>
                   <span className={getArcStageBadgeClassName(arc.stage.id)}>{arc.stage.label}</span>
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     {formatProgressionStatus(arc.progression.status)}

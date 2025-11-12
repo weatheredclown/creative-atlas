@@ -23,10 +23,11 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Kanban board normalizes missing task states so workspace cards stay visible when tasks lack a stored status.
 
 ## Segment B — Feature Depth & Design Polish
-- Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed); next add progression state overlays and sync them with the relationship graph.
+- Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed) and share stage overlays with the relationship graph; next expose stage filters so editors can spotlight characters by arc state.
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - ✅ Family tree tools now display progression badges derived from shared arc analysis so stage overlays are consistent with the tracker.
-  - Render progression overlays within the family tree and ensure the relationship graph consumes the shared state without duplication.
+  - ✅ Rendered progression overlays within the family tree and ensured the relationship graph consumes the shared state without duplication.
+  - Introduce stage filters in the graph view so editors can spotlight characters in a specific arc phase.
 - ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
