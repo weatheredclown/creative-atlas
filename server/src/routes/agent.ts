@@ -45,11 +45,12 @@ const agentResponseSchema: Schema = {
     action: {
       type: SchemaType.STRING,
       format: 'enum',
-      enum: ['click', 'type', 'scroll', 'done'],
+      enum: ['click', 'type', 'scroll', 'ask', 'done'],
     },
     x: { type: SchemaType.NUMBER },
     y: { type: SchemaType.NUMBER },
     text: { type: SchemaType.STRING },
+    prompt: { type: SchemaType.STRING },
     reasoning: { type: SchemaType.STRING },
   },
 };
@@ -101,14 +102,15 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
 
   return [
     'You are an automation agent driving the Creative Atlas web application for the user.',
-    `Current objective: ${objective}`,
+    `Current objective: ${objecti ve}`,
     `Screen resolution: ${screenWidth}x${screenHeight}. Coordinates must align with this screenshot.`,
     historyLines,
-    `Call the \"${ACTION_FUNCTION_NAME}\" tool with the next action. Choose one of: "click", "type", "scroll", or "done".`,
+    `Call the \"${ACTION_FUNCTION_NAME}\" tool with the next action. Choose one of: "click", "type", "scroll", "ask", or "done".`,
+    'Use "ask" when you need additional human guidance. Include a "prompt" message explaining what you need from the user.',
     'Always include a concise reasoning string explaining how the action advances the objective.',
     'For "click" and "type" actions include absolute pixel coordinates {"x","y"}. Provide the full text to insert for "type" actions.',
     'For "scroll" actions set {"x","y"} to the viewport coordinates that should be brought into view.',
-    'Do not return raw JSON or natural language answers—always call the tool.',
+    'Do not return raw JSON or natural language answers—always call the tool.',    
   ].join('\n\n');
 };
 
