@@ -10,6 +10,7 @@ import {
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { getGeminiClient } from '../utils/geminiClient.js';
+import { renderAgentMacrosForPrompt } from './agentMacros.js';
 
 const router = Router();
 
@@ -177,7 +178,7 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
         .join('\n')}`
     : 'No prior actions have been executed in this session.';
 
-  return [
+  const lines = [
     'You are an automation agent driving the Creative Atlas web application for the user.',
     `Current objective: ${objective}`,
     `Screen resolution: ${screenWidth}x${screenHeight}. Internally you must reason on a 1000x1000 grid and the server will scale coordinates to the actual resolution.`,
@@ -190,7 +191,14 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
     '- `complete_objective({ reasoning })` when the task is finished.',
     'Always populate the `reasoning` field with a concise explanation of how the action advances the objective.',
     'Only emit function calls—do not respond with plain text or JSON outside the defined tool structure.',
-  ].join('\n\n');
+  ];
+
+  const macrosSection = renderAgentMacrosForPrompt();
+  if (macrosSection) {
+    lines.push(macrosSection);
+  }
+
+  return lines.join('\n\n');
 };
 
 const coerceNumber = (value: unknown): number | undefined => {

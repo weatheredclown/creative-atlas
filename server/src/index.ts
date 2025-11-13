@@ -7,6 +7,7 @@ import githubRouter from './routes/github.js';
 import aiRouter from './routes/ai.js';
 import historyRouter from './routes/history.js';
 import agentRouter from './routes/agent.js';
+import { CollaborationGateway, InMemoryAdapter } from './collaboration/index.js';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'https://creative-atlas.web.app')
   .split(',')
@@ -39,6 +40,12 @@ const corsOptions: CorsOptions = {
 
 // To test:
 const app = express();
+
+const collaborationGateway = new CollaborationGateway<Record<string, unknown>>({
+  adapter: new InMemoryAdapter<Record<string, unknown>>({ initialState: {} }),
+});
+
+app.locals.collaborationGateway = collaborationGateway;
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));

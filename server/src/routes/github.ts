@@ -9,6 +9,31 @@ import { addJob } from '../utils/queue.js';
 
 const router = Router();
 
+type PublishJobState = 'queued' | 'running' | 'succeeded' | 'failed';
+
+interface PublishJobStatus {
+  id: string;
+  state: PublishJobState;
+  updatedAt: string;
+  error?: string;
+}
+
+const publishJobStatusStore = new Map<string, PublishJobStatus>();
+
+const setPublishJobStatus = (jobId: string, state: PublishJobState, error?: string): PublishJobStatus => {
+  const status: PublishJobStatus = {
+    id: jobId,
+    state,
+    updatedAt: new Date().toISOString(),
+    error,
+  };
+  if (!error) {
+    delete status.error;
+  }
+  publishJobStatusStore.set(jobId, status);
+  return status;
+};
+
 const GITHUB_CLIENT_ID =
   process.env.CA_GITHUB_CLIENT_ID ?? process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET =
@@ -623,19 +648,40 @@ router.post('/publish', authenticate, asyncHandler(async (req: AuthenticatedRequ
     return res.status(401).json({ error: 'GitHub access token not found in session.' });
   }
 
+  const jobId = crypto.randomUUID();
+  setPublishJobStatus(jobId, 'queued');
+
   try {
-    const result = await addJob(() =>
-      runPublishJob({ accessToken, repoName, publishDir, siteFiles }),
-    );
-    res.json(result);
+    const result = await addJob(async () => {
+      setPublishJobStatus(jobId, 'running');
+      const publishResult = await runPublishJob({ accessToken, repoName, publishDir, siteFiles });
+      setPublishJobStatus(jobId, 'succeeded');
+      return publishResult;
+    });
+    res.json({ jobId, status: publishJobStatusStore.get(jobId), result });
   } catch (error) {
     console.error('Failed to publish project to GitHub', error);
     const message =
       error instanceof Error
         ? error.message
         : 'An unknown error occurred while publishing to GitHub.';
-    res.status(502).json({ error: message });
+    setPublishJobStatus(jobId, 'failed', message);
+    res.status(502).json({ jobId, error: message });
   }
+}));
+
+router.get('/publish/status/:jobId', authenticate, asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const jobId = req.params.jobId.trim();
+  if (!jobId) {
+    return res.status(400).json({ error: 'Job ID is required.' });
+  }
+
+  const status = publishJobStatusStore.get(jobId);
+  if (!status) {
+    return res.status(404).json({ error: 'Publish job not found.' });
+  }
+
+  res.json(status);
 }));
 
 export default router;
