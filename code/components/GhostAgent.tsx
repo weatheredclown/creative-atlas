@@ -47,6 +47,33 @@ interface CalibrationHistoryEntry {
   notes: string[];
 }
 
+interface CalibrationTransformAnalysis {
+  solved: boolean;
+  summary: string;
+  translation: { x: number; y: number } | null;
+  scale: { x: number; y: number } | null;
+  rotationDegrees: number | null;
+  shearDegrees: number | null;
+  determinant: number | null;
+  reflection: boolean;
+  residual: number | null;
+  detailLines: string[];
+}
+
+interface CalibrationAggregate {
+  sampleCount: number;
+  successCount: number;
+  failureCount: number;
+  meanOffset: { x: number; y: number };
+  meanAbsoluteOffset: { x: number; y: number };
+  meanDistance: number | null;
+  failureRate: number;
+  severity: 'aligned' | 'watch' | 'critical';
+  summary: string;
+  recommendation: string | null;
+  transform: CalibrationTransformAnalysis | null;
+}
+
 interface CalibrationRun {
   id: string;
   target: CalibrationTarget;
@@ -208,6 +235,333 @@ const deriveCalibrationNotes = (
   }
 
   return notes;
+};
+
+const solveLeastSquares = (design: number[][], outputs: number[]): number[] | null => {
+  const rowCount = design.length;
+  const colCount = design[0]?.length ?? 0;
+
+  if (rowCount === 0 || colCount === 0 || outputs.length !== rowCount) {
+    return null;
+  }
+
+  const ata: number[][] = Array.from({ length: colCount }, () => Array(colCount).fill(0));
+  const atb: number[] = Array(colCount).fill(0);
+
+  for (let row = 0; row < rowCount; row += 1) {
+    const current = design[row];
+    const value = outputs[row];
+    for (let col = 0; col < colCount; col += 1) {
+      atb[col] += current[col] * value;
+      for (let inner = col; inner < colCount; inner += 1) {
+        ata[col][inner] += current[col] * current[inner];
+      }
+    }
+  }
+
+  for (let row = 0; row < colCount; row += 1) {
+    for (let col = 0; col < row; col += 1) {
+      ata[row][col] = ata[col][row];
+    }
+  }
+
+  const augmented: number[][] = ata.map((row, index) => [...row, atb[index]]);
+
+  const size = colCount;
+  for (let pivotIndex = 0; pivotIndex < size; pivotIndex += 1) {
+    let maxRow = pivotIndex;
+    let maxValue = Math.abs(augmented[pivotIndex][pivotIndex]);
+
+    for (let candidate = pivotIndex + 1; candidate < size; candidate += 1) {
+      const candidateValue = Math.abs(augmented[candidate][pivotIndex]);
+      if (candidateValue > maxValue) {
+        maxValue = candidateValue;
+        maxRow = candidate;
+      }
+    }
+
+    if (maxValue < 1e-6) {
+      return null;
+    }
+
+    if (maxRow !== pivotIndex) {
+      const temp = augmented[pivotIndex];
+      augmented[pivotIndex] = augmented[maxRow];
+      augmented[maxRow] = temp;
+    }
+
+    const pivot = augmented[pivotIndex][pivotIndex];
+    for (let column = pivotIndex; column <= size; column += 1) {
+      augmented[pivotIndex][column] /= pivot;
+    }
+
+    for (let row = 0; row < size; row += 1) {
+      if (row === pivotIndex) {
+        continue;
+      }
+      const factor = augmented[row][pivotIndex];
+      if (Math.abs(factor) < 1e-9) {
+        continue;
+      }
+      for (let column = pivotIndex; column <= size; column += 1) {
+        augmented[row][column] -= factor * augmented[pivotIndex][column];
+      }
+    }
+  }
+
+  return augmented.map(row => row[size]);
+};
+
+const deriveTransformAnalysis = (
+  entries: CalibrationHistoryEntry[],
+): CalibrationTransformAnalysis | null => {
+  const usableSamples = entries.filter(entry => entry.finalCursor !== null);
+  if (usableSamples.length < 3) {
+    return null;
+  }
+
+  const design: number[][] = [];
+  const outputs: number[] = [];
+
+  usableSamples.forEach(entry => {
+    const centerX = entry.target.x + entry.target.size / 2;
+    const centerY = entry.target.y + entry.target.size / 2;
+    const finalX = entry.finalCursor?.x ?? 0;
+    const finalY = entry.finalCursor?.y ?? 0;
+
+    design.push([centerX, centerY, 0, 0, 1, 0]);
+    outputs.push(finalX);
+    design.push([0, 0, centerX, centerY, 0, 1]);
+    outputs.push(finalY);
+  });
+
+  const solution = solveLeastSquares(design, outputs);
+  if (!solution) {
+    return {
+      solved: false,
+      summary: 'Not enough stable samples to model cursor transform.',
+      translation: null,
+      scale: null,
+      rotationDegrees: null,
+      shearDegrees: null,
+      determinant: null,
+      reflection: false,
+      residual: null,
+      detailLines: [],
+    };
+  }
+
+  const [m11, m12, m21, m22, b1, b2] = solution;
+
+  const matrix = [
+    [m11, m12],
+    [m21, m22],
+  ];
+
+  let squaredError = 0;
+  usableSamples.forEach(entry => {
+    const centerX = entry.target.x + entry.target.size / 2;
+    const centerY = entry.target.y + entry.target.size / 2;
+    const predictedX = m11 * centerX + m12 * centerY + b1;
+    const predictedY = m21 * centerX + m22 * centerY + b2;
+    const actualX = entry.finalCursor?.x ?? 0;
+    const actualY = entry.finalCursor?.y ?? 0;
+    squaredError += (predictedX - actualX) ** 2 + (predictedY - actualY) ** 2;
+  });
+
+  const residual = Math.sqrt(squaredError / usableSamples.length);
+
+  const axisX = { x: matrix[0][0], y: matrix[1][0] };
+  const axisY = { x: matrix[0][1], y: matrix[1][1] };
+  const scaleX = Math.hypot(axisX.x, axisX.y);
+  const scaleY = Math.hypot(axisY.x, axisY.y);
+  const determinant = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+  const rotationRadians = scaleX > 0 ? Math.atan2(axisX.y, axisX.x) : null;
+  const rotationDegrees = rotationRadians !== null ? (rotationRadians * 180) / Math.PI : null;
+  let shearDegrees: number | null = null;
+  if (scaleX > 0 && scaleY > 0) {
+    const dotProduct = axisX.x * axisY.x + axisX.y * axisY.y;
+    const cosine = dotProduct / (scaleX * scaleY);
+    const clampedCosine = Math.min(1, Math.max(-1, cosine));
+    const angleBetweenAxes = Math.acos(clampedCosine);
+    shearDegrees = Math.abs((angleBetweenAxes * 180) / Math.PI - 90);
+  }
+
+  const translation = { x: Math.round(b1), y: Math.round(b2) };
+  const reflection = determinant < 0;
+
+  const details: string[] = [];
+  details.push(`Translation ≈ (${translation.x}px, ${translation.y}px).`);
+  details.push(
+    `Scale ≈ (${scaleX.toFixed(2)}x horizontally, ${scaleY.toFixed(2)}x vertically).`,
+  );
+  if (rotationDegrees !== null) {
+    details.push(`Rotation ≈ ${rotationDegrees.toFixed(1)}° (${rotationDegrees >= 0 ? 'CCW' : 'CW'}).`);
+  }
+  if (shearDegrees !== null && shearDegrees > 1) {
+    details.push(`Axis skew ≈ ${shearDegrees.toFixed(1)}° from perpendicular.`);
+  }
+  details.push(`Mean residual error ≈ ${residual.toFixed(1)}px.`);
+
+  let summary: string;
+  if (reflection) {
+    summary = 'Cursor behavior looks mirrored relative to the calibration targets.';
+  } else if (rotationDegrees !== null && Math.abs(rotationDegrees) >= 15) {
+    summary = `Cursor path is rotated ≈ ${rotationDegrees.toFixed(1)}° relative to screen coordinates.`;
+  } else if (Math.max(Math.abs(scaleX - 1), Math.abs(scaleY - 1)) >= 0.2) {
+    summary = 'Cursor path scales targets noticeably before landing, suggesting coordinate stretching.';
+  } else if (shearDegrees !== null && shearDegrees >= 5) {
+    summary = 'Cursor path exhibits skew relative to target axes, hinting at axis mixing.';
+  } else {
+    summary = 'Cursor path primarily translates targets with minimal rotation or mirroring.';
+  }
+
+  return {
+    solved: true,
+    summary,
+    translation,
+    scale: { x: parseFloat(scaleX.toFixed(2)), y: parseFloat(scaleY.toFixed(2)) },
+    rotationDegrees: rotationDegrees !== null ? parseFloat(rotationDegrees.toFixed(1)) : null,
+    shearDegrees: shearDegrees !== null ? parseFloat(shearDegrees.toFixed(1)) : null,
+    determinant: parseFloat(determinant.toFixed(3)),
+    reflection,
+    residual: parseFloat(residual.toFixed(1)),
+    detailLines: details,
+  };
+};
+
+const deriveCalibrationAggregate = (
+  history: CalibrationHistoryEntry[],
+): CalibrationAggregate | null => {
+  if (history.length === 0) {
+    return null;
+  }
+
+  const samples = history.filter(entry => entry.offset !== null);
+  if (samples.length === 0) {
+    return null;
+  }
+
+  const successCount = history.filter(entry => entry.success).length;
+  const failureCount = history.length - successCount;
+
+  const sum = samples.reduce(
+    (acc, entry) => {
+      const offset = entry.offset ?? { x: 0, y: 0 };
+      acc.offsetX += offset.x;
+      acc.offsetY += offset.y;
+      acc.absOffsetX += Math.abs(offset.x);
+      acc.absOffsetY += Math.abs(offset.y);
+      acc.distance +=
+        entry.distance !== null && entry.distance !== undefined
+          ? entry.distance
+          : Math.round(Math.hypot(offset.x, offset.y));
+      return acc;
+    },
+    { offsetX: 0, offsetY: 0, absOffsetX: 0, absOffsetY: 0, distance: 0 },
+  );
+
+  const meanOffset = {
+    x: Math.round(sum.offsetX / samples.length),
+    y: Math.round(sum.offsetY / samples.length),
+  };
+  const meanAbsoluteOffset = {
+    x: Math.round(sum.absOffsetX / samples.length),
+    y: Math.round(sum.absOffsetY / samples.length),
+  };
+  const meanDistance = samples.length > 0 ? Math.round(sum.distance / samples.length) : null;
+  const failureRate = history.length > 0 ? failureCount / history.length : 0;
+
+  let severity: CalibrationAggregate['severity'];
+  if (meanAbsoluteOffset.x <= 6 && meanAbsoluteOffset.y <= 6) {
+    severity = 'aligned';
+  } else if (meanAbsoluteOffset.x <= 30 && meanAbsoluteOffset.y <= 30) {
+    severity = 'watch';
+  } else {
+    severity = 'critical';
+  }
+
+  if (failureRate >= 0.5 && severity !== 'critical') {
+    severity = 'watch';
+  }
+
+  const driftDescriptors: string[] = [];
+  if (meanOffset.x !== 0) {
+    driftDescriptors.push(
+      `${Math.abs(meanOffset.x)}px ${meanOffset.x > 0 ? 'to the right' : 'to the left'}`,
+    );
+  }
+  if (meanOffset.y !== 0) {
+    driftDescriptors.push(
+      `${Math.abs(meanOffset.y)}px ${meanOffset.y > 0 ? 'down' : 'up'}`,
+    );
+  }
+
+  const transform = deriveTransformAnalysis(samples);
+
+  if (transform?.reflection || (transform?.rotationDegrees && Math.abs(transform.rotationDegrees) >= 15)) {
+    severity = 'critical';
+  }
+
+  const summary =
+    driftDescriptors.length === 0
+      ? 'Average cursor drift centers on the calibration target.'
+      : `Average cursor drift trends ${driftDescriptors.join(' and ')}.`;
+
+  const summaryParts = [summary];
+  if (transform?.solved) {
+    summaryParts.push(transform.summary);
+  }
+
+  let recommendationParts: string[] = [];
+  if (severity === 'watch') {
+    recommendationParts.push(
+      'Drift is noticeable. Capture additional samples and verify the 0–1000 coordinate scaling matches the viewport.',
+    );
+  } else if (severity === 'critical') {
+    recommendationParts.push(
+      'Severe drift detected. Inspect the viewport normalization logic and consider resetting calibration data after adjustments.',
+    );
+  }
+
+  if (transform?.solved) {
+    if (transform.reflection) {
+      recommendationParts.push(
+        'Transform analysis suggests the cursor is mirrored. Check whether captured screenshots are flipped or if X/Y coordinates are inverted before sending them to the agent.',
+      );
+    } else if (transform.rotationDegrees && Math.abs(transform.rotationDegrees) >= 10) {
+      recommendationParts.push(
+        `Transform analysis detected a ~${Math.abs(transform.rotationDegrees)}° rotation. Verify the screenshot orientation and confirm width/height axes are mapped correctly.`,
+      );
+    } else if (
+      transform.scale &&
+      (Math.abs(transform.scale.x - 1) >= 0.15 || Math.abs(transform.scale.y - 1) >= 0.15)
+    ) {
+      recommendationParts.push(
+        'Transform analysis shows scaling drift. Audit how viewport dimensions and screenshot resolutions are normalized before deriving cursor coordinates.',
+      );
+    } else if (transform.shearDegrees && transform.shearDegrees >= 5) {
+      recommendationParts.push(
+        'Transform analysis surfaced skewed axes. Double-check that coordinate calculations do not mix horizontal and vertical ratios.',
+      );
+    }
+  }
+
+  const recommendation = recommendationParts.length > 0 ? recommendationParts.join(' ') : null;
+
+  return {
+    sampleCount: samples.length,
+    successCount,
+    failureCount,
+    meanOffset,
+    meanAbsoluteOffset,
+    meanDistance,
+    failureRate,
+    severity,
+    summary: summaryParts.join(' '),
+    recommendation,
+    transform: transform ?? null,
+  };
 };
 
 const GhostCursorIcon: React.FC<{ isClicking: boolean }> = ({ isClicking }) => (
@@ -748,6 +1102,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     () => [...calibrationHistory].reverse().slice(0, 4),
     [calibrationHistory],
   );
+  const calibrationAggregate = useMemo(
+    () => deriveCalibrationAggregate(calibrationHistory),
+    [calibrationHistory],
+  );
   const calibrationStatusText = calibrationOverlay
     ? 'Calibration target active. The agent will stop automatically when the cursor enters the square.'
     : 'Run calibration to verify the ghost cursor is aligned with on-screen coordinates. Results are stored locally for future debugging sessions.';
@@ -961,7 +1319,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 </button>
               )}
             </div>
-            <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+              <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
                 <button
@@ -974,6 +1332,66 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 </button>
               </div>
               <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
+              {calibrationAggregate ? (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                    calibrationAggregate.severity === 'aligned'
+                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
+                      : calibrationAggregate.severity === 'watch'
+                      ? 'border-amber-400/60 bg-amber-500/10 text-amber-100'
+                      : 'border-red-400/60 bg-red-500/10 text-red-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide">
+                    <span>
+                      {calibrationAggregate.severity === 'aligned'
+                        ? 'Aligned'
+                        : calibrationAggregate.severity === 'watch'
+                        ? 'Monitor drift'
+                        : 'Severe drift'}
+                    </span>
+                    <span className="text-[10px] font-medium tracking-normal text-white/70">
+                      {calibrationAggregate.sampleCount} sample
+                      {calibrationAggregate.sampleCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-white/90">{calibrationAggregate.summary}</p>
+                  <p className="mt-1 text-[11px] text-white/80">
+                    Mean offset Δx {calibrationAggregate.meanOffset.x}px (|Δx| ≈{' '}
+                    {calibrationAggregate.meanAbsoluteOffset.x}px), Δy {calibrationAggregate.meanOffset.y}px (|Δy| ≈{' '}
+                    {calibrationAggregate.meanAbsoluteOffset.y}px)
+                    {calibrationAggregate.meanDistance !== null
+                      ? `, avg distance ${calibrationAggregate.meanDistance}px`
+                      : ''}
+                    .
+                  </p>
+                  <p className="mt-1 text-[11px] text-white/70">
+                    Success rate {Math.round((1 - calibrationAggregate.failureRate) * 100)}% ({calibrationAggregate.successCount}{' '}
+                    success{calibrationAggregate.successCount === 1 ? '' : 'es'}, {calibrationAggregate.failureCount} failure
+                    {calibrationAggregate.failureCount === 1 ? '' : 's'}).
+                  </p>
+                  {calibrationAggregate.transform ? (
+                    <div className="mt-2 rounded-md border border-white/20 bg-white/5 px-2.5 py-2 text-[11px] text-white/85">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                        Transform analysis
+                      </div>
+                      <p className="mt-1 text-xs text-white/90">{calibrationAggregate.transform.summary}</p>
+                      {calibrationAggregate.transform.detailLines.length > 0 ? (
+                        <ul className="mt-1 space-y-1 text-[11px] text-white/80">
+                          {calibrationAggregate.transform.detailLines.map((line, index) => (
+                            <li key={`${line}-${index}`} className="list-inside list-disc marker:text-white/50">
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {calibrationAggregate.recommendation ? (
+                    <p className="mt-1 text-[11px] text-white/80">{calibrationAggregate.recommendation}</p>
+                  ) : null}
+                </div>
+              ) : null}
               {recentCalibrationHistory.length > 0 ? (
                 <div className="space-y-2">
                   {recentCalibrationHistory.map(entry => {
