@@ -157,6 +157,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
 
   const handlePublishDirChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPublishDir(event.target.value);
+    setFormError(null);
     onResetStatus();
   };
 
@@ -164,6 +165,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
     event.preventDefault();
 
     if (isLoadingRepos) {
+      setFormError('Repositories are still loading. Please wait a moment and try again.');
       return;
     }
 
@@ -181,8 +183,12 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
 
     try {
       await onPublish(trimmedRepo, normalizedPublishDir);
-    } catch {
-      // The caller surfaces errors via errorMessage; suppress double-reporting here.
+    } catch (publishError) {
+      const fallbackMessage =
+        publishError instanceof Error
+          ? publishError.message
+          : 'An unexpected error occurred while publishing to GitHub.';
+      setFormError(fallbackMessage);
     }
   };
 
@@ -273,7 +279,7 @@ const PublishToGitHubModal: React.FC<PublishToGitHubModalProps> = ({
             </div>
           )}
 
-          {formError && (
+          {formError && !errorMessage && (
             <div className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
               {formError}
             </div>
