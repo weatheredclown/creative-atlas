@@ -1,4 +1,5 @@
 
+import { jsonrepair } from 'jsonrepair';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
@@ -908,6 +909,23 @@ const MAX_CAST_DETAIL_LENGTH = 550;
 const MAX_CAST_SECTION_LENGTH = 3400;
 const MAX_TRAITS = 16;
 
+const parseSceneDialogueJson = (jsonText: string): GeneratedSceneDialogue => {
+    try {
+        return JSON.parse(jsonText) as GeneratedSceneDialogue;
+    } catch (initialError) {
+        try {
+            const repaired = jsonrepair(jsonText);
+            return JSON.parse(repaired) as GeneratedSceneDialogue;
+        } catch (repairError) {
+            console.warn('Failed to repair scene dialogue JSON output.', repairError);
+            const snippet = truncateText(jsonText, 600);
+            const message =
+                initialError instanceof Error ? initialError.message : 'Unknown parsing error.';
+            throw new Error(`Failed to parse scene dialogue JSON (${message}). Snippet: ${snippet}`);
+        }
+    }
+};
+
 const formatCastProfiles = (profiles: SceneDialogueCharacterProfile[]): string => {
     if (profiles.length === 0) {
         return 'No additional character biography provided.';
@@ -994,7 +1012,7 @@ Keep the exchange tightly focused, respect each character's established voice, a
             },
         })).trim();
 
-        const parsed = JSON.parse(jsonText) as GeneratedSceneDialogue;
+        const parsed = parseSceneDialogueJson(jsonText);
         if (!parsed || !Array.isArray(parsed.dialogue)) {
             throw new Error('AI response did not include a dialogue array.');
         }
