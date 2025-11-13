@@ -58,6 +58,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - Refine artifact detail panel tabs with clear labelling and full keyboard support.
   - Layer guidance into Graph view and Family Tree tools so linking workflows feel discoverable.
   - Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
+    - ✅ Replaced browser alerts with in-app toast notifications for workspace and publishing actions so feedback stays inline with the current context.
   - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
   - ✅ The Graph view now opens with an Arc Stage Spotlight explainer and counts, guiding editors toward the new filtering workflow; next, replicate the guidance inside the Family Tree tools.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.

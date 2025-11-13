@@ -46,6 +46,7 @@ import {
 import type { MilestoneProgressOverview } from '../../utils/milestoneProgress';
 import type { ProjectPublishRecord } from '../../utils/publishHistory';
 import { logAnalyticsEvent } from '../../services/analytics';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ProjectWorkspaceProps {
   profile: UserProfile;
@@ -116,6 +117,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   canPublishToGitHub,
   onStartGitHubPublish,
 }) => {
+  const { showToast } = useToast();
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [defaultCreateArtifactType, setDefaultCreateArtifactType] = useState<ArtifactType | null>(null);
@@ -336,19 +338,19 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     async (artifactId: string) => {
       const success = await deleteArtifact(artifactId);
       if (!success) {
-        alert('Failed to delete artifact. Please try again later.');
+        showToast('Failed to delete artifact. Please try again later.', { variant: 'error' });
         return;
       }
       setSelectedArtifactId((current) => (current === artifactId ? null : current));
     },
-    [deleteArtifact],
+    [deleteArtifact, showToast],
   );
 
   const handleDuplicateArtifact = useCallback(
     async (artifactId: string) => {
       const source = projectArtifactsById.get(artifactId);
       if (!source) {
-        alert('We could not find the artifact to duplicate.');
+        showToast('We could not find the artifact to duplicate.', { variant: 'error' });
         return;
       }
 
@@ -378,7 +380,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
       const created = await createArtifact(project.id, draft);
       if (!created) {
-        alert('We could not duplicate this artifact. Please try again later.');
+        showToast('We could not duplicate this artifact. Please try again later.', { variant: 'error' });
         return;
       }
 
@@ -389,7 +391,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         message: `Created ${created.title} from ${source.title}.`,
       });
     },
-    [addXp, createArtifact, project.id, projectArtifacts, projectArtifactsById],
+    [addXp, createArtifact, project.id, projectArtifacts, projectArtifactsById, showToast],
   );
 
   const handleCreateArtifact = useCallback(
@@ -491,7 +493,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const handleImportArtifacts = useCallback(
     async (file: File) => {
       if (!canUseDataApi) {
-        alert('Artifact import requires a connection to the data server.');
+        showToast('Artifact import requires a connection to the data server.', { variant: 'error' });
         return;
       }
 
@@ -508,23 +510,33 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
         if (newArtifacts.length > 0) {
           mergeArtifacts(project.id, newArtifacts);
-          alert(`${newArtifacts.length} new artifacts imported successfully!`);
+          showToast(`${newArtifacts.length} new artifacts imported successfully!`, { variant: 'success' });
           markProjectActivity({ importedCsv: true });
         } else {
-          alert('No new artifacts to import. All IDs in the file already exist.');
+          showToast('No new artifacts to import. All IDs in the file already exist.', { variant: 'info' });
         }
       } catch (error) {
         console.error('Artifact import failed', error);
-        alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        showToast(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          variant: 'error',
+        });
       }
     },
-    [allArtifacts, canUseDataApi, getIdToken, markProjectActivity, mergeArtifacts, project.id],
+    [
+      allArtifacts,
+      canUseDataApi,
+      getIdToken,
+      markProjectActivity,
+      mergeArtifacts,
+      project.id,
+      showToast,
+    ],
   );
 
   const handleExportArtifacts = useCallback(
     async (format: 'csv' | 'tsv') => {
       if (!canUseDataApi) {
-        alert('Artifact export requires a connection to the data server.');
+        showToast('Artifact export requires a connection to the data server.', { variant: 'error' });
         return;
       }
 
@@ -540,16 +552,26 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         markProjectActivity({ exportedData: true });
       } catch (error) {
         console.error('Artifact export failed', error);
-        alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        showToast(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          variant: 'error',
+        });
       }
     },
-    [canUseDataApi, getIdToken, markProjectActivity, project.id, project.title, triggerDownload],
+    [
+      canUseDataApi,
+      getIdToken,
+      markProjectActivity,
+      project.id,
+      project.title,
+      showToast,
+      triggerDownload,
+    ],
   );
 
   const handleChapterBibleExport = useCallback(
     async (format: 'markdown' | 'pdf') => {
       if (projectArtifacts.length === 0) {
-        alert('Capture some lore before exporting a chapter bible.');
+        showToast('Capture some lore before exporting a chapter bible.', { variant: 'info' });
         return;
       }
 
@@ -562,15 +584,15 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         markProjectActivity({ exportedData: true });
       } catch (error) {
         console.error('Chapter bible export failed', error);
-        alert('Unable to export the chapter bible right now. Please try again.');
+        showToast('Unable to export the chapter bible right now. Please try again.', { variant: 'error' });
       }
     },
-    [markProjectActivity, project, projectArtifacts],
+    [markProjectActivity, project, projectArtifacts, showToast],
   );
 
   const handleLoreJsonExport = useCallback(() => {
     if (projectArtifacts.length === 0) {
-      alert('Capture some lore before exporting a lore bundle.');
+      showToast('Capture some lore before exporting a lore bundle.', { variant: 'info' });
       return;
     }
 
@@ -579,29 +601,29 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
       markProjectActivity({ exportedData: true });
     } catch (error) {
       console.error('Lore JSON export failed', error);
-      alert('Unable to export lore JSON right now. Please try again.');
+      showToast('Unable to export lore JSON right now. Please try again.', { variant: 'error' });
     }
-  }, [markProjectActivity, project, projectArtifacts]);
+  }, [markProjectActivity, project, projectArtifacts, showToast]);
 
   const handlePublish = useCallback(() => {
     if (projectArtifacts.length === 0) {
-      alert('Capture some lore before publishing.');
+      showToast('Capture some lore before publishing.', { variant: 'info' });
       return;
     }
 
     exportProjectAsStaticSite(project, projectArtifacts);
     markProjectActivity({ publishedSite: true });
     void addXp(25);
-  }, [addXp, markProjectActivity, project, projectArtifacts]);
+  }, [addXp, markProjectActivity, project, projectArtifacts, showToast]);
 
   const handleStartGitHubPublish = useCallback(() => {
     if (!canPublishToGitHub) {
-      alert('Publishing to GitHub requires a connection to the data server.');
+      showToast('Publishing to GitHub requires a connection to the data server.', { variant: 'error' });
       return;
     }
 
     void onStartGitHubPublish();
-  }, [canPublishToGitHub, onStartGitHubPublish]);
+  }, [canPublishToGitHub, onStartGitHubPublish, showToast]);
 
   const handleQuickFactSubmit = useCallback(
     async ({ fact, detail }: QuickFactInput) => {

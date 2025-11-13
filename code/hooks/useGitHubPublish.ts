@@ -12,6 +12,7 @@ import type { Artifact, Project } from '../types';
 import type { GitHubAuthStatus, PublishSuccessInfo } from '../components/PublishToGitHubModal';
 import type { ProjectPublishRecord } from '../utils/publishHistory';
 import { createProjectStaticSiteFiles } from '../utils/export';
+import { useToast } from '../contexts/ToastContext';
 import {
   checkGitHubAuthorization,
   publishToGitHub,
@@ -60,6 +61,7 @@ export function useGitHubPublish({
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<PublishSuccessInfo | null>(null);
+  const { showToast } = useToast();
 
   const githubOAuthPopupRef = useRef<Window | null>(null);
   const githubOAuthMonitorRef = useRef<number | null>(null);
@@ -120,7 +122,7 @@ export function useGitHubPublish({
 
       const message = 'GitHub authorization did not complete. Please try again.';
       openModal('error', message);
-      alert(message);
+      showToast(message, { variant: 'error' });
     } catch (authError) {
       console.error('Failed to verify GitHub authorization', authError);
       const message =
@@ -128,9 +130,9 @@ export function useGitHubPublish({
           ? authError.message
           : 'Unable to verify GitHub authorization. Please try again.';
       openModal('error', message);
-      alert(message);
+      showToast(message, { variant: 'error' });
     }
-  }, [getIdToken, githubAuthSuccessMessage, openModal]);
+  }, [getIdToken, githubAuthSuccessMessage, openModal, showToast]);
 
   useEffect(
     () => () => {
@@ -155,7 +157,7 @@ export function useGitHubPublish({
     } else if (status === 'error') {
       const message = searchParams.get('github_message') ?? 'GitHub authorization failed.';
       openModal('error', message);
-      alert(message);
+      showToast(message, { variant: 'error' });
     }
 
     const url = new URL(window.location.href);
@@ -164,7 +166,7 @@ export function useGitHubPublish({
     const nextSearch = url.searchParams.toString();
     const nextPath = nextSearch ? `${url.pathname}?${nextSearch}` : url.pathname;
     window.history.replaceState({}, document.title, `${nextPath}${url.hash}`);
-  }, [githubAuthSuccessMessage, openModal]);
+  }, [githubAuthSuccessMessage, openModal, showToast]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -213,7 +215,7 @@ export function useGitHubPublish({
             ? messagePayload.message
             : 'GitHub authorization failed.';
         openModal('error', message);
-        alert(message);
+        showToast(message, { variant: 'error' });
       }
     };
 
@@ -221,12 +223,12 @@ export function useGitHubPublish({
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [githubAuthSuccessMessage, openModal]);
+  }, [githubAuthSuccessMessage, openModal, showToast]);
 
   const startAuthorization = useCallback(async () => {
     if (!dataApiEnabled || !dataApiBaseUrl) {
       openModal('error', DATA_API_DISABLED_MESSAGE);
-      alert(DATA_API_DISABLED_MESSAGE);
+      showToast(DATA_API_DISABLED_MESSAGE, { variant: 'error' });
       return;
     }
 
@@ -272,13 +274,14 @@ export function useGitHubPublish({
         startError instanceof Error ? startError.message : 'Please try again.'
       }`;
       openModal('error', message);
-      alert(message);
+      showToast(message, { variant: 'error' });
     }
   }, [
     dataApiEnabled,
     getIdToken,
     clearGithubOAuthMonitor,
     openModal,
+    showToast,
     verifyGithubAuthorization,
   ]);
 
