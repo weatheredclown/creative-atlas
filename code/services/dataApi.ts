@@ -428,6 +428,12 @@ export interface PublishToGitHubResponse {
   pagesUrl: string;
 }
 
+interface PublishToGitHubJobResponse {
+  jobId: string;
+  status: { id: string; state: string; updatedAt: string; error?: string };
+  result?: PublishToGitHubResponse;
+}
+
 export interface GitHubRepositorySummary {
   fullName: string;
   name: string;
@@ -443,10 +449,16 @@ export const publishToGitHub = async (
     throw new Error('Data API is not configured.');
   }
 
-  return sendJson<PublishToGitHubResponse>(token, '/api/github/publish', {
+  const response = await sendJson<PublishToGitHubJobResponse>(token, '/api/github/publish', {
     method: 'POST',
     body: { repoName, publishDir, siteFiles },
   });
+
+  if (!response.result) {
+    throw new Error('GitHub publish job did not return a result.');
+  }
+
+  return response.result;
 };
 
 export const fetchGitHubRepositories = async (
