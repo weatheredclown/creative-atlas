@@ -285,20 +285,23 @@ export function useGitHubPublish({
   const publishToRepository = useCallback(
     async (repoName: string, publishDir: string) => {
       if (!selectedProject) {
-        setError('Select a project to publish to GitHub.');
-        return;
+        const message = 'Select a project to publish to GitHub.';
+        setError(message);
+        throw new Error(message);
       }
 
       if (projectArtifacts.length === 0) {
-        setError('Add at least one artifact before publishing to GitHub.');
-        return;
+        const message = 'Add at least one artifact before publishing to GitHub.';
+        setError(message);
+        throw new Error(message);
       }
 
       const siteFiles = createProjectStaticSiteFiles(selectedProject, projectArtifacts);
 
       if (siteFiles.length === 0) {
-        setError('No publishable content was generated for this project.');
-        return;
+        const message = 'No publishable content was generated for this project.';
+        setError(message);
+        throw new Error(message);
       }
 
       setError(null);
@@ -312,8 +315,10 @@ export function useGitHubPublish({
         if (normalizedPublishDir.toLowerCase() === 'docs') {
           publishDirectory = 'docs';
         } else {
-          setError('GitHub Pages only supports publishing from the site root or a docs/ folder. Leave the field blank or enter "docs".');
-          return;
+          const message =
+            'GitHub Pages only supports publishing from the site root or a docs/ folder. Leave the field blank or enter "docs".';
+          setError(message);
+          throw new Error(message);
         }
       }
 
