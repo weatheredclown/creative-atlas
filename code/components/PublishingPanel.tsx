@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 
 import { ProjectPublishRecord } from '../utils/publishHistory';
 import { BuildingStorefrontIcon, GitHubIcon, GlobeAltIcon, MegaphoneIcon } from './Icons';
+import { useToast } from '../contexts/ToastContext';
 
 interface PublishingPanelProps {
   publishHistoryRecord: ProjectPublishRecord | null;
@@ -18,6 +19,7 @@ const PublishingPanel: React.FC<PublishingPanelProps> = ({
   onPublishProject,
   onStartGitHubPublish,
 }) => {
+  const { showToast } = useToast();
   const handleStartGitHubPublish = useCallback(() => {
     if (!canPublishToGitHub) {
       return;
@@ -29,9 +31,9 @@ const PublishingPanel: React.FC<PublishingPanelProps> = ({
         error instanceof Error && error.message
           ? error.message
           : 'Unable to start the GitHub publish flow. Please try again.';
-      alert(message);
+      showToast(message, { variant: 'error' });
     });
-  }, [canPublishToGitHub, onStartGitHubPublish]);
+  }, [canPublishToGitHub, onStartGitHubPublish, showToast]);
 
   return (
     <section

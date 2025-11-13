@@ -19,6 +19,7 @@ import {
 } from '../types';
 import JSZip from 'jszip';
 import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
+import { emitToast } from '../contexts/ToastContext';
 
 interface ResolvedRelation {
     kind: string;
@@ -1009,7 +1010,7 @@ export const exportLoreJson = (project: Project, artifacts: Artifact[]) => {
 
 const exportArtifactsToDelimitedFile = (artifacts: Artifact[], projectName: string, delimiter: string, extension: string) => {
     if (artifacts.length === 0) {
-        alert('No artifacts to export.');
+        emitToast('No artifacts to export.', { variant: 'info' });
         return;
     }
 

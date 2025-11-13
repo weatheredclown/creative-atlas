@@ -16,6 +16,7 @@ import Modal from './components/Modal';
 import CreateProjectForm from './components/CreateProjectForm';
 import { useUserData } from './contexts/UserDataContext';
 import { useAuth } from './contexts/AuthContext';
+import { useToast } from './contexts/ToastContext';
 import { achievements } from './src/data/achievements';
 import { milestoneRoadmap } from './src/data/milestones';
 import { getCurrentDateKey, questlines, selectDailyQuestsForDate } from './src/data/quests';
@@ -98,6 +99,7 @@ export default function App() {
     loadMoreProjects,
   } = useUserData();
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
+  const { showToast } = useToast();
   const ghostAgentRef = useRef<GhostAgentHandle>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -415,7 +417,7 @@ export default function App() {
     async (projectId: string) => {
       const success = await deleteProject(projectId);
       if (!success) {
-        alert('Failed to delete project. Please try again later.');
+        showToast('Failed to delete project. Please try again later.', { variant: 'error' });
         return;
       }
       setProjectActivityLog((prev) => {
@@ -433,7 +435,7 @@ export default function App() {
       });
       setSelectedProjectId((current) => (current === projectId ? null : current));
     },
-    [deleteProject],
+    [deleteProject, showToast],
   );
 
   const handleGitHubArtifactsImported = useCallback(
@@ -564,11 +566,13 @@ export default function App() {
       await loadMoreProjects();
     } catch (error) {
       console.error('Failed to load more projects', error);
-      alert('Unable to load additional projects right now. Please try again later.');
+      showToast('Unable to load additional projects right now. Please try again later.', {
+        variant: 'error',
+      });
     } finally {
       setIsLoadingMoreProjects(false);
     }
-  }, [canLoadMoreProjects, loadMoreProjects]);
+  }, [canLoadMoreProjects, loadMoreProjects, showToast]);
 
   const handleTutorialDismiss = useCallback(() => {
     setIsTutorialVisible(false);

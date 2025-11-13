@@ -7,6 +7,7 @@ import './index.css';
 import './services/firebaseApp';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserDataProvider } from './contexts/UserDataContext';
+import { ToastProvider } from './contexts/ToastContext';
 import AuthGate from './components/AuthGate';
 import GitHubCallback from './components/GitHubCallback';
 import TermsOfService from './pages/TermsOfService';
@@ -48,9 +49,10 @@ if (shouldBlockRender) {
 } else {
   root.render(
     <React.StrictMode>
-      <Router>
-        <AuthProvider>
-          <Routes>
+      <ToastProvider>
+        <Router>
+          <AuthProvider>
+            <Routes>
             <Route path="/policies/terms" element={<TermsOfService />} />
             <Route path="/share/:shareId" element={<SharedProjectPage />} />
             <Route
@@ -77,9 +79,10 @@ if (shouldBlockRender) {
                 </Protected>
               )}
             />
-          </Routes>
-        </AuthProvider>
-      </Router>
+            </Routes>
+          </AuthProvider>
+        </Router>
+      </ToastProvider>
     </React.StrictMode>
   );
 }
