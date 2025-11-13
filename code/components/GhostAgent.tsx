@@ -24,6 +24,36 @@ const MAX_LOGS = 10;
 const HISTORY_LIMIT = 40;
 const CURSOR_MOVE_DELAY_MS = 700;
 const POST_ACTION_DELAY_MS = 1200;
+const CALIBRATION_STORAGE_KEY = 'ghost-agent-calibration-history';
+const CALIBRATION_OBJECTIVE =
+  'Calibration check: Move the ghost cursor into the center of the red calibration square on the screen, then report done once you are fully inside the square.';
+const CALIBRATION_HISTORY_LIMIT = 12;
+
+interface CalibrationTarget {
+  x: number;
+  y: number;
+  size: number;
+}
+
+interface CalibrationHistoryEntry {
+  id: string;
+  startedAt: string;
+  completedAt: string;
+  success: boolean;
+  target: CalibrationTarget;
+  finalCursor: { x: number; y: number } | null;
+  offset: { x: number; y: number } | null;
+  distance: number | null;
+  notes: string[];
+}
+
+interface CalibrationRun {
+  id: string;
+  target: CalibrationTarget;
+  startedAt: number;
+  previousObjective: string;
+  hasRecordedResult: boolean;
+}
 
 const delay = (ms: number): Promise<void> =>
   new Promise(resolve => {
@@ -63,6 +93,121 @@ const setReactInputValue = (element: HTMLInputElement | HTMLTextAreaElement, tex
 
   element.dispatchEvent(new Event('input', { bubbles: true }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const isPointInsideTarget = (point: { x: number; y: number }, target: CalibrationTarget): boolean => {
+  return (
+    point.x >= target.x &&
+    point.x <= target.x + target.size &&
+    point.y >= target.y &&
+    point.y <= target.y + target.size
+  );
+};
+
+const generateCalibrationTarget = (): CalibrationTarget => {
+  const size = Math.min(140, Math.max(90, Math.round(window.innerWidth * 0.12)));
+  const horizontalMargin = Math.max(48, Math.round(size * 0.75));
+  const verticalMargin = Math.max(120, Math.round(size * 0.75));
+  const availableWidth = Math.max(window.innerWidth - size - horizontalMargin * 2, 0);
+  const availableHeight = Math.max(window.innerHeight - size - verticalMargin * 2, 0);
+  const x = Math.round(horizontalMargin + Math.random() * availableWidth);
+  const y = Math.round(verticalMargin + Math.random() * availableHeight);
+  return { x, y, size };
+};
+
+const loadCalibrationHistory = (): CalibrationHistoryEntry[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const stored = window.localStorage.getItem(CALIBRATION_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((entry: unknown): entry is CalibrationHistoryEntry => {
+      if (!entry || typeof entry !== 'object') {
+        return false;
+      }
+
+      const candidate = entry as Partial<CalibrationHistoryEntry>;
+      return (
+        typeof candidate.id === 'string' &&
+        typeof candidate.startedAt === 'string' &&
+        typeof candidate.completedAt === 'string' &&
+        typeof candidate.success === 'boolean' &&
+        candidate.target !== undefined
+      );
+    });
+  } catch (error) {
+    console.warn('Unable to parse calibration history', error);
+    return [];
+  }
+};
+
+const persistCalibrationHistory = (entries: CalibrationHistoryEntry[]): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CALIBRATION_STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn('Failed to persist calibration history', error);
+  }
+};
+
+const deriveCalibrationNotes = (
+  success: boolean,
+  offset: { x: number; y: number } | null,
+  distance: number | null,
+  finalCursor: { x: number; y: number } | null,
+): string[] => {
+  const notes: string[] = [];
+
+  if (success) {
+    notes.push('Calibration succeeded: the cursor reached the red square.');
+    if (offset) {
+      const absX = Math.abs(offset.x);
+      const absY = Math.abs(offset.y);
+      if (absX > 4 || absY > 4) {
+        notes.push(
+          `Cursor stopped ${absX}px horizontally and ${absY}px vertically from the square center. Consider fine-tuning coordinate scaling if this offset is consistent.`,
+        );
+      }
+    }
+    return notes;
+  }
+
+  notes.push('Calibration failed: the agent stopped before entering the red square.');
+
+  if (!finalCursor) {
+    notes.push('The ghost cursor never moved. Verify the agent is producing move/click actions.');
+    return notes;
+  }
+
+  if (distance !== null) {
+    notes.push(`Final cursor position was ${distance}px away from the square center.`);
+  }
+
+  if (offset) {
+    const { x, y } = offset;
+    if (Math.abs(x) > Math.abs(y) * 1.5) {
+      notes.push('Cursor drift was primarily horizontal. Inspect viewport width normalization.');
+    } else if (Math.abs(y) > Math.abs(x) * 1.5) {
+      notes.push('Cursor drift was primarily vertical. Inspect viewport height normalization.');
+    } else {
+      notes.push('Cursor drift was diagonal. Check both axes and consider capturing additional calibration samples.');
+    }
+  }
+
+  return notes;
 };
 
 const GhostCursorIcon: React.FC<{ isClicking: boolean }> = ({ isClicking }) => (
@@ -128,6 +273,8 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const [feedbackInput, setFeedbackInput] = useState('');
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [isClicking, setIsClicking] = useState(false);
+  const [calibrationOverlay, setCalibrationOverlay] = useState<CalibrationTarget | null>(null);
+  const [calibrationHistory, setCalibrationHistory] = useState<CalibrationHistoryEntry[]>([]);
 
   const objectiveFieldId = useId();
   const feedbackFieldId = useId();
@@ -136,10 +283,99 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const historyRef = useRef<GhostAgentHistoryEntry[]>([]);
   const stepCountRef = useRef(0);
   const html2CanvasRef = useRef<Html2CanvasFn | null>(null);
+  const cursorPosRef = useRef({ x: 0, y: 0 });
+  const calibrationRunRef = useRef<CalibrationRun | null>(null);
+  const calibrationShouldStopRef = useRef(false);
+  const hasLoadedCalibrationHistoryRef = useRef(false);
+  const hasCursorMovedRef = useRef(false);
 
   const addLog = useCallback((message: string) => {
     setLogs(previous => [...previous.slice(-(MAX_LOGS - 1)), message]);
   }, []);
+
+  useEffect(() => {
+    const history = loadCalibrationHistory();
+    setCalibrationHistory(history);
+    hasLoadedCalibrationHistoryRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedCalibrationHistoryRef.current) {
+      return;
+    }
+
+    persistCalibrationHistory(calibrationHistory);
+  }, [calibrationHistory]);
+
+  const finalizeCalibration = useCallback(
+    ({
+      success,
+      reason,
+      finalCursor,
+    }: {
+      success: boolean;
+      reason: string;
+      finalCursor?: { x: number; y: number } | null;
+    }) => {
+      const run = calibrationRunRef.current;
+      if (!run || run.hasRecordedResult) {
+        return;
+      }
+
+      run.hasRecordedResult = true;
+
+      const finalPoint =
+        finalCursor ?? (hasCursorMovedRef.current ? { ...cursorPosRef.current } : null);
+      const targetCenter = {
+        x: run.target.x + run.target.size / 2,
+        y: run.target.y + run.target.size / 2,
+      };
+      const offset = finalPoint
+        ? {
+            x: Math.round(finalPoint.x - targetCenter.x),
+            y: Math.round(finalPoint.y - targetCenter.y),
+          }
+        : null;
+      const distance = offset ? Math.round(Math.hypot(offset.x, offset.y)) : null;
+      const notes = deriveCalibrationNotes(success, offset, distance, finalPoint ?? null);
+
+      const entry: CalibrationHistoryEntry = {
+        id: run.id,
+        startedAt: new Date(run.startedAt).toISOString(),
+        completedAt: new Date().toISOString(),
+        success,
+        target: run.target,
+        finalCursor: finalPoint,
+        offset,
+        distance,
+        notes,
+      };
+
+      setCalibrationHistory(previous => {
+        const next = [...previous.slice(-(CALIBRATION_HISTORY_LIMIT - 1)), entry];
+        return next;
+      });
+
+      setCalibrationOverlay(null);
+      hasCursorMovedRef.current = false;
+      calibrationRunRef.current = null;
+      setObjective(run.previousObjective);
+
+      if (notes.length > 0) {
+        addLog(`📐 ${notes[0]}`);
+        notes.slice(1, 3).forEach(note => {
+          addLog(`🔍 ${note}`);
+        });
+      }
+
+      if (!success) {
+        addLog(`🛠️ ${reason}`);
+      } else {
+        addLog(`✅ ${reason}`);
+      }
+    },
+    [addLog, setObjective],
+  );
 
   const loadHtml2Canvas = useCallback(async (): Promise<Html2CanvasFn> => {
     if (html2CanvasRef.current) {
@@ -179,22 +415,51 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     }
   }, [addLog, loadHtml2Canvas]);
 
-  const stopAgent = useCallback((message?: string) => {
-    isRunningRef.current = false;
-    setIsRunning(false);
-    setIsAwaitingFeedback(false);
-    setPendingQuestion(null);
-    setFeedbackInput('');
-    stepCountRef.current = 0;
-    historyRef.current = [];
-    if (message) {
-      addLog(message);
-    }
-  }, [addLog]);
+  const stopAgent = useCallback(
+    (message?: string) => {
+      if (calibrationRunRef.current && !calibrationRunRef.current.hasRecordedResult) {
+        finalizeCalibration({
+          success: false,
+          reason: 'Agent stopped before reaching the calibration square.',
+        });
+      }
 
-  const updateCursor = useCallback((x: number, y: number) => {
-    setCursorPos({ x, y });
-  }, []);
+      calibrationShouldStopRef.current = false;
+      isRunningRef.current = false;
+      setIsRunning(false);
+      setIsAwaitingFeedback(false);
+      setPendingQuestion(null);
+      setFeedbackInput('');
+      stepCountRef.current = 0;
+      historyRef.current = [];
+      if (message) {
+        addLog(message);
+      }
+    },
+    [addLog, finalizeCalibration],
+  );
+
+  const updateCursor = useCallback(
+    (x: number, y: number) => {
+      cursorPosRef.current = { x, y };
+      setCursorPos({ x, y });
+      hasCursorMovedRef.current = true;
+
+      const run = calibrationRunRef.current;
+      if (run && !run.hasRecordedResult) {
+        const point = { x, y };
+        if (isPointInsideTarget(point, run.target)) {
+          calibrationShouldStopRef.current = true;
+          finalizeCalibration({
+            success: true,
+            reason: 'Calibration check succeeded: cursor entered the red square.',
+            finalCursor: point,
+          });
+        }
+      }
+    },
+    [finalizeCalibration],
+  );
 
   const executeAction = useCallback(
     async (action: GhostAgentAction | null): Promise<'continue' | 'pause' | 'stop'> => {
@@ -252,6 +517,12 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       }
 
       updateCursor(screenX, screenY);
+
+      if (calibrationShouldStopRef.current) {
+        calibrationShouldStopRef.current = false;
+        return 'stop';
+      }
+
       await delay(CURSOR_MOVE_DELAY_MS);
 
       if (!isRunningRef.current) {
@@ -309,8 +580,12 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   );
 
   const runAgentLoop = useCallback(
-    async ({ isResuming = false }: { isResuming?: boolean } = {}) => {
-      const trimmedObjective = objective.trim();
+    async ({
+      isResuming = false,
+      overrideObjective,
+    }: { isResuming?: boolean; overrideObjective?: string } = {}) => {
+      const activeObjective = overrideObjective ?? objective;
+      const trimmedObjective = activeObjective.trim();
       if (!trimmedObjective) {
         return;
       }
@@ -398,6 +673,46 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     stopAgent('⏹️ Agent paused.');
   }, [stopAgent]);
 
+  const handleStartCalibration = useCallback(() => {
+    if (isRunning) {
+      addLog('⚠️ Please wait for the current run to finish before starting calibration.');
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      addLog('⚠️ Calibration is only available in the browser environment.');
+      return;
+    }
+
+    const target = generateCalibrationTarget();
+    const runId = `cal-${Date.now()}`;
+
+    calibrationRunRef.current = {
+      id: runId,
+      target,
+      startedAt: Date.now(),
+      previousObjective: objective,
+      hasRecordedResult: false,
+    };
+
+    hasCursorMovedRef.current = false;
+    calibrationShouldStopRef.current = false;
+    setCalibrationOverlay(target);
+    setObjective(CALIBRATION_OBJECTIVE);
+    setIsOpen(true);
+
+    window.setTimeout(() => {
+      addLog(
+        `🎯 Calibration target center at (${Math.round(
+          target.x + target.size / 2,
+        )}px, ${Math.round(target.y + target.size / 2)}px) with size ${target.size}px.`,
+      );
+      addLog('📐 Calibration mode: guiding the agent to the red square.');
+    }, 0);
+
+    void runAgentLoop({ overrideObjective: CALIBRATION_OBJECTIVE });
+  }, [addLog, isRunning, objective, runAgentLoop]);
+
   const handleFeedbackSubmit = useCallback(() => {
     const trimmed = feedbackInput.trim();
     if (trimmed.length === 0) {
@@ -433,6 +748,13 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     ? 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-amber-300/40 bg-amber-950/40 p-3 font-mono text-[11px] leading-relaxed text-amber-100'
     : 'ghost-agent-ignore h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/50 p-3 font-mono text-[11px] leading-relaxed text-slate-200';
   const logDividerClass = isAwaitingFeedback ? 'border-amber-300/40' : 'border-white/10';
+  const recentCalibrationHistory = useMemo(
+    () => [...calibrationHistory].reverse().slice(0, 4),
+    [calibrationHistory],
+  );
+  const calibrationStatusText = calibrationOverlay
+    ? 'Calibration target active. The agent will stop automatically when the cursor enters the square.'
+    : 'Run calibration to verify the ghost cursor is aligned with on-screen coordinates. Results are stored locally for future debugging sessions.';
 
   const closeAgent = useCallback(
     (message?: string) => {
@@ -487,6 +809,23 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {calibrationOverlay ? (
+        <div
+          className="pointer-events-none fixed z-[9950]"
+          style={{
+            left: `${calibrationOverlay.x}px`,
+            top: `${calibrationOverlay.y}px`,
+            width: `${calibrationOverlay.size}px`,
+            height: `${calibrationOverlay.size}px`,
+          }}
+        >
+          <div className="absolute inset-0 rounded-lg border-4 border-red-500/80 bg-red-500/15 shadow-[0_0_30px_rgba(248,113,113,0.6)]" />
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-red-600 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow">
+            Calibration target
+          </div>
+        </div>
+      ) : null}
 
       {(isOpen || showTriggerButton) && (
         <div
@@ -624,6 +963,57 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 >
                   <span>Start automation</span>
                 </button>
+              )}
+            </div>
+            <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
+                <button
+                  type="button"
+                  onClick={handleStartCalibration}
+                  className="rounded-lg border border-red-400/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isRunning}
+                >
+                  Run calibration check
+                </button>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
+              {recentCalibrationHistory.length > 0 ? (
+                <div className="space-y-2">
+                  {recentCalibrationHistory.map(entry => {
+                    const timestamp = new Date(entry.completedAt);
+                    const formattedTime = Number.isNaN(timestamp.getTime())
+                      ? 'Unknown time'
+                      : timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const toneClass = entry.success ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : 'border-red-400/50 bg-red-500/10 text-red-100';
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${toneClass}`}
+                      >
+                        <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide">
+                          <span>{entry.success ? 'Success' : 'Needs attention'}</span>
+                          <span className="text-[10px] font-medium tracking-normal text-white/70">{formattedTime}</span>
+                        </div>
+                        {entry.notes.length > 0 ? (
+                          <p className="mt-1 text-xs text-white/90">{entry.notes[0]}</p>
+                        ) : null}
+                        {entry.offset ? (
+                          <p className="mt-1 text-[11px] text-white/80">
+                            Offset Δx {entry.offset.x}px, Δy {entry.offset.y}px
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-white/80">No cursor movement recorded.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-xs text-slate-200/80">
+                  No calibration runs yet. Use the button above to collect coordinate samples.
+                </p>
               )}
             </div>
           </div>
