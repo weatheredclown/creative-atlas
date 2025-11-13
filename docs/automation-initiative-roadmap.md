@@ -42,6 +42,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - ➕ Dialogue Forge scene generator lets creators feed a prompt and selected characters to Atlas Intelligence and receive structured dialogue with beat suggestions; wire its outputs into scene templates and exports next.
     - Added prompt length guards so Dialogue Forge trims lengthy bios, prompts, and beats before sending Gemini requests.
     - Widened the Dialogue Forge prompt budget so prompts (2.6k chars, up from 1.2k), summaries (2k, up from 1.2k), beats (3k shared across up to 10 beats instead of 1.2k apiece), and cast bios (3.4k shared, up from 400-character snippets) can reach Gemini without triggering the oversized-request error.
+    - ✅ Restored the creative-writing Gemini proxy so Dialogue Forge now calls the standard 2.5 text models while the automation agent continues to use the computer-use endpoint.
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
 
 ### Reporting & Project Insights (Understand & Explore Work)

@@ -9,7 +9,7 @@ import {
 } from '@google/genai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
-import { getGeminiClient } from '../utils/geminiClient.js';
+import { getGenAiClient } from '../utils/genaiClient.js';
 import { renderAgentMacrosForPrompt } from './agentMacros.js';
 
 const router = Router();
@@ -382,9 +382,9 @@ router.post(
 
     const payload = parsed.data;
 
-    let client: ReturnType<typeof getGeminiClient>;
+    let client: ReturnType<typeof getGenAiClient>;
     try {
-      client = getGeminiClient();
+      client = getGenAiClient();
     } catch (error) {
       console.error('Failed to initialize Gemini client', error);
       res.status(500).json({
