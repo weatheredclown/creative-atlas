@@ -38,19 +38,30 @@ const normalizeCoordinate = (value: unknown, max: number): number | null => {
     return null;
   }
 
+  const clampPixels = (pixels: number): number => clamp(Math.round(pixels), 0, max);
+  const clampRatio = (ratio: number): number => clampPixels(ratio * max);
+
   if (value <= 1) {
-    return clamp(Math.round(value * max), 0, max);
+    return clampRatio(value);
   }
 
-  if (value <= max * 1.5) {
-    return clamp(Math.round(value), 0, max);
+  if (value <= 100) {
+    return clampRatio(value / 100);
   }
 
   if (value <= 1000) {
-    return clamp(Math.round((value / 1000) * max), 0, max);
+    if (value > max || max > 1000) {
+      return clampRatio(value / 1000);
+    }
+
+    return clampPixels(value);
   }
 
-  return clamp(Math.round(value), 0, max);
+  if (value <= max * 1.5) {
+    return clampPixels(value);
+  }
+
+  return clampPixels(value);
 };
 
 const setReactInputValue = (element: HTMLInputElement | HTMLTextAreaElement, text: string): void => {

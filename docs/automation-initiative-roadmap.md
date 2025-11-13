@@ -26,6 +26,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Authored reusable macro definitions under `server/src/routes/agentMacros.ts` and threaded them into the Gemini prompt so the agent can reason about multi-step patterns; next, expose macro selections to the client UI so operators can trigger them explicitly.
   - Updated Gemini SDK usage in the agent proxy to match the 1.x API, keeping `/api/agent/step` functional after upstream changes.
   - Add regression coverage so tool config changes (e.g., reintroducing `allowedFunctionNames`) surface in tests before the Gemini API rejects requests.
+  - ✅ Normalized viewport coordinate scaling so 0-1000 grid actions land on the intended DOM targets; next, log sampled coordinate translations to validate the new heuristics before expanding macro coverage.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
   - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
 - Document decisions required for collaboration scope (real-time vs. turn-based) and list dependencies before implementation begins.
