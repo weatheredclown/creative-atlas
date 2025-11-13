@@ -47,6 +47,19 @@ interface CalibrationHistoryEntry {
   notes: string[];
 }
 
+interface CalibrationAggregate {
+  sampleCount: number;
+  successCount: number;
+  failureCount: number;
+  meanOffset: { x: number; y: number };
+  meanAbsoluteOffset: { x: number; y: number };
+  meanDistance: number | null;
+  failureRate: number;
+  severity: 'aligned' | 'watch' | 'critical';
+  summary: string;
+  recommendation: string | null;
+}
+
 interface CalibrationRun {
   id: string;
   target: CalibrationTarget;
@@ -225,6 +238,101 @@ const deriveCalibrationNotes = (
   }
 
   return notes;
+};
+
+const deriveCalibrationAggregate = (
+  history: CalibrationHistoryEntry[],
+): CalibrationAggregate | null => {
+  if (history.length === 0) {
+    return null;
+  }
+
+  const samples = history.filter(entry => entry.offset !== null);
+  if (samples.length === 0) {
+    return null;
+  }
+
+  const successCount = history.filter(entry => entry.success).length;
+  const failureCount = history.length - successCount;
+
+  const sum = samples.reduce(
+    (acc, entry) => {
+      const offset = entry.offset ?? { x: 0, y: 0 };
+      acc.offsetX += offset.x;
+      acc.offsetY += offset.y;
+      acc.absOffsetX += Math.abs(offset.x);
+      acc.absOffsetY += Math.abs(offset.y);
+      acc.distance +=
+        entry.distance !== null && entry.distance !== undefined
+          ? entry.distance
+          : Math.round(Math.hypot(offset.x, offset.y));
+      return acc;
+    },
+    { offsetX: 0, offsetY: 0, absOffsetX: 0, absOffsetY: 0, distance: 0 },
+  );
+
+  const meanOffset = {
+    x: Math.round(sum.offsetX / samples.length),
+    y: Math.round(sum.offsetY / samples.length),
+  };
+  const meanAbsoluteOffset = {
+    x: Math.round(sum.absOffsetX / samples.length),
+    y: Math.round(sum.absOffsetY / samples.length),
+  };
+  const meanDistance = samples.length > 0 ? Math.round(sum.distance / samples.length) : null;
+  const failureRate = history.length > 0 ? failureCount / history.length : 0;
+
+  let severity: CalibrationAggregate['severity'];
+  if (meanAbsoluteOffset.x <= 6 && meanAbsoluteOffset.y <= 6) {
+    severity = 'aligned';
+  } else if (meanAbsoluteOffset.x <= 30 && meanAbsoluteOffset.y <= 30) {
+    severity = 'watch';
+  } else {
+    severity = 'critical';
+  }
+
+  if (failureRate >= 0.5 && severity !== 'critical') {
+    severity = 'watch';
+  }
+
+  const driftDescriptors: string[] = [];
+  if (meanOffset.x !== 0) {
+    driftDescriptors.push(
+      `${Math.abs(meanOffset.x)}px ${meanOffset.x > 0 ? 'to the right' : 'to the left'}`,
+    );
+  }
+  if (meanOffset.y !== 0) {
+    driftDescriptors.push(
+      `${Math.abs(meanOffset.y)}px ${meanOffset.y > 0 ? 'down' : 'up'}`,
+    );
+  }
+
+  const summary =
+    driftDescriptors.length === 0
+      ? 'Average cursor drift centers on the calibration target.'
+      : `Average cursor drift trends ${driftDescriptors.join(' and ')}.`;
+
+  let recommendation: string | null = null;
+  if (severity === 'watch') {
+    recommendation =
+      'Drift is noticeable. Capture additional samples and verify the 0–1000 coordinate scaling matches the viewport.';
+  } else if (severity === 'critical') {
+    recommendation =
+      'Severe drift detected. Inspect the viewport normalization logic and consider resetting calibration data after adjustments.';
+  }
+
+  return {
+    sampleCount: samples.length,
+    successCount,
+    failureCount,
+    meanOffset,
+    meanAbsoluteOffset,
+    meanDistance,
+    failureRate,
+    severity,
+    summary,
+    recommendation,
+  };
 };
 
 const GhostCursorIcon: React.FC<{ isClicking: boolean }> = ({ isClicking }) => (
@@ -769,6 +877,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     () => [...calibrationHistory].reverse().slice(0, 4),
     [calibrationHistory],
   );
+  const calibrationAggregate = useMemo(
+    () => deriveCalibrationAggregate(calibrationHistory),
+    [calibrationHistory],
+  );
   const calibrationStatusText = calibrationOverlay
     ? 'Calibration target active. The agent will stop automatically when the cursor enters the square.'
     : 'Run calibration to verify the ghost cursor is aligned with on-screen coordinates. Results are stored locally for future debugging sessions.';
@@ -982,7 +1094,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 </button>
               )}
             </div>
-            <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+              <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
                 <button
@@ -995,6 +1107,49 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 </button>
               </div>
               <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
+              {calibrationAggregate ? (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                    calibrationAggregate.severity === 'aligned'
+                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
+                      : calibrationAggregate.severity === 'watch'
+                      ? 'border-amber-400/60 bg-amber-500/10 text-amber-100'
+                      : 'border-red-400/60 bg-red-500/10 text-red-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide">
+                    <span>
+                      {calibrationAggregate.severity === 'aligned'
+                        ? 'Aligned'
+                        : calibrationAggregate.severity === 'watch'
+                        ? 'Monitor drift'
+                        : 'Severe drift'}
+                    </span>
+                    <span className="text-[10px] font-medium tracking-normal text-white/70">
+                      {calibrationAggregate.sampleCount} sample
+                      {calibrationAggregate.sampleCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-white/90">{calibrationAggregate.summary}</p>
+                  <p className="mt-1 text-[11px] text-white/80">
+                    Mean offset Δx {calibrationAggregate.meanOffset.x}px (|Δx| ≈{' '}
+                    {calibrationAggregate.meanAbsoluteOffset.x}px), Δy {calibrationAggregate.meanOffset.y}px (|Δy| ≈{' '}
+                    {calibrationAggregate.meanAbsoluteOffset.y}px)
+                    {calibrationAggregate.meanDistance !== null
+                      ? `, avg distance ${calibrationAggregate.meanDistance}px`
+                      : ''}
+                    .
+                  </p>
+                  <p className="mt-1 text-[11px] text-white/70">
+                    Success rate {Math.round((1 - calibrationAggregate.failureRate) * 100)}% ({calibrationAggregate.successCount}{' '}
+                    success{calibrationAggregate.successCount === 1 ? '' : 'es'}, {calibrationAggregate.failureCount} failure
+                    {calibrationAggregate.failureCount === 1 ? '' : 's'}).
+                  </p>
+                  {calibrationAggregate.recommendation ? (
+                    <p className="mt-1 text-[11px] text-white/80">{calibrationAggregate.recommendation}</p>
+                  ) : null}
+                </div>
+              ) : null}
               {recentCalibrationHistory.length > 0 ? (
                 <div className="space-y-2">
                   {recentCalibrationHistory.map(entry => {
