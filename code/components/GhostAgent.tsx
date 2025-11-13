@@ -18,12 +18,6 @@ import { SparklesIcon, XMarkIcon } from './Icons';
 
 type Html2CanvasFn = typeof import('html2canvas')['default'];
 
-interface CapturedScreen {
-  base64: string;
-  width: number;
-  height: number;
-}
-
 const AGENT_UI_ID = 'ghost-agent-ui';
 const MAX_STEPS = 20;
 const MAX_LOGS = 10;
@@ -644,7 +638,6 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const calibrationShouldStopRef = useRef(false);
   const hasLoadedCalibrationHistoryRef = useRef(false);
   const hasCursorMovedRef = useRef(false);
-  const lastCaptureDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 
   const addLog = useCallback((message: string) => {
     setLogs(previous => [...previous.slice(-(MAX_LOGS - 1)), message]);
@@ -750,41 +743,21 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     return fn;
   }, []);
 
-  const captureScreen = useCallback(async (): Promise<CapturedScreen | null> => {
+  const captureScreen = useCallback(async (): Promise<string | null> => {
     try {
       const html2canvas = await loadHtml2Canvas();
-      const viewportWidth = Math.max(Math.round(window.innerWidth), 1);
-      const viewportHeight = Math.max(Math.round(window.innerHeight), 1);
       const options: Parameters<Html2CanvasFn>[1] = {
         scale: 1,
         useCORS: true,
         logging: false,
         ignoreElements: element =>
           element?.id === AGENT_UI_ID || element?.classList.contains('ghost-agent-ignore'),
-        width: viewportWidth,
-        height: viewportHeight,
-        windowWidth: viewportWidth,
-        windowHeight: viewportHeight,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
-        x: window.scrollX,
-        y: window.scrollY,
       };
 
       const canvas = await html2canvas(document.body, options);
-      const width = Math.max(Math.round(canvas.width), 1);
-      const height = Math.max(Math.round(canvas.height), 1);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const [, base64] = dataUrl.split(',');
-      if (!base64) {
-        throw new Error('Screen capture returned an empty image.');
-      }
-
-      return {
-        base64,
-        width,
-        height,
-      };
+      return base64 ?? null;
     } catch (error) {
       console.error('Screen capture failed', error);
       addLog('❌ Unable to capture the screen. Please try again.');
@@ -809,7 +782,6 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       setFeedbackInput('');
       stepCountRef.current = 0;
       historyRef.current = [];
-      lastCaptureDimensionsRef.current = null;
       if (message) {
         addLog(message);
       }
@@ -886,11 +858,8 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
         return 'continue';
       }
 
-      const captureDimensions = lastCaptureDimensionsRef.current;
-      const viewportWidth = captureDimensions?.width ?? window.innerWidth;
-      const viewportHeight = captureDimensions?.height ?? window.innerHeight;
-      const screenX = normalizeCoordinate(action.x, viewportWidth);
-      const screenY = normalizeCoordinate(action.y, viewportHeight);
+      const screenX = normalizeCoordinate(action.x, window.innerWidth);
+      const screenY = normalizeCoordinate(action.y, window.innerHeight);
 
       if (screenX === null || screenY === null) {
         addLog('⚠️ Action was missing screen coordinates.');
@@ -990,26 +959,21 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
 
       try {
         while (stepCountRef.current < MAX_STEPS && isRunningRef.current) {
-          const capture = await captureScreen();
+          const screenshot = await captureScreen();
 
-          if (!capture) {
+          if (!screenshot) {
             stopAgent('❌ Agent stopped because the screenshot could not be captured.');
             shouldAutoStop = false;
             return;
           }
 
-          lastCaptureDimensionsRef.current = {
-            width: capture.width,
-            height: capture.height,
-          };
-
           let action: GhostAgentAction | null = null;
           try {
             action = await requestGhostAgentStep({
               objective: trimmedObjective,
-              screenshotBase64: capture.base64,
-              screenWidth: capture.width,
-              screenHeight: capture.height,
+              screenshotBase64: screenshot,
+              screenWidth: window.innerWidth,
+              screenHeight: window.innerHeight,
               history: historyRef.current,
             });
           } catch (error) {
