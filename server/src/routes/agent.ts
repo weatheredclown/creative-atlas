@@ -283,7 +283,11 @@ const extractAction = (payload: unknown, request: AgentStepRequest): Record<stri
       switch (functionCall.name) {
         case CLICK_ELEMENT_FUNCTION.name: {
           const x = scaleCoordinate(coerceNumber(args.x), request.screenWidth);
-          const y = scaleCoordinate(coerceNumber(args.y), request.screenHeight);
+          const rawY = coerceNumber(args.y);
+          const y =
+            rawY === undefined
+              ? undefined
+              : scaleCoordinate(MAX_MODEL_COORDINATE - rawY, request.screenHeight);
 
           if (x === undefined || y === undefined) {
             throw new Error('Gemini click action did not include valid coordinates.');
@@ -298,7 +302,11 @@ const extractAction = (payload: unknown, request: AgentStepRequest): Record<stri
         }
         case TYPE_TEXT_FUNCTION.name: {
           const x = scaleCoordinate(coerceNumber(args.x), request.screenWidth);
-          const y = scaleCoordinate(coerceNumber(args.y), request.screenHeight);
+          const rawY = coerceNumber(args.y);
+          const y =
+            rawY === undefined
+              ? undefined
+              : scaleCoordinate(MAX_MODEL_COORDINATE - rawY, request.screenHeight);
           const text = coerceString(args.text);
 
           if (x === undefined || y === undefined) {
@@ -319,7 +327,11 @@ const extractAction = (payload: unknown, request: AgentStepRequest): Record<stri
         }
         case SCROLL_VIEWPORT_FUNCTION.name: {
           const x = scaleCoordinate(coerceNumber(args.x), request.screenWidth);
-          const y = scaleCoordinate(coerceNumber(args.y), request.screenHeight);
+          const rawY = coerceNumber(args.y);
+          const y =
+            rawY === undefined
+              ? undefined
+              : scaleCoordinate(MAX_MODEL_COORDINATE - rawY, request.screenHeight);
 
           if (x === undefined || y === undefined) {
             throw new Error('Gemini scroll action did not include valid coordinates.');
