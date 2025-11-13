@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import { ProjectPublishRecord } from '../utils/publishHistory';
 import { BuildingStorefrontIcon, GitHubIcon, GlobeAltIcon, MegaphoneIcon } from './Icons';
@@ -18,6 +18,21 @@ const PublishingPanel: React.FC<PublishingPanelProps> = ({
   onPublishProject,
   onStartGitHubPublish,
 }) => {
+  const handleStartGitHubPublish = useCallback(() => {
+    if (!canPublishToGitHub) {
+      return;
+    }
+
+    onStartGitHubPublish().catch((error) => {
+      console.error('Failed to start GitHub publish flow', error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Unable to start the GitHub publish flow. Please try again.';
+      alert(message);
+    });
+  }, [canPublishToGitHub, onStartGitHubPublish]);
+
   return (
     <section
       id="publishing"
@@ -91,9 +106,7 @@ const PublishingPanel: React.FC<PublishingPanelProps> = ({
           Publish Site
         </button>
         <button
-          onClick={() => {
-            void onStartGitHubPublish();
-          }}
+          onClick={handleStartGitHubPublish}
           className="flex items-center gap-2 rounded-md border border-slate-600/70 bg-slate-800/80 px-4 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
           type="button"
           disabled={!canPublishToGitHub}
