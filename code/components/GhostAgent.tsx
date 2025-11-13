@@ -216,17 +216,13 @@ const GhostCursorIcon: React.FC<{ isClicking: boolean }> = ({ isClicking }) => (
       width={28}
       height={28}
       viewBox="0 0 28 28"
-      fill="none"
+      fill="#2563eb"
+      stroke="white"
+      stroke-width="1.4"
+      stroke-linejoin="round"
       xmlns="http://www.w3.org/2000/svg"
-      className="drop-shadow-md"
     >
-      <path
-        d="M6 1.5c-.552 0-1 .448-1 1v22c0 .89 1.077 1.337 1.707.707l4.293-4.293 2.586 5.172c.403.806 1.597.678 1.89-.205l6-18c.25-.75-.5-1.5-1.25-1.25l-18 6C1.343 13.114 1.471 14.308 2.277 14.71l5.172 2.586L3.156 21.59c-.63.63-.184 1.707.707 1.707h22c.552 0 1-.448 1-1v-22c0-.89-1.077-1.337-1.707-.707l-22 22"
-        fill="#2563eb"
-        stroke="white"
-        strokeWidth={1.4}
-        strokeLinejoin="round"
-      />
+      <path d="M2.00001 13.9999L26 2L14.0001 26L12.0001 16L2.00001 13.9999Z" />
     </svg>
     <AnimatePresence>
       {isClicking ? (
