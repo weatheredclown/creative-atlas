@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import {
-  type GenerateContentConfig,
+  type GenerationConfig,
   type GenerateContentResponse,
-  type GoogleGenAI,
+  GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
-  BlockedReason,
+  BlockReason,
   FinishReason,
   HarmProbability,
-} from '@google/genai';
+} from '@google/generative-ai';
 import { z } from 'zod';
 import asyncHandler from '../utils/asyncHandler.js';
 import { extractTextFromResponse } from './geminiResponse.js';
@@ -39,7 +39,7 @@ type SafetyRating = {
 };
 
 type PromptFeedback = {
-  blockReason?: BlockedReason | string;
+  blockReason?: BlockReason | string;
   blockReasonMessage?: string;
   safetyRatings?: SafetyRating[];
 };
@@ -49,13 +49,13 @@ type Candidate = {
   safetyRatings?: SafetyRating[];
 };
 
-const normalizeBlockReason = (reason: unknown): BlockedReason | null => {
+const normalizeBlockReason = (reason: unknown): BlockReason | null => {
   if (typeof reason !== 'string') {
     return null;
   }
 
-  if (Object.values(BlockedReason).includes(reason as BlockedReason)) {
-    return reason as BlockedReason;
+  if (Object.values(BlockReason).includes(reason as BlockReason)) {
+    return reason as BlockReason;
   }
 
   return null;
@@ -227,7 +227,7 @@ const resolveSafetyIssue = (response: GenerateContentResponse):
 
   const promptBlocked = Boolean(
     promptFeedback?.blockReason &&
-      promptFeedback.blockReason !== BlockedReason.BLOCKED_REASON_UNSPECIFIED,
+      promptFeedback.blockReason !== BlockReason.BLOCKED_REASON_UNSPECIFIED,
   );
 
   const candidateFinishReasons = Array.from(
@@ -307,7 +307,7 @@ router.post(
 
     const { model, prompt, config } = parsed.data;
 
-    let client: GoogleGenAI;
+    let client: GoogleGenerativeAI;
     try {
       client = getGeminiClient();
     } catch (error) {
@@ -344,9 +344,7 @@ router.post(
       },
     ];
 
-    const generationConfig: GenerateContentConfig = {
-      safetySettings,
-    };
+    const generationConfig: GenerationConfig = {};
 
     if (config) {
       if (config.temperature !== undefined) {
@@ -370,15 +368,16 @@ router.post(
       }
 
       if (config.responseSchema !== undefined) {
-        generationConfig.responseSchema = config.responseSchema as GenerateContentConfig['responseSchema'];
+        generationConfig.responseSchema = config.responseSchema as GenerationConfig['responseSchema'];
       }
     }
 
     try {
-      const response = await client.models.generateContent({
-        model,
+      const modelClient = client.getGenerativeModel({ model });
+      const response = await modelClient.generateContent({
         contents,
-        config: generationConfig,
+        safetySettings,
+        generationConfig,
       });
       const safetyIssue = resolveSafetyIssue(response);
 
