@@ -18,7 +18,10 @@ const Header: React.FC<{
   onStartTutorial: () => void;
   adminAction?: React.ReactNode;
 }> = ({ profile, xpProgress, level, onSignOut, onStartTutorial, adminAction }) => (
-  <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center">
+  <header
+    className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-10 px-4 sm:px-8 py-3 flex justify-between items-center"
+    data-app-header
+  >
     <div className="flex items-center gap-3">
       <CubeIcon className="w-7 h-7 text-cyan-400" />
       <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
