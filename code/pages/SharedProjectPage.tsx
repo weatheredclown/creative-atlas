@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ShareIcon, LinkIcon, Spinner } from '../components/Icons';
 import { fetchSharedProject, isDataApiConfigured } from '../services/dataApi';
-import type { Artifact, Project } from '../types';
+import type { Artifact, Project, SceneDialogueLine } from '../types';
+import { ArtifactType } from '../types';
+import { sanitizeSceneArtifactData } from '../utils/sceneArtifacts';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
 
 interface SharedProjectState {
@@ -31,6 +33,7 @@ const SharedProjectPage: React.FC = () => {
     project: null,
     artifacts: [],
   });
+  const sanitizeTimestampRef = useRef<number>(Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +103,30 @@ const SharedProjectPage: React.FC = () => {
     });
 
     return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [artifacts]);
+
+  const dialoguePreviews = useMemo(() => {
+    const previews = new Map<string, { lines: SceneDialogueLine[]; generatedAt?: string }>();
+
+    artifacts.forEach((artifact) => {
+      if (artifact.type !== ArtifactType.Scene) {
+        return;
+      }
+
+      try {
+        const data = sanitizeSceneArtifactData(artifact.data, sanitizeTimestampRef.current);
+        if (data.dialogue.length > 0) {
+          previews.set(artifact.id, { lines: data.dialogue, generatedAt: data.generatedAt });
+        }
+      } catch (error) {
+        console.warn('Unable to display dialogue preview for shared scene artifact.', {
+          artifactId: artifact.id,
+          error,
+        });
+      }
+    });
+
+    return previews;
   }, [artifacts]);
 
   const totalRelations = useMemo(
@@ -243,31 +270,60 @@ const SharedProjectPage: React.FC = () => {
                         <span className="text-xs text-slate-400">{items.length} item{items.length === 1 ? '' : 's'}</span>
                       </header>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {items.map((artifact) => (
-                          <article
-                            key={artifact.id}
-                            className="flex flex-col gap-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="text-lg font-semibold text-white">{artifact.title}</h4>
-                              <span
-                                className={`rounded-full px-2 py-1 text-[11px] font-semibold ${getStatusClasses(
-                                  artifact.status,
-                                )}`}
-                              >
-                                {formatStatusLabel(artifact.status)}
-                              </span>
-                            </div>
-                            {artifact.summary ? (
-                              <p className="text-sm text-slate-300">{artifact.summary}</p>
-                            ) : (
-                              <p className="text-sm italic text-slate-500">No summary provided for this artifact yet.</p>
-                            )}
-                            {artifact.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-slate-400">
-                                {artifact.tags.slice(0, 5).map((tag) => (
-                                  <span
-                                    key={tag}
+                        {items.map((artifact) => {
+                          const preview = dialoguePreviews.get(artifact.id);
+                          const previewLines = preview ? preview.lines.slice(0, 4) : [];
+                          const forgedAt = preview?.generatedAt ? formatTimestamp(preview.generatedAt) : null;
+
+                          return (
+                            <article
+                              key={artifact.id}
+                              className="flex flex-col gap-3 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-5 shadow-lg"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-lg font-semibold text-white">{artifact.title}</h4>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-[11px] font-semibold ${getStatusClasses(
+                                    artifact.status,
+                                  )}`}
+                                >
+                                  {formatStatusLabel(artifact.status)}
+                                </span>
+                              </div>
+                              {artifact.summary ? (
+                                <p className="text-sm text-slate-300">{artifact.summary}</p>
+                              ) : (
+                                <p className="text-sm italic text-slate-500">No summary provided for this artifact yet.</p>
+                              )}
+                              {preview ? (
+                                <div className="space-y-3 rounded-xl border border-cyan-400/30 bg-cyan-500/10 p-4">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-wide text-cyan-200/80">
+                                    <span className="font-semibold">Dialogue preview</span>
+                                    {forgedAt ? <span className="text-[11px] text-cyan-100/70">Forged {forgedAt}</span> : null}
+                                  </div>
+                                  <ul className="space-y-3 text-sm text-slate-100">
+                                    {previewLines.map((line) => (
+                                      <li key={line.id} className="space-y-1">
+                                        <p className="font-semibold text-cyan-100">{line.speakerName}</p>
+                                        <p className="whitespace-pre-wrap text-slate-100">{line.line}</p>
+                                        {line.direction ? (
+                                          <p className="text-xs italic text-cyan-200/70">({line.direction})</p>
+                                        ) : null}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  {preview.lines.length > previewLines.length ? (
+                                    <p className="text-[11px] uppercase tracking-wide text-cyan-200/70">
+                                      +{preview.lines.length - previewLines.length} more lines available in Creative Atlas
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                              {artifact.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-slate-400">
+                                  {artifact.tags.slice(0, 5).map((tag) => (
+                                    <span
+                                      key={tag}
                                     className="rounded-full border border-slate-700/60 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-300"
                                   >
                                     #{tag}
@@ -280,8 +336,9 @@ const SharedProjectPage: React.FC = () => {
                                 ) : null}
                               </div>
                             )}
-                          </article>
-                        ))}
+                            </article>
+                          );
+                        })}
                       </div>
                     </section>
                   ))}
