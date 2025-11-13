@@ -650,6 +650,31 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     setLogs(previous => [...previous.slice(-(MAX_LOGS - 1)), message]);
   }, []);
 
+  const handleResetCalibrationHistory = useCallback(() => {
+    if (calibrationHistory.length === 0) {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      const shouldReset = window.confirm('Clear saved calibration history? This cannot be undone.');
+      if (!shouldReset) {
+        return;
+      }
+    }
+
+    setCalibrationHistory([]);
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(CALIBRATION_STORAGE_KEY);
+      } catch (error) {
+        console.warn('Failed to clear calibration history', error);
+      }
+    }
+
+    addLog('🧹 Cleared calibration history.');
+  }, [addLog, calibrationHistory.length]);
+
   useEffect(() => {
     const history = loadCalibrationHistory();
     setCalibrationHistory(history);
@@ -1356,16 +1381,26 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
               )}
             </div>
               <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
-                <button
-                  type="button"
-                  onClick={handleStartCalibration}
-                  className="rounded-lg border border-red-400/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isRunning}
-                >
-                  Run calibration check
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResetCalibrationHistory}
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={calibrationHistory.length === 0}
+                  >
+                    Reset data
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartCalibration}
+                    className="rounded-lg border border-red-400/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isRunning}
+                  >
+                    Run calibration check
+                  </button>
+                </div>
               </div>
               <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
               {calibrationAggregate ? (
