@@ -69,26 +69,9 @@ const normalizeCoordinate = (value: unknown, max: number): number | null => {
   }
 
   const clampPixels = (pixels: number): number => clamp(Math.round(pixels), 0, max);
-  const clampRatio = (ratio: number): number => clampPixels(ratio * max);
 
-  if (value <= 1) {
-    return clampRatio(value);
-  }
-
-  if (value <= 100) {
-    return clampRatio(value / 100);
-  }
-
-  if (value <= 1000) {
-    if (value > max || max > 1000) {
-      return clampRatio(value / 1000);
-    }
-
-    return clampPixels(value);
-  }
-
-  if (value <= max * 1.5) {
-    return clampPixels(value);
+  if (value >= 0 && value <= 1) {
+    return clampPixels(value * max);
   }
 
   return clampPixels(value);
