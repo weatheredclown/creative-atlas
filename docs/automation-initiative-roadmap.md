@@ -17,6 +17,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Publish modal now surfaces validation failures immediately, throwing errors for missing project content so the UI shows inline feedback instead of silently doing nothing before the status endpoints arrive.
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
+  - GitHub publish API client now unwraps job results so success links point at the correct repository paths; next, expose queued/running states inside the modal while the job completes.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
   - Error boundary now offers a recovery button that coerces malformed artifact payloads into safe editor defaults; add coverage that exercises the new UI flow with corrupted wiki content.
 
