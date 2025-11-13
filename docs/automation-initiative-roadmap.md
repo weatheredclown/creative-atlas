@@ -42,10 +42,10 @@ This document tracks the multi-session automation initiative to deliver the full
   - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
   - Add component-level tests for artifact filters, activity panel toggles, and modal wiring to cover the new structure.
 - Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.
-  - ➕ Dialogue Forge scene generator lets creators feed a prompt and selected characters to Atlas Intelligence and receive structured dialogue with beat suggestions; wire its outputs into scene templates and exports next.
-    - Added prompt length guards so Dialogue Forge trims lengthy bios, prompts, and beats before sending Gemini requests.
-    - Widened the Dialogue Forge prompt budget so prompts (2.6k chars, up from 1.2k), summaries (2k, up from 1.2k), beats (3k shared across up to 10 beats instead of 1.2k apiece), and cast bios (3.4k shared, up from 400-character snippets) can reach Gemini without triggering the oversized-request error.
-    - Hardened Dialogue Forge JSON parsing by repairing malformed Gemini responses so truncated dialogue payloads no longer crash the flow; next, surface a user-facing warning when repair attempts fail.
+- ➕ Dialogue Forge scene generator lets creators feed a prompt and selected characters to Atlas Intelligence and receive structured dialogue with beat suggestions; wire its outputs into scene templates and exports next.
+  - ✅ Backend now exposes `/api/ai/dialogue/scene` to assemble Dialogue Forge prompts, enforce Gemini safety checks, and return structured dialogue so the UI no longer hand-crafts prompts.
+  - Added prompt length guards so Dialogue Forge trims lengthy bios, prompts, and beats before sending Gemini requests.
+  - Widened the Dialogue Forge prompt budget so prompts (2.6k chars, up from 1.2k), summaries (2k, up from 1.2k), beats (3k shared across up to 10 beats instead of 1.2k apiece), and cast bios (3.4k shared, up from 400-character snippets) can reach Gemini without triggering the oversized-request error.
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
 
 ### Reporting & Project Insights (Understand & Explore Work)
@@ -60,7 +60,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - Refine artifact detail panel tabs with clear labelling and full keyboard support.
   - Layer guidance into Graph view and Family Tree tools so linking workflows feel discoverable.
   - Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
-    - ✅ Replaced browser alerts with in-app toast notifications for workspace and publishing actions so feedback stays inline with the current context.
   - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
   - ✅ The Graph view now opens with an Arc Stage Spotlight explainer and counts, guiding editors toward the new filtering workflow; next, replicate the guidance inside the Family Tree tools.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.

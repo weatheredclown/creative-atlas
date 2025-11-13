@@ -1,9 +1,8 @@
 
-import { jsonrepair } from 'jsonrepair';
 import type { Artifact, ConlangLexeme, TemplateArtifactBlueprint } from '../types';
 import { ArtifactType, TASK_STATE } from '../types';
 import { createBlankMagicSystemData } from '../utils/magicSystem';
-import { getGeminiErrorMessage, requestGeminiText } from './aiProxy';
+import { buildAiUrl, GeminiProxyError, getGeminiErrorMessage, requestGeminiText } from './aiProxy';
 
 const lexemeSchema = {
   type: 'object',
@@ -842,128 +841,7 @@ export interface GeneratedSceneDialogue {
     }>;
 }
 
-const sceneDialogueSchema = {
-    type: 'object',
-    properties: {
-        synopsis: {
-            type: 'string',
-            description: '1-2 sentence recap of the scene outcome.',
-        },
-        beats: {
-            type: 'array',
-            description: 'Ordered beat summaries to expand the scene.',
-            items: {
-                type: 'string',
-                description: 'Single beat or turning point description.',
-            },
-        },
-        dialogue: {
-            type: 'array',
-            description: 'Ordered dialogue lines with optional stage direction metadata.',
-            items: {
-                type: 'object',
-                properties: {
-                    speaker: {
-                        type: 'string',
-                        description: 'Name of the speaking character.',
-                    },
-                    line: {
-                        type: 'string',
-                        description: 'Spoken line of dialogue.',
-                    },
-                    direction: {
-                        type: 'string',
-                        description: 'Optional stage direction or emotional cue.',
-                    },
-                },
-                required: ['line'],
-            },
-        },
-    },
-    required: ['dialogue'],
-} as const;
-
-const truncateText = (text: string | undefined, maxLength: number): string => {
-    if (!text || maxLength <= 0) {
-        return '';
-    }
-
-    const trimmed = text.trim();
-    if (trimmed.length <= maxLength) {
-        return trimmed;
-    }
-
-    if (maxLength === 1) {
-        return '…';
-    }
-
-    return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
-};
-
-const MAX_SCENE_PROMPT_LENGTH = 2600;
-const MAX_SCENE_SUMMARY_LENGTH = 2000;
-const MAX_BEAT_COUNT = 10;
-const MAX_BEAT_LENGTH = 650;
-const MAX_BEATS_SECTION_LENGTH = 3000;
-const MAX_CAST_DETAIL_LENGTH = 550;
-const MAX_CAST_SECTION_LENGTH = 3400;
-const MAX_TRAITS = 16;
-
-const parseSceneDialogueJson = (jsonText: string): GeneratedSceneDialogue => {
-    try {
-        return JSON.parse(jsonText) as GeneratedSceneDialogue;
-    } catch (initialError) {
-        try {
-            const repaired = jsonrepair(jsonText);
-            return JSON.parse(repaired) as GeneratedSceneDialogue;
-        } catch (repairError) {
-            console.warn('Failed to repair scene dialogue JSON output.', repairError);
-            const snippet = truncateText(jsonText, 600);
-            const message =
-                initialError instanceof Error ? initialError.message : 'Unknown parsing error.';
-            throw new Error(`Failed to parse scene dialogue JSON (${message}). Snippet: ${snippet}`);
-        }
-    }
-};
-
-const formatCastProfiles = (profiles: SceneDialogueCharacterProfile[]): string => {
-    if (profiles.length === 0) {
-        return 'No additional character biography provided.';
-    }
-
-    const formatted = profiles
-        .map((profile) => {
-            const segments: string[] = [];
-            if (profile.summary && profile.summary.trim().length > 0) {
-                segments.push(`Summary: ${truncateText(profile.summary, MAX_CAST_DETAIL_LENGTH)}`);
-            }
-            if (profile.bio && profile.bio.trim().length > 0) {
-                segments.push(`Bio: ${truncateText(profile.bio, MAX_CAST_DETAIL_LENGTH)}`);
-            }
-            if (profile.traits && profile.traits.length > 0) {
-                const trimmedTraits = profile.traits.slice(0, MAX_TRAITS).join('; ');
-                segments.push(`Traits: ${truncateText(trimmedTraits, MAX_CAST_DETAIL_LENGTH)}`);
-            }
-            const detail = segments.length > 0 ? segments.join(' | ') : 'No additional detail provided.';
-            return `- ${profile.name}: ${detail}`;
-        })
-        .join('\n');
-
-    return truncateText(formatted, MAX_CAST_SECTION_LENGTH);
-};
-
-const formatBeatOutline = (existingBeats: string[] | undefined): string => {
-    if (!existingBeats || existingBeats.length === 0) {
-        return 'No prior beats logged.';
-    }
-
-    const beats = existingBeats
-        .slice(0, MAX_BEAT_COUNT)
-        .map((beat, index) => `${index + 1}. ${truncateText(beat, MAX_BEAT_LENGTH)}`)
-        .join('\n');
-
-    return truncateText(beats, MAX_BEATS_SECTION_LENGTH);
-};
+const SCENE_DIALOGUE_ENDPOINT = '/api/ai/dialogue/scene';
 
 export const generateSceneDialogue = async ({
     projectTitle,
@@ -973,62 +851,93 @@ export const generateSceneDialogue = async ({
     characters,
     existingBeats,
 }: GenerateSceneDialogueParams): Promise<GeneratedSceneDialogue> => {
-    const castBlock = formatCastProfiles(characters);
-    const beatsBlock = formatBeatOutline(existingBeats);
-
-    const prompt = `
-You are Dialogue Forge, an Atlas Intelligence guide who writes grounded scene dialogue.
-
-Project: ${projectTitle}
-Scene title: ${sceneTitle}
-
-Scene prompt:
-${truncateText(scenePrompt, MAX_SCENE_PROMPT_LENGTH)}
-
-Context summary: ${sceneSummary && sceneSummary.trim().length > 0 ? truncateText(sceneSummary, MAX_SCENE_SUMMARY_LENGTH) : 'None provided.'}
-
-Cast profiles:
-${castBlock}
-
-Existing beat outline:
-${beatsBlock}
-
-Deliver a JSON payload with:
-- synopsis: 1-2 sentences describing the outcome of this exchange.
-- beats: 3-5 bullet summaries for potential follow-up beats.
-- dialogue: ordered lines containing the speaking character name, the spoken line, and an optional stage direction string describing tone or action.
-
-Keep the exchange tightly focused, respect each character's established voice, and avoid narrating camera directions. Stage directions should be short present-tense cues (e.g., "softly", "paces", "grips the railing").
-`;
+    const payload = {
+        projectTitle,
+        sceneTitle,
+        scenePrompt,
+        sceneSummary,
+        characters: characters.map((character) => ({
+            id: character.id,
+            name: character.name,
+            summary: character.summary,
+            bio: character.bio,
+            traits: character.traits,
+        })),
+        existingBeats,
+    };
 
     try {
-        const jsonText = (await requestGeminiText({
-            prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: sceneDialogueSchema,
-                temperature: 0.7,
-                maxOutputTokens: 1536,
+        const response = await fetch(buildAiUrl(SCENE_DIALOGUE_ENDPOINT), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             },
-        })).trim();
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        });
 
-        const parsed = parseSceneDialogueJson(jsonText);
-        if (!parsed || !Array.isArray(parsed.dialogue)) {
-            throw new Error('AI response did not include a dialogue array.');
+        const data = (await response.json().catch(async () => ({
+            error: 'Invalid response from Dialogue Forge endpoint.',
+            details: await response.text().catch(() => undefined),
+        }))) as {
+            synopsis?: unknown;
+            beats?: unknown;
+            dialogue?: unknown;
+            error?: unknown;
+            details?: unknown;
+        };
+
+        if (!response.ok) {
+            const message =
+                typeof data.error === 'string'
+                    ? data.error
+                    : `Dialogue Forge request failed with status ${response.status}.`;
+            throw new GeminiProxyError(message, { status: response.status, details: data.details ?? data });
+        }
+
+        if (!Array.isArray(data.dialogue)) {
+            throw new GeminiProxyError('Dialogue Forge returned an invalid dialogue payload.', {
+                status: response.status,
+                details: data,
+            });
+        }
+
+        const synopsis = typeof data.synopsis === 'string' ? data.synopsis.trim() : undefined;
+        const beats = Array.isArray(data.beats)
+            ? data.beats
+                  .map((beat) => (typeof beat === 'string' ? beat.trim() : ''))
+                  .filter((beat) => beat.length > 0)
+            : undefined;
+
+        const dialogue = (data.dialogue as Array<Record<string, unknown>>)
+            .map((entry) => {
+                const line = typeof entry.line === 'string' ? entry.line.trim() : '';
+                if (line.length === 0) {
+                    return null;
+                }
+
+                const speaker = typeof entry.speaker === 'string' ? entry.speaker.trim() : undefined;
+                const direction = typeof entry.direction === 'string' ? entry.direction.trim() : undefined;
+
+                return {
+                    speaker: speaker && speaker.length > 0 ? speaker : undefined,
+                    line,
+                    direction: direction && direction.length > 0 ? direction : undefined,
+                } satisfies GeneratedSceneDialogue['dialogue'][number];
+            })
+            .filter((entry): entry is GeneratedSceneDialogue['dialogue'][number] => entry !== null);
+
+        if (dialogue.length === 0) {
+            throw new GeminiProxyError('Dialogue Forge returned an empty script.', {
+                status: response.status,
+                details: data,
+            });
         }
 
         return {
-            synopsis: typeof parsed.synopsis === 'string' ? parsed.synopsis : undefined,
-            beats: Array.isArray(parsed.beats)
-                ? parsed.beats
-                      .map((beat) => (typeof beat === 'string' ? beat : ''))
-                      .filter((beat) => beat.trim().length > 0)
-                : undefined,
-            dialogue: parsed.dialogue.map((entry) => ({
-                speaker: typeof entry.speaker === 'string' ? entry.speaker : undefined,
-                line: typeof entry.line === 'string' ? entry.line : '',
-                direction: typeof entry.direction === 'string' ? entry.direction : undefined,
-            })),
+            synopsis: synopsis && synopsis.length > 0 ? synopsis : undefined,
+            beats,
+            dialogue,
         } satisfies GeneratedSceneDialogue;
     } catch (error) {
         console.error('Error generating scene dialogue with Gemini:', error);

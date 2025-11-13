@@ -29,12 +29,15 @@ interface GeminiProxyResponse {
   details?: unknown;
 }
 
-const buildProxyUrl = (): string => {
+export const buildAiUrl = (path: string): string => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   if (API_BASE_URL) {
-    return `${API_BASE_URL}${GEMINI_PROXY_PATH}`;
+    return `${API_BASE_URL}${normalizedPath}`;
   }
-  return GEMINI_PROXY_PATH;
+  return normalizedPath;
 };
+
+const buildProxyUrl = (): string => buildAiUrl(GEMINI_PROXY_PATH);
 
 const estimatePromptTokens = (prompt: string): number => {
   if (!prompt) {
