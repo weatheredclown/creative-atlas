@@ -6,8 +6,42 @@ interface WorkspaceSectionIndexProps {
 
 const WorkspaceSectionIndex: React.FC<WorkspaceSectionIndexProps> = ({ sections }) => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [headerOffset, setHeaderOffset] = useState(0);
 
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateOffset = () => {
+      const headerElement = document.querySelector('[data-app-header]');
+      if (headerElement instanceof HTMLElement) {
+        setHeaderOffset(headerElement.offsetHeight);
+      } else {
+        setHeaderOffset(0);
+      }
+    };
+
+    updateOffset();
+    window.addEventListener('resize', updateOffset);
+
+    const headerElement = document.querySelector('[data-app-header]');
+    let resizeObserver: ResizeObserver | null = null;
+
+    if (headerElement instanceof HTMLElement && 'ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver(() => {
+        updateOffset();
+      });
+      resizeObserver.observe(headerElement);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateOffset);
+      resizeObserver?.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (sectionIds.length === 0) {
@@ -63,7 +97,11 @@ const WorkspaceSectionIndex: React.FC<WorkspaceSectionIndexProps> = ({ sections 
   }
 
   return (
-    <nav aria-label="Workspace sections" className="sticky top-20 z-20 mb-6">
+    <nav
+      aria-label="Workspace sections"
+      className="sticky z-20 mb-6"
+      style={{ top: headerOffset }}
+    >
       <div className="overflow-x-auto rounded-full border border-slate-700/60 bg-slate-900/80 px-4 py-2 shadow-lg shadow-slate-950/30 backdrop-blur">
         <ul className="flex flex-nowrap items-center gap-2 text-sm text-slate-300">
           {sections.map((section) => {
