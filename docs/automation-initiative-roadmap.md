@@ -11,9 +11,9 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Stability & Reliability (Protect the Experience)
 - Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
-  - ✅ Collaboration gateway scaffolding now lives under `server/src/collaboration/` with an in-memory adapter registered in the Express app; next, attach a WebSocket transport layer and thread CRDT-aware operations into the adapter.
-- Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
-- Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
+  - ✅ Collaboration gateway scaffolding now lives under `server/src/collaboration/` with an in-memory adapter registered in the Express app; WebSocket transport now bridges sessions to connected clients, so the next step is threading CRDT-aware operations and persistence into the adapter.
+- _(Low priority)_ Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
+- _(Low priority)_ Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - Publish modal now surfaces validation failures immediately, throwing errors for missing project content so the UI shows inline feedback instead of silently doing nothing before the status endpoints arrive.
   - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
@@ -34,7 +34,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - Introduce stage filters in the graph view so editors can spotlight characters in a specific arc phase.
     - ✅ Graph view now includes an Arc Stage Spotlight filter that dims non-matching nodes and surfaces per-stage summaries; next, persist the selected stage and add unit coverage for the filtering logic.
-- Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
+- _(Low priority)_ Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; hero, artifact, activity, and modal subcomponents now live under `code/components/workspace/`.
   - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
   - Add component-level tests for artifact filters, activity panel toggles, and modal wiring to cover the new structure.
@@ -45,10 +45,10 @@ This document tracks the multi-session automation initiative to deliver the full
   - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
 
 ### Reporting & Project Insights (Understand & Explore Work)
-- Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
-- Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
+- _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
+- _(Low priority)_ Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
   - ✅ World filters now distinguish between local timelines and remote Firestore snapshots, exposing a dedicated "current project" option; next, surface per-world counts and persist filter choices between sessions.
-- Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
+- _(Low priority)_ Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
   - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
 
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)

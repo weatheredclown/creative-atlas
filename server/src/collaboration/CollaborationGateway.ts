@@ -1,10 +1,16 @@
 import { EventEmitter } from 'node:events';
 
 export type CollaborationTransportEvent =
-  | { type: 'session:created'; sessionId: string; artifactId: string }
+  | { type: 'session:created'; sessionId: string; artifactId: string; version: number }
   | { type: 'session:closed'; sessionId: string }
   | { type: 'presence:updated'; sessionId: string; participantId: string; cursors: PresenceCursor[] }
-  | { type: 'patch:applied'; sessionId: string; participantId: string; operations: CollaborationOperation[] };
+  | {
+      type: 'patch:applied';
+      sessionId: string;
+      participantId: string;
+      operations: CollaborationOperation[];
+      version: number;
+    };
 
 export interface PresenceCursor {
   artifactId: string;
@@ -87,7 +93,12 @@ export class CollaborationGateway<TDocument> extends EventEmitter {
 
     this.sessions.set(sessionId, session);
     this.resetIdleTimer(sessionId);
-    this.emit('event', { type: 'session:created', sessionId, artifactId } satisfies CollaborationTransportEvent);
+    this.emit('event', {
+      type: 'session:created',
+      sessionId,
+      artifactId,
+      version: session.version,
+    } satisfies CollaborationTransportEvent);
     return session;
   }
 
@@ -117,11 +128,13 @@ export class CollaborationGateway<TDocument> extends EventEmitter {
     };
 
     const nextSnapshot = this.adapter.applyOperations(snapshot, operations);
-    this.sessions.set(sessionId, {
+    const nextSession: CollaborationSession<TDocument> = {
       ...session,
       state: nextSnapshot.document,
       version: nextSnapshot.version,
-    });
+    };
+
+    this.sessions.set(sessionId, nextSession);
 
     this.resetIdleTimer(sessionId);
     this.emit('event', {
@@ -129,9 +142,10 @@ export class CollaborationGateway<TDocument> extends EventEmitter {
       sessionId,
       participantId,
       operations,
+      version: nextSession.version,
     } satisfies CollaborationTransportEvent);
 
-    return this.sessions.get(sessionId) ?? session;
+    return nextSession;
   }
 
   closeSession(sessionId: string): void {

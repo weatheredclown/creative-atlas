@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors, { type CorsOptions } from 'cors';
 import morgan from 'morgan';
@@ -7,7 +8,11 @@ import githubRouter from './routes/github.js';
 import aiRouter from './routes/ai.js';
 import historyRouter from './routes/history.js';
 import agentRouter from './routes/agent.js';
-import { CollaborationGateway, InMemoryAdapter } from './collaboration/index.js';
+import {
+  CollaborationGateway,
+  CollaborationWebSocketServer,
+  InMemoryAdapter,
+} from './collaboration/index.js';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'https://creative-atlas.web.app')
   .split(',')
@@ -45,8 +50,6 @@ const collaborationGateway = new CollaborationGateway<Record<string, unknown>>({
   adapter: new InMemoryAdapter<Record<string, unknown>>({ initialState: {} }),
 });
 
-app.locals.collaborationGateway = collaborationGateway;
-
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
@@ -79,6 +82,8 @@ app.use('/api/history', historyRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api', workspaceRouter);
 
+app.locals.collaborationGateway = collaborationGateway;
+
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error in API request', error);
   if (res.headersSent) {
@@ -88,7 +93,14 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error', details: message });
 });
 
+const httpServer = createServer(app);
+
+new CollaborationWebSocketServer<Record<string, unknown>>({
+  server: httpServer,
+  gateway: collaborationGateway,
+});
+
 const port = Number.parseInt(process.env.PORT ?? '4000', 10);
-app.listen(port, () => {
-  console.log(`Creative Atlas API listening on port ${port}`);
+httpServer.listen(port, () => {
+  console.log(`Creative Atlas API (HTTP + WebSocket) listening on port ${port}`);
 });
