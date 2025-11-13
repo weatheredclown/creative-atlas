@@ -580,7 +580,7 @@ const sanitizeSceneDialogueResult = (payload: unknown): SceneDialogueResult => {
     .filter((beat) => beat.length > 0);
 
   const dialogue = parsed.data.dialogue
-    .map((entry) => {
+    .map((entry): SceneDialogueLine | null => {
       const line = entry.line.trim();
       if (line.length === 0) {
         return null;
@@ -589,11 +589,13 @@ const sanitizeSceneDialogueResult = (payload: unknown): SceneDialogueResult => {
       const speaker = entry.speaker?.trim();
       const direction = entry.direction?.trim();
 
-      return {
-        speaker: speaker && speaker.length > 0 ? speaker : undefined,
+      const sanitized: SceneDialogueLine = {
         line,
-        direction: direction && direction.length > 0 ? direction : undefined,
-      } satisfies SceneDialogueLine;
+        ...(speaker && speaker.length > 0 ? { speaker } : {}),
+        ...(direction && direction.length > 0 ? { direction } : {}),
+      };
+
+      return sanitized;
     })
     .filter((entry): entry is SceneDialogueLine => entry !== null);
 
