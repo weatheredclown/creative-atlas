@@ -12,8 +12,9 @@ import ReactFlow, {
   type NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Artifact, ArtifactType, isNarrativeArtifactType } from '../types';
+import { Artifact, ArtifactType, ArcStageId, isNarrativeArtifactType } from '../types';
 import {
+  ARC_STAGE_CONFIG,
   buildCharacterArcEvaluationMap,
   formatProgressionStatus,
   getArcStageBadgeClassName,
@@ -47,6 +48,14 @@ const nodeColor = (type: ArtifactType): string => {
 };
 
 type GraphNodeData = { label: React.ReactNode; type: ArtifactType };
+
+type StageByArtifactId = Record<string, ArcStageId | null>;
+
+interface StageFilterSummary {
+  stageId: ArcStageId;
+  label: string;
+  count: number;
+}
 
 const createBaseNodeStyle = (type: ArtifactType) => ({
   background: '#1e293b', // slate-800
@@ -148,16 +157,29 @@ const GraphView: React.FC<GraphViewProps> = ({
   projectId,
   characterProgressionMap,
 }) => {
-  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
+  const { nodes: layoutNodes, edges: layoutEdges, stageByArtifactId, stageCounts } = useMemo(() => {
     const artifactLookup = new Map<string, Artifact>(artifacts.map((artifact) => [artifact.id, artifact]));
     const artifactIds = new Set(artifactLookup.keys());
     const progressionMap = characterProgressionMap
       ? characterProgressionMap
       : buildCharacterArcEvaluationMap(artifacts, artifactLookup);
+    const stageMap: StageByArtifactId = {};
+    const stageCountAccumulator = ARC_STAGE_CONFIG.reduce<Record<ArcStageId, number>>((accumulator, stage) => {
+      accumulator[stage.id] = 0;
+      return accumulator;
+    }, {} as Record<ArcStageId, number>);
+
     const nodes: Node<GraphNodeData>[] = artifacts.map((artifact) => {
       const arc = progressionMap.get(artifact.id);
       const stageProgressClasses = arc ? getArcStageProgressBarClasses(arc.stage.id) : null;
       const progressWidth = arc ? (arc.progressPercent > 0 ? Math.max(arc.progressPercent, 8) : 0) : 0;
+
+      if (arc) {
+        stageMap[artifact.id] = arc.stage.id;
+        stageCountAccumulator[arc.stage.id] = (stageCountAccumulator[arc.stage.id] ?? 0) + 1;
+      } else {
+        stageMap[artifact.id] = null;
+      }
 
       return {
         id: artifact.id,
@@ -211,15 +233,32 @@ const GraphView: React.FC<GraphViewProps> = ({
           });
         }
       });
-    });
+      });
 
-    return { nodes: layoutGraph(nodes, edges), edges };
+    const stageSummaries: StageFilterSummary[] = ARC_STAGE_CONFIG.map((stage) => ({
+      stageId: stage.id,
+      label: stage.label,
+      count: stageCountAccumulator[stage.id] ?? 0,
+    }));
+
+    return { nodes: layoutGraph(nodes, edges), edges, stageByArtifactId: stageMap, stageCounts: stageSummaries };
   }, [artifacts, characterProgressionMap]);
 
   const storageKey = useMemo(() => `${STORAGE_PREFIX}${projectId}`, [projectId]);
+  const totalTrackedStages = useMemo(
+    () => stageCounts.reduce((accumulator, summary) => accumulator + summary.count, 0),
+    [stageCounts],
+  );
+  const activeStageSummary = useMemo(() => {
+    if (stageFilter === 'all') {
+      return null;
+    }
+    return stageCounts.find((summary) => summary.stageId === stageFilter) ?? null;
+  }, [stageCounts, stageFilter]);
   const [storedPositions, setStoredPositions] = useState<StoredNodePositions>(() => loadStoredPositions(storageKey));
   const [nodes, setNodes, onNodesStateChange] = useNodesState(layoutNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+  const [stageFilter, setStageFilter] = useState<'all' | ArcStageId>('all');
 
   useEffect(() => {
     setStoredPositions(loadStoredPositions(storageKey));
@@ -261,28 +300,25 @@ const GraphView: React.FC<GraphViewProps> = ({
     setNodes((prevNodes) => layoutNodes.map((node) => {
       const existing = prevNodes.find((prevNode) => prevNode.id === node.id);
       const stored = storedPositions[node.id];
+      const type = (node.data as GraphNodeData).type;
+      const isSelected = node.id === selectedArtifactId;
+      const stageId = stageByArtifactId[node.id] ?? null;
+      const shouldDim = stageFilter !== 'all' && stageId !== stageFilter;
+
       return {
         ...node,
         position: existing?.position ?? stored ?? node.position,
-      };
-    }));
-  }, [layoutEdges, layoutNodes, setEdges, setNodes, storedPositions]);
-
-  useEffect(() => {
-    setNodes((prevNodes) => prevNodes.map((node) => {
-      const type = (node.data as GraphNodeData).type;
-      const isSelected = node.id === selectedArtifactId;
-      return {
-        ...node,
         style: {
           ...createBaseNodeStyle(type),
+          opacity: shouldDim ? 0.28 : 1,
+          filter: shouldDim ? 'grayscale(70%)' : undefined,
           boxShadow: isSelected ? '0 0 0 4px rgba(45, 212, 191, 0.25)' : undefined,
           borderWidth: isSelected ? 2 : 1,
           transform: isSelected ? 'scale(1.02)' : undefined,
         },
       };
     }));
-  }, [selectedArtifactId, setNodes]);
+  }, [layoutEdges, layoutNodes, selectedArtifactId, setEdges, setNodes, stageByArtifactId, stageFilter, storedPositions]);
 
   const handleNodesChange = useCallback((changes: NodeChange<GraphNodeData>[]) => {
     setStoredPositions((previous) => {
@@ -310,27 +346,87 @@ const GraphView: React.FC<GraphViewProps> = ({
   }, [onNodesStateChange]);
 
   return (
-    <div style={{ height: '600px' }} className="bg-slate-900/70 rounded-lg border border-slate-700/50 overflow-hidden">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodeClick={(_, node) => onSelectArtifact(node.id)}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
-        fitView
-        nodesDraggable
-        nodesConnectable={false}
-      >
-        <Background color="#293548" gap={24} />
-        <Controls showInteractive={false} />
-        <MiniMap
-            nodeColor={node => nodeColor((node.data as GraphNodeData | undefined)?.type ?? ArtifactType.Story)}
-            nodeStrokeWidth={3} 
-            zoomable 
-            pannable 
+    <div className="space-y-4">
+      <div className="rounded-lg border border-slate-700/60 bg-slate-900/80 px-4 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-xl space-y-1">
+            <h3 className="text-sm font-semibold text-slate-100">Arc stage spotlight</h3>
+            <p className="text-xs text-slate-300">
+              Pick a stage to highlight characters advancing through their arcs. While a stage is selected, other nodes dim so
+              you can trace relations and attach supporting artifacts without losing the focus of the character journey.
+            </p>
+          </div>
+          <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+            <span>Stage filter</span>
+            <select
+              className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-100 shadow-inner shadow-slate-950 focus:border-emerald-400 focus:outline-none focus:ring-emerald-500/40"
+              value={stageFilter}
+              onChange={(event) => setStageFilter(event.target.value as 'all' | ArcStageId)}
+            >
+              <option value="all">All stages ({totalTrackedStages})</option>
+              {stageCounts.map((summary) => (
+                <option key={summary.stageId} value={summary.stageId} disabled={summary.count === 0}>
+                  {summary.label} ({summary.count})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {totalTrackedStages === 0 ? (
+          <p className="mt-3 text-xs text-slate-400">
+            Track characters with arc evaluations to unlock the stage spotlight filter.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+            {stageCounts.map((summary) => {
+              const badgeClassName = getArcStageBadgeClassName(summary.stageId);
+              const isActive = stageFilter !== 'all' && stageFilter === summary.stageId;
+              return (
+                <span
+                  key={summary.stageId}
+                  className={`${badgeClassName} ${
+                    isActive ? 'ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-slate-900' : 'ring-1 ring-slate-800/50'
+                  }`}
+                >
+                  {summary.label}
+                  <span className="ml-1 text-[10px] font-semibold">{summary.count}</span>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {activeStageSummary && (
+          <p className="mt-3 text-xs text-emerald-200/80">
+            Spotlighting <strong>{activeStageSummary.label}</strong> arcs — connect allies, rivals, and key locations while
+            everything else remains in the background.
+          </p>
+        )}
+      </div>
+
+      <div style={{ height: '600px' }} className="overflow-hidden rounded-lg border border-slate-700/50 bg-slate-900/70">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodeClick={(_, node) => onSelectArtifact(node.id)}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+          nodesDraggable
+          nodesConnectable={false}
+        >
+          <Background color="#293548" gap={24} />
+          <Controls showInteractive={false} />
+          <MiniMap
+            nodeColor={(node) => nodeColor((node.data as GraphNodeData | undefined)?.type ?? ArtifactType.Story)}
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
             style={{ background: '#1e293b', borderRadius: '0.5rem', border: '1px solid #334155' }}
-        />
-      </ReactFlow>
+          />
+        </ReactFlow>
+      </div>
     </div>
   );
 };

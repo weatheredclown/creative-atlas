@@ -11,6 +11,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Stability & Reliability (Protect the Experience)
 - Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
+  - ✅ Collaboration gateway scaffolding now lives under `server/src/collaboration/` with an in-memory adapter registered in the Express app; next, attach a WebSocket transport layer and thread CRDT-aware operations into the adapter.
 - Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
 - Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
@@ -20,6 +21,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Interoperability & Collaboration (Connect People & Tools)
 - Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
+  - ✅ Authored reusable macro definitions under `server/src/routes/agentMacros.ts` and threaded them into the Gemini prompt so the agent can reason about multi-step patterns; next, expose macro selections to the client UI so operators can trigger them explicitly.
   - Updated Gemini SDK usage in the agent proxy to match the 1.x API, keeping `/api/agent/step` functional after upstream changes.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
   - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
@@ -29,6 +31,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed) and share stage overlays with the relationship graph; next expose stage filters so editors can spotlight characters by arc state.
 - Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
   - Introduce stage filters in the graph view so editors can spotlight characters in a specific arc phase.
+    - ✅ Graph view now includes an Arc Stage Spotlight filter that dims non-matching nodes and surfaces per-stage summaries; next, persist the selected stage and add unit coverage for the filtering logic.
 - Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
 - App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; hero, artifact, activity, and modal subcomponents now live under `code/components/workspace/`.
   - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
@@ -42,6 +45,7 @@ This document tracks the multi-session automation initiative to deliver the full
 ### Reporting & Project Insights (Understand & Explore Work)
 - Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
 - Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
+  - ✅ World filters now distinguish between local timelines and remote Firestore snapshots, exposing a dedicated "current project" option; next, surface per-world counts and persist filter choices between sessions.
 - Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
   - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
 
@@ -51,14 +55,17 @@ This document tracks the multi-session automation initiative to deliver the full
   - Layer guidance into Graph view and Family Tree tools so linking workflows feel discoverable.
   - Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
   - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
+  - ✅ The Graph view now opens with an Arc Stage Spotlight explainer and counts, guiding editors toward the new filtering workflow; next, replicate the guidance inside the Family Tree tools.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
 
 ### Onboarding & Education (Help New Creators Succeed)
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
+  - ✅ Seeded `code/src/data/supportFaqs.ts` with FAQ entries covering collaboration, stage filters, Dialogue Forge, publish status polling, and offline drafting; next, render the entries inside the support drawer.
 
 ### Operational Excellence & Compliance (Keep Operations Running)
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
+  - ✅ `/api/github/publish/status/:jobId` now returns queued/running/succeeded/failed metadata recorded during publish jobs; next, persist status records beyond process restarts and stream updates to the client.
 - Capture the current template recommendation heuristic and outline enhancements for richer ranking.
 
 ## Done

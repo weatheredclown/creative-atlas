@@ -172,7 +172,18 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
     };
   }, [ownerId]);
 
-  const worldOptions = useMemo(() => toWorldOptions(timelines), [timelines]);
+  const hasLocalTimelines = useMemo(
+    () => artifacts.some((artifact) => artifact.type === ArtifactType.Timeline),
+    [artifacts],
+  );
+
+  const worldOptions = useMemo(() => {
+    const remoteOptions = toWorldOptions(timelines);
+    if (hasLocalTimelines) {
+      remoteOptions.unshift({ value: 'local', label: currentWorldLabel ?? 'Current project timelines' });
+    }
+    return remoteOptions;
+  }, [currentWorldLabel, hasLocalTimelines, timelines]);
 
   useEffect(() => {
     if (worldFilter === 'all') {
@@ -184,24 +195,28 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   }, [worldFilter, worldOptions]);
 
   const filteredTimelines = useMemo(() => {
-    if (worldFilter === 'all') {
+    if (worldFilter === 'all' || worldFilter === 'local') {
       return timelines;
     }
     return timelines.filter((timeline) => timeline.worldId === worldFilter);
   }, [timelines, worldFilter]);
 
   const firestoreArtifacts = useMemo(() => {
-    if (filteredTimelines.length === 0) {
+    if (filteredTimelines.length === 0 || worldFilter === 'local') {
       return [] as Artifact[];
     }
     return buildTimelineArtifactsFromFirestore(filteredTimelines);
-  }, [filteredTimelines]);
+  }, [filteredTimelines, worldFilter]);
 
   const usingFirestore = timelines.length > 0;
 
   const artifactSource = useMemo(() => {
-    const localTimelines = artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline);
-    if (!usingFirestore) {
+    const includeLocal = !usingFirestore || worldFilter === 'all' || worldFilter === 'local';
+    const localTimelines = includeLocal
+      ? artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline)
+      : ([] as Artifact[]);
+
+    if (!usingFirestore || worldFilter === 'local') {
       return localTimelines;
     }
 
@@ -213,7 +228,7 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
       merged.set(artifact.id, artifact);
     });
     return Array.from(merged.values());
-  }, [artifacts, firestoreArtifacts, usingFirestore]);
+  }, [artifacts, firestoreArtifacts, usingFirestore, worldFilter]);
 
   const baseHeatmap = useMemo<SimulatedHistoryHeatmapData>(() => {
     return buildSimulatedHistoryHeatmap(artifactSource);
