@@ -101,7 +101,7 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
           type="submit"
           className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
         >
-          Create Seed
+          Create Artifact
         </button>
       </div>
     </form>

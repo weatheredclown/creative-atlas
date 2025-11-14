@@ -1314,6 +1314,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       {(isOpen || showTriggerButton) && (
         <div
           id={AGENT_UI_ID}
+          data-modal-ignore="true"
           className="fixed top-4 right-4 z-[10000] flex flex-col items-end text-sm"
         >
           {isOpen ? (
