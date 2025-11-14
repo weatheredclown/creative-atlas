@@ -27,6 +27,7 @@ export interface GhostAgentRequestPayload {
   screenWidth: number;
   screenHeight: number;
   history?: GhostAgentHistoryEntry[];
+  projectContext?: string;
 }
 
 const buildAgentUrl = (): string => {
