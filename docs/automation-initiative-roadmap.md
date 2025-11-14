@@ -32,6 +32,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Captured viewport-aligned screenshots (including viewport dimensions) before each agent step so calibration drift analysis can compare like-for-like coordinates; monitor new samples and persist transform metrics when stable.
 - ✅ Added an in-app calibration mode that spawns a red target square, records ghost cursor offsets, and surfaces debugging suggestions/history so operators can validate coordinate normalization; aggregated local calibration samples to highlight persistent drift trends with transform analysis that flags mirroring/rotation/skew patterns; next, persist aggregated metrics (including the transform model) to the backend so multiple operators can compare drift across sessions.
   - Added a manual reset control for calibration history so operators can clear stale samples when iterating on alignment logic.
+  - Calibration widgets now stay hidden by default and reappear when `?agentdebug=1` is present, keeping the core UI streamlined while preserving the debugging workflow.
 - Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
   - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
 - Document decisions required for collaboration scope (real-time vs. turn-based) and list dependencies before implementation begins.
