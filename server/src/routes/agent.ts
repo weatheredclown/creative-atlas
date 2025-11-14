@@ -154,12 +154,24 @@ const agentStepRequestSchema = z
     history: historySchema,
     screenWidth: z.number().int().positive().max(10000),
     screenHeight: z.number().int().positive().max(10000),
+    projectContext: z
+      .string()
+      .trim()
+      .min(1, 'Project context must include text if provided.')
+      .max(5000, 'Project context is too long.')
+      .optional(),
   })
   .strict();
 
 type AgentStepRequest = z.infer<typeof agentStepRequestSchema>;
 
-const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentStepRequest): string => {
+const buildPrompt = ({
+  objective,
+  screenWidth,
+  screenHeight,
+  history,
+  projectContext,
+}: AgentStepRequest): string => {
   const historyLines = history && history.length > 0
     ? `Recent actions (latest last):\n${history
         .slice(-10)
@@ -170,6 +182,13 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
   const lines = [
     'You are an automation agent driving the Creative Atlas web application for the user.',
     `Current objective: ${objective}`,
+  ];
+
+  if (projectContext) {
+    lines.push(`Project context to inform your decisions:\n${projectContext}`);
+  }
+
+  lines.push(
     `Screen resolution: ${screenWidth}x${screenHeight}. Internally you must reason on a 1000x1000 grid and the server will scale coordinates to the actual resolution.`,
     historyLines,
     'Call one of the available tools to take your next step:',
@@ -180,7 +199,7 @@ const buildPrompt = ({ objective, screenWidth, screenHeight, history }: AgentSte
     '- `complete_objective({ reasoning })` when the task is finished.',
     'Always populate the `reasoning` field with a concise explanation of how the action advances the objective.',
     'Only emit function calls—do not respond with plain text or JSON outside the defined tool structure.',
-  ];
+  );
 
   const macrosSection = renderAgentMacrosForPrompt();
   if (macrosSection) {

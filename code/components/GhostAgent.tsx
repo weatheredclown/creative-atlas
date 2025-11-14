@@ -848,9 +848,11 @@ export interface GhostAgentHandle {
 
 interface GhostAgentProps {
   showTriggerButton?: boolean;
+  projectContext?: string | null;
 }
 
-const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerButton = true }, ref) => {
+const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
+  ({ showTriggerButton = true, projectContext = null }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [objective, setObjective] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -865,6 +867,15 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const [payloadPreview, setPayloadPreview] = useState<PayloadPreviewData | null>(null);
   const [isPayloadPreviewOpen, setIsPayloadPreviewOpen] = useState(false);
   const [isAgentDebugMode] = useState(() => detectAgentDebugMode());
+
+  const normalizedProjectContext = useMemo(() => {
+    if (!projectContext) {
+      return undefined;
+    }
+
+    const trimmed = projectContext.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, [projectContext]);
 
   const objectiveFieldId = useId();
   const feedbackFieldId = useId();
@@ -1342,6 +1353,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
               screenWidth: viewport.width,
               screenHeight: viewport.height,
               history: historyRef.current,
+              projectContext: normalizedProjectContext,
             });
           } catch (error) {
             console.error('Ghost agent request failed', error);
@@ -1383,7 +1395,16 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
         }
       }
     },
-    [addLog, captureScreen, executeAction, objective, setIsAwaitingFeedback, setPendingQuestion, stopAgent],
+    [
+      addLog,
+      captureScreen,
+      executeAction,
+      normalizedProjectContext,
+      objective,
+      setIsAwaitingFeedback,
+      setPendingQuestion,
+      stopAgent,
+    ],
   );
 
   const handleStop = useCallback(() => {

@@ -47,6 +47,24 @@ import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } 
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 
+const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  [ProjectStatus.Idea]: 'Idea',
+  [ProjectStatus.Active]: 'Active',
+  [ProjectStatus.Paused]: 'Paused',
+  [ProjectStatus.Archived]: 'Archived',
+};
+
+const formatProjectStatusLabel = (status: ProjectStatus): string =>
+  PROJECT_STATUS_LABELS[status] ?? status;
+
+const truncateForContext = (value: string, maxLength: number): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+};
+
 const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
     <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800/70 px-4 sm:px-8 py-3">
@@ -139,6 +157,67 @@ export default function App() {
     () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
     [artifacts, selectedProjectId],
   );
+  const ghostAgentProjectContext = useMemo(() => {
+    if (!selectedProject) {
+      return null;
+    }
+
+    const lines: string[] = [];
+    const title = selectedProject.title.trim();
+    const statusLabel = formatProjectStatusLabel(selectedProject.status);
+    lines.push(`Project "${title}" (status: ${statusLabel}).`);
+
+    const summary = selectedProject.summary.trim();
+    if (summary.length > 0) {
+      lines.push(`Summary: ${truncateForContext(summary, 400)}`);
+    }
+
+    const projectTags = selectedProject.tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+    if (projectTags.length > 0) {
+      lines.push(`Tags: ${projectTags.join(', ')}`);
+    }
+
+    if (projectArtifacts.length === 0) {
+      lines.push('This project does not have any artifacts yet.');
+      return lines.join('\n');
+    }
+
+    const artifactCounts = new Map<string, number>();
+    projectArtifacts.forEach((artifact) => {
+      const current = artifactCounts.get(artifact.type) ?? 0;
+      artifactCounts.set(artifact.type, current + 1);
+    });
+
+    const sortedCounts = Array.from(artifactCounts.entries()).sort((a, b) => {
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
+
+      return a[0].localeCompare(b[0]);
+    });
+
+    const highlightedCounts = sortedCounts.slice(0, 6);
+    const hasAdditionalCounts = sortedCounts.length > highlightedCounts.length;
+    const countsLabel = highlightedCounts.map(([type, count]) => `${type}: ${count}`).join(', ');
+    lines.push(
+      `Artifacts (${projectArtifacts.length} total): ${countsLabel}${hasAdditionalCounts ? ', …' : ''}`,
+    );
+
+    const artifactHighlights = projectArtifacts
+      .filter((artifact) => artifact.summary.trim().length > 0)
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .slice(0, 3);
+
+    if (artifactHighlights.length > 0) {
+      lines.push('Artifact highlights:');
+      artifactHighlights.forEach((artifact) => {
+        const cleanSummary = truncateForContext(artifact.summary.trim(), 220);
+        lines.push(`- [${artifact.type}] ${artifact.title.trim()}: ${cleanSummary}`);
+      });
+    }
+
+    return lines.join('\n');
+  }, [projectArtifacts, selectedProject]);
   const projectNpcRuns = useMemo(
     () =>
       npcMemoryRuns.filter((run) =>
@@ -745,7 +824,11 @@ export default function App() {
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
       />
-      <GhostAgent ref={ghostAgentRef} showTriggerButton={false} />
+      <GhostAgent
+        ref={ghostAgentRef}
+        showTriggerButton={false}
+        projectContext={ghostAgentProjectContext}
+      />
         </div>
       </DepthPreferencesProvider>
     </TutorialLanguageProvider>

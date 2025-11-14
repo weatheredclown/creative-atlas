@@ -26,6 +26,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - ✅ Authored reusable macro definitions under `server/src/routes/agentMacros.ts` and threaded them into the Gemini prompt so the agent can reason about multi-step patterns; next, expose macro selections to the client UI so operators can trigger them explicitly.
   - Updated Gemini SDK usage in the agent proxy to match the 1.x API, keeping `/api/agent/step` functional after upstream changes.
   - Add regression coverage so tool config changes (e.g., reintroducing `allowedFunctionNames`) surface in tests before the Gemini API rejects requests.
+  - Injected selected-project context (title, summary, artifact mix, and highlights) into the ghost agent prompt so Gemini understands the workspace before acting; next, surface the currently focused artifact and unsaved edits once that state is exposed in the workspace UI.
 - Surfaced a payload preview modal in the ghost agent UI that shows the captured screenshot and serialized request; next, add a setting so operators can opt out of auto-opening the preview during long runs.
   - ✅ Converted the payload preview modal into a draggable floating window so it no longer blocks other workspace dialogs; add the opt-out control next.
 - ✅ Normalized viewport coordinate scaling so 0-1000 grid actions land on the intended DOM targets (frontend now trusts the server's pixel coordinates instead of re-scaling them); next, log sampled coordinate translations to validate the new heuristics before expanding macro coverage.
