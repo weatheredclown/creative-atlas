@@ -818,6 +818,15 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       const scrollX = Math.round(window.scrollX ?? window.pageXOffset ?? 0);
       const scrollY = Math.round(window.scrollY ?? window.pageYOffset ?? 0);
 
+      let backgroundColor: string | null = null;
+      if (typeof window !== 'undefined') {
+        const bodyStyle = window.getComputedStyle(document.body);
+        const candidate = bodyStyle.getPropertyValue('background-color');
+        if (candidate && candidate.trim().length > 0 && candidate !== 'rgba(0, 0, 0, 0)') {
+          backgroundColor = candidate;
+        }
+      }
+
       const options: Parameters<Html2CanvasFn>[1] = {
         scale: 1,
         useCORS: true,
@@ -830,6 +839,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
         y: scrollY,
         scrollX,
         scrollY,
+        backgroundColor: backgroundColor ?? '#0f172a',
         ignoreElements: element =>
           element?.id === AGENT_UI_ID || element?.classList.contains('ghost-agent-ignore'),
       };

@@ -43,7 +43,7 @@ const WorkspaceModals: React.FC<WorkspaceModalsProps> = ({
   onDismissInfoModal,
 }) => (
   <>
-    <Modal isOpen={isCreateModalOpen} onClose={onCloseCreateModal} title="Seed a New Artifact">
+    <Modal isOpen={isCreateModalOpen} onClose={onCloseCreateModal} title="Create a New Artifact">
       <CreateArtifactForm
         onCreate={onCreateArtifact}
         onClose={onCloseCreateModal}
