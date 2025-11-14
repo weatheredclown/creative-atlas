@@ -9,9 +9,8 @@
     "rewrites": [
       {
         "source": "/share/**",
-        "run": {
-          "serviceId": "default",
-          "region": "us-central1"
+        "app": {
+          "appId": "creative-atlas"
         }
       },
       {

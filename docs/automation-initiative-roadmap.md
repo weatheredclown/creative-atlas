@@ -90,6 +90,7 @@ This document tracks the multi-session automation initiative to deliver the full
 ## Done
 
 ### Stability & Reliability (Protect the Experience)
+- ✅ Firebase Hosting now rewrites /share/** to the App Engine default service so share metadata deploys without requiring Cloud Run.
 - ✅ Frontend deployment pipeline now forwards `VITE_API_BASE_URL` from GitHub Actions variables so production builds receive the required configuration.
 - ✅ CI workflow now exports `VITE_API_BASE_URL` so verification builds succeed without manual intervention.
 - ✅ Artifact detail panel now tolerates malformed tag and relation arrays and defaults missing project artifact collections so workspace editors stay stable when wiki payloads arrive incomplete.
