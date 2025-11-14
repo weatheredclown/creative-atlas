@@ -651,23 +651,146 @@ const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () =
   onClose,
 }) => {
   const payloadJson = useMemo(() => JSON.stringify(preview.payloadSummary, null, 2), [preview]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
+    active: false,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const clampToViewport = useCallback((next: { x: number; y: number }) => {
+    if (typeof window === 'undefined') {
+      return next;
+    }
+
+    const margin = 16;
+    const panel = panelRef.current;
+    const panelWidth = panel?.offsetWidth ?? 720;
+    const panelHeight = panel?.offsetHeight ?? 520;
+    const maxX = Math.max(margin, window.innerWidth - panelWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - panelHeight - margin);
+
+    return {
+      x: clamp(next.x, margin, maxX),
+      y: clamp(next.y, margin, maxY),
+    };
+  }, []);
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { x: 24, y: 24 };
+    }
+
+    const estimatedWidth = Math.min(window.innerWidth - 64, 960);
+    const estimatedHeight = Math.min(window.innerHeight - 96, 720);
+    const defaultX = clamp((window.innerWidth - estimatedWidth) / 2, 24, Math.max(24, window.innerWidth - estimatedWidth - 24));
+    const defaultY = clamp((window.innerHeight - estimatedHeight) / 2, 24, Math.max(24, window.innerHeight - estimatedHeight - 24));
+
+    return clampToViewport({ x: defaultX, y: defaultY });
+  });
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragStateRef.current.active) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const next = {
+        x: event.clientX - dragStateRef.current.offsetX,
+        y: event.clientY - dragStateRef.current.offsetY,
+      };
+
+      setPosition(clampToViewport(next));
+    },
+    [clampToViewport],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    if (!dragStateRef.current.active) {
+      return;
+    }
+
+    dragStateRef.current.active = false;
+    setIsDragging(false);
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    }
+  }, [handlePointerMove]);
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || typeof window === 'undefined') {
+        return;
+      }
+
+      if (event.target instanceof HTMLElement && event.target.closest('button')) {
+        return;
+      }
+
+      dragStateRef.current.active = true;
+      dragStateRef.current.offsetX = event.clientX - position.x;
+      dragStateRef.current.offsetY = event.clientY - position.y;
+      setIsDragging(true);
+
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+
+      event.preventDefault();
+    },
+    [handlePointerMove, handlePointerUp, position.x, position.y],
+  );
+
+  useEffect(() => {
+    setPosition(previous => clampToViewport(previous));
+  }, [clampToViewport]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleResize = (): void => {
+      setPosition(previous => clampToViewport(previous));
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [clampToViewport]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+      }
+    };
+  }, [handlePointerMove, handlePointerUp]);
 
   return (
-    <div
-      className="ghost-agent-ignore fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/80 px-4 py-8"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Ghost agent payload preview"
-    >
-      <div className="relative flex h-full w-full max-w-5xl items-center justify-center">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute inset-0 h-full w-full cursor-pointer bg-transparent"
-          aria-label="Dismiss payload preview"
-        />
-        <div className="relative z-10 max-h-full w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl">
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-5 py-3">
+    <div className="ghost-agent-ignore fixed inset-0 z-[10020] pointer-events-none">
+      <div
+        className="pointer-events-auto absolute"
+        style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      >
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Ghost agent payload preview"
+          className="ghost-agent-ignore flex max-h-[85vh] flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+          style={{ width: 'min(90vw, 960px)', maxHeight: 'min(85vh, 720px)' }}
+        >
+          <div
+            className={`flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-5 py-3 text-white ${
+              isDragging ? 'cursor-grabbing select-none' : 'cursor-grab select-none'
+            }`}
+            onPointerDown={handlePointerDown}
+          >
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">
                 Model payload preview
@@ -689,7 +812,7 @@ const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () =
                 <img
                   src={preview.screenshotDataUrl}
                   alt="Screenshot that will be sent to the model"
-                  className="max-h-[70vh] w-full object-contain"
+                  className="max-h-[60vh] w-full object-contain"
                 />
               </div>
               <p className="text-xs text-slate-300/80">
@@ -705,7 +828,7 @@ const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () =
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Request payload</div>
-                <pre className="mt-1 max-h-[60vh] overflow-auto rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-100">
+                <pre className="mt-1 max-h-[50vh] overflow-auto rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-100">
                   {payloadJson}
                 </pre>
               </div>
