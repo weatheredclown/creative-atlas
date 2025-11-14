@@ -47,6 +47,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
+
+      if (target instanceof Element && target.closest('[data-modal-ignore="true"]')) {
+        return;
+      }
+
       if (modalRef.current && target && !modalRef.current.contains(target)) {
         onClose();
       }
@@ -216,7 +221,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 
   const modalContent = (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -224,8 +229,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
     >
       <div
         ref={modalRef}
-        className={`fixed top-1/2 left-1/2 bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full ${maxWidthClassName} m-4 transform transition-all max-h-[calc(100vh-2rem)] overflow-y-auto`}
-        style={{ transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))` }}
+        className={`w-full ${maxWidthClassName} m-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-slate-700 bg-slate-800 shadow-2xl transition-all`}
+        style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
       >
         <div
           className="flex justify-between items-center p-4 border-b border-slate-700 cursor-move select-none"
