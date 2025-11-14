@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface WorkspaceSectionIndexProps {
   sections: Array<{ id: string; label: string }>;
@@ -92,6 +92,28 @@ const WorkspaceSectionIndex: React.FC<WorkspaceSectionIndexProps> = ({ sections 
     }
   }, [sections, activeSection]);
 
+  const handleSectionClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+      event.preventDefault();
+      setActiveSection(sectionId);
+
+      if (typeof window !== 'undefined') {
+        const target = document.getElementById(sectionId);
+        if (target) {
+          const targetTop = target.getBoundingClientRect().top + window.scrollY;
+          const offset = headerOffset + 16;
+          const scrollTop = Math.max(targetTop - offset, 0);
+          window.scrollTo({ top: scrollTop, behavior: 'smooth' });
+        }
+
+        if (typeof window.history?.replaceState === 'function') {
+          window.history.replaceState(null, '', `#${sectionId}`);
+        }
+      }
+    },
+    [headerOffset],
+  );
+
   if (sections.length === 0) {
     return null;
   }
@@ -110,7 +132,7 @@ const WorkspaceSectionIndex: React.FC<WorkspaceSectionIndexProps> = ({ sections 
               <li key={section.id}>
                 <a
                   href={`#${section.id}`}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={(event) => handleSectionClick(event, section.id)}
                   className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                     isActive
                       ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-100 shadow-inner shadow-cyan-500/10'
