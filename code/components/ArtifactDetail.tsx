@@ -26,6 +26,7 @@ interface ArtifactDetailProps {
   onDuplicateArtifact: (artifactId: string) => Promise<void> | void;
   onNewArtifact: (sourceArtifactId: string) => void;
   addXp: (amount: number) => void;
+  onSelectArtifact?: (artifactId: string) => void;
 }
 
 const BASE_STATUS_OPTIONS = ['idea', 'draft', 'in-progress', 'todo', 'alpha', 'beta', 'released', 'done'];
@@ -69,6 +70,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   onDuplicateArtifact,
   onNewArtifact,
   addXp,
+  onSelectArtifact,
 }) => {
   const [isExpanding, setIsExpanding] = useState(false);
   const [expandError, setExpandError] = useState<string | null>(null);
@@ -100,6 +102,22 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   const projectArtifactsList = useMemo(
     () => (Array.isArray(projectArtifacts) ? projectArtifacts : []),
     [projectArtifacts],
+  );
+
+  const handleSelectRelatedArtifact = useCallback(
+    (artifactId: string) => {
+      if (!onSelectArtifact) {
+        return;
+      }
+
+      const exists = projectArtifactsList.some((candidate) => candidate.id === artifactId);
+      if (!exists) {
+        return;
+      }
+
+      onSelectArtifact(artifactId);
+    },
+    [onSelectArtifact, projectArtifactsList],
   );
 
   useEffect(() => {
@@ -585,10 +603,22 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
             <div className="space-y-2">
               {relationEntries.map(({ relation, index }) => {
                 const target = projectArtifactsList.find((a) => a.id === relation.toId);
+                const isNavigable = Boolean(onSelectArtifact && target);
                 return (
                   <div key={`${relation.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
                     <span className="text-slate-400">{formatStatusLabel(relation.kind)}</span>
-                    <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectRelatedArtifact(relation.toId)}
+                      disabled={!isNavigable}
+                      className={`font-semibold transition-colors ${
+                        isNavigable
+                          ? 'text-cyan-300 hover:text-cyan-100 underline underline-offset-2 decoration-cyan-400'
+                          : 'text-slate-400 cursor-default'
+                      }`}
+                    >
+                      {target?.title || 'Unknown Artifact'}
+                    </button>
                     <button
                       onClick={() => handleRemoveRelation(index)}
                       className="ml-auto p-1 text-slate-400 hover:text-red-400 transition"
@@ -652,10 +682,22 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
               <ul className="space-y-2">
                 {relationEntries.map(({ relation, index }) => {
                   const target = projectArtifactsList.find((a) => a.id === relation.toId);
+                  const isNavigable = Boolean(onSelectArtifact && target);
                   return (
                     <li key={`${relation.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-cyan-300">{target?.title || 'Unknown Artifact'}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectRelatedArtifact(relation.toId)}
+                          disabled={!isNavigable}
+                          className={`font-semibold transition-colors ${
+                            isNavigable
+                              ? 'text-cyan-300 hover:text-cyan-100 underline underline-offset-2 decoration-cyan-400'
+                              : 'text-slate-400 cursor-default'
+                          }`}
+                        >
+                          {target?.title || 'Unknown Artifact'}
+                        </button>
                         <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(relation.kind)}</span>
                         <button
                           onClick={() => handleRemoveRelation(index)}
