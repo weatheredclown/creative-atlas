@@ -95,7 +95,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
   - ✅ Hardened the `/api/agent/step` Gemini request by attaching the Computer Use tool and a custom `ghost_agent_action` function so the API no longer returns 400 errors when the ghost agent runs.
   - ✅ Corrected the agent prompt template so the TypeScript build succeeds after recent string interpolation edits.
-  - ✅ Removed the unsupported `allowedFunctionNames` tool config so the Gemini computer-use model accepts ghost agent requests again.
+- ✅ Re-applied the fix removing the unsupported `allowedFunctionNames` tool config so the Gemini computer-use model accepts ghost agent requests again after the regression resurfaced.
   - ✅ Replaced the generic action schema with explicit click/type/scroll/ask/done tools, instructing the model on the 1000x1000 grid and scaling coordinates to the live viewport.
 
 ### Interoperability & Collaboration (Connect People & Tools)
