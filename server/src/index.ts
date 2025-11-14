@@ -8,6 +8,7 @@ import githubRouter from './routes/github.js';
 import aiRouter from './routes/ai.js';
 import historyRouter from './routes/history.js';
 import agentRouter from './routes/agent.js';
+import shareMetadataRouter from './routes/shareMetadata.js';
 import {
   CollaborationGateway,
   CollaborationWebSocketServer,
@@ -76,6 +77,7 @@ app.get('/', (_req, res) => {
   res.send('Creative Atlas API is running.');
 });
 
+app.use('/', shareMetadataRouter);
 app.use('/api/github', githubRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/history', historyRouter);
