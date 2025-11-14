@@ -29,6 +29,15 @@ const CALIBRATION_OBJECTIVE =
   'Calibration check: Move the ghost cursor into the center of the red calibration square on the screen, then report done once you are fully inside the square.';
 const CALIBRATION_HISTORY_LIMIT = 12;
 
+const detectAgentDebugMode = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get('agentdebug') === '1';
+};
+
 interface CalibrationTarget {
   x: number;
   y: number;
@@ -640,6 +649,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const [isClicking, setIsClicking] = useState(false);
   const [calibrationOverlay, setCalibrationOverlay] = useState<CalibrationTarget | null>(null);
   const [calibrationHistory, setCalibrationHistory] = useState<CalibrationHistoryEntry[]>([]);
+  const [isAgentDebugMode] = useState(() => detectAgentDebugMode());
 
   const objectiveFieldId = useId();
   const feedbackFieldId = useId();
@@ -660,6 +670,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   }, []);
 
   const handleResetCalibrationHistory = useCallback(() => {
+    if (!isAgentDebugMode) {
+      return;
+    }
+
     if (calibrationHistory.length === 0) {
       return;
     }
@@ -682,21 +696,27 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     }
 
     addLog('🧹 Cleared calibration history.');
-  }, [addLog, calibrationHistory.length]);
+  }, [addLog, calibrationHistory.length, isAgentDebugMode]);
 
   useEffect(() => {
+    if (!isAgentDebugMode) {
+      setCalibrationHistory([]);
+      hasLoadedCalibrationHistoryRef.current = false;
+      return;
+    }
+
     const history = loadCalibrationHistory();
     setCalibrationHistory(history);
     hasLoadedCalibrationHistoryRef.current = true;
-  }, []);
+  }, [isAgentDebugMode]);
 
   useEffect(() => {
-    if (!hasLoadedCalibrationHistoryRef.current) {
+    if (!isAgentDebugMode || !hasLoadedCalibrationHistoryRef.current) {
       return;
     }
 
     persistCalibrationHistory(calibrationHistory);
-  }, [calibrationHistory]);
+  }, [calibrationHistory, isAgentDebugMode]);
 
   const finalizeCalibration = useCallback(
     ({
@@ -1130,6 +1150,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   }, [stopAgent]);
 
   const handleStartCalibration = useCallback(() => {
+    if (!isAgentDebugMode) {
+      return;
+    }
+
     if (isRunning) {
       addLog('⚠️ Please wait for the current run to finish before starting calibration.');
       return;
@@ -1167,7 +1191,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     }, 0);
 
     void runAgentLoop({ overrideObjective: CALIBRATION_OBJECTIVE });
-  }, [addLog, isRunning, objective, runAgentLoop]);
+  }, [addLog, isAgentDebugMode, isRunning, objective, runAgentLoop]);
 
   const handleFeedbackSubmit = useCallback(() => {
     const trimmed = feedbackInput.trim();
@@ -1270,7 +1294,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
         ) : null}
       </AnimatePresence>
 
-      {calibrationOverlay ? (
+      {isAgentDebugMode && calibrationOverlay ? (
         <div
           className="pointer-events-none fixed z-[9950]"
           style={{
@@ -1293,10 +1317,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
           className="fixed top-4 right-4 z-[10000] flex flex-col items-end text-sm"
         >
           {isOpen ? (
-          <div
-            className={`w-80 overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-2xl ${
-              isAwaitingFeedback ? 'border-amber-400/60' : 'border-white/10'
-            }`}
+            <div
+              className={`w-80 overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-2xl ${
+                isAwaitingFeedback ? 'border-amber-400/60' : 'border-white/10'
+              }`}
           >
             <div
               className={`flex items-center justify-between px-4 py-3 text-sm font-semibold text-white ${
@@ -1425,127 +1449,129 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                 </button>
               )}
             </div>
+            {isAgentDebugMode ? (
               <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResetCalibrationHistory}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={calibrationHistory.length === 0}
-                  >
-                    Reset data
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartCalibration}
-                    className="rounded-lg border border-red-400/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isRunning}
-                  >
-                    Run calibration check
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
-              {calibrationAggregate ? (
-                <div
-                  className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
-                    calibrationAggregate.severity === 'aligned'
-                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
-                      : calibrationAggregate.severity === 'watch'
-                      ? 'border-amber-400/60 bg-amber-500/10 text-amber-100'
-                      : 'border-red-400/60 bg-red-500/10 text-red-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide">
-                    <span>
-                      {calibrationAggregate.severity === 'aligned'
-                        ? 'Aligned'
-                        : calibrationAggregate.severity === 'watch'
-                        ? 'Monitor drift'
-                        : 'Severe drift'}
-                    </span>
-                    <span className="text-[10px] font-medium tracking-normal text-white/70">
-                      {calibrationAggregate.sampleCount} sample
-                      {calibrationAggregate.sampleCount === 1 ? '' : 's'}
-                    </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Calibration</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetCalibrationHistory}
+                      className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={calibrationHistory.length === 0}
+                    >
+                      Reset data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleStartCalibration}
+                      className="rounded-lg border border-red-400/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isRunning}
+                    >
+                      Run calibration check
+                    </button>
                   </div>
-                  <p className="mt-1 text-xs text-white/90">{calibrationAggregate.summary}</p>
-                  <p className="mt-1 text-[11px] text-white/80">
-                    Mean offset Δx {calibrationAggregate.meanOffset.x}px (|Δx| ≈{' '}
-                    {calibrationAggregate.meanAbsoluteOffset.x}px), Δy {calibrationAggregate.meanOffset.y}px (|Δy| ≈{' '}
-                    {calibrationAggregate.meanAbsoluteOffset.y}px)
-                    {calibrationAggregate.meanDistance !== null
-                      ? `, avg distance ${calibrationAggregate.meanDistance}px`
-                      : ''}
-                    .
-                  </p>
-                  <p className="mt-1 text-[11px] text-white/70">
-                    Success rate {Math.round((1 - calibrationAggregate.failureRate) * 100)}% ({calibrationAggregate.successCount}{' '}
-                    success{calibrationAggregate.successCount === 1 ? '' : 'es'}, {calibrationAggregate.failureCount} failure
-                    {calibrationAggregate.failureCount === 1 ? '' : 's'}).
-                  </p>
-                  {calibrationAggregate.transform ? (
-                    <div className="mt-2 rounded-md border border-white/20 bg-white/5 px-2.5 py-2 text-[11px] text-white/85">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70">
-                        Transform analysis
-                      </div>
-                      <p className="mt-1 text-xs text-white/90">{calibrationAggregate.transform.summary}</p>
-                      {calibrationAggregate.transform.detailLines.length > 0 ? (
-                        <ul className="mt-1 space-y-1 text-[11px] text-white/80">
-                          {calibrationAggregate.transform.detailLines.map((line, index) => (
-                            <li key={`${line}-${index}`} className="list-inside list-disc marker:text-white/50">
-                              {line}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
+                </div>
+                <p className="text-xs leading-relaxed text-slate-300/80">{calibrationStatusText}</p>
+                {calibrationAggregate ? (
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                      calibrationAggregate.severity === 'aligned'
+                        ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
+                        : calibrationAggregate.severity === 'watch'
+                        ? 'border-amber-400/60 bg-amber-500/10 text-amber-100'
+                        : 'border-red-400/60 bg-red-500/10 text-red-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide">
+                      <span>
+                        {calibrationAggregate.severity === 'aligned'
+                          ? 'Aligned'
+                          : calibrationAggregate.severity === 'watch'
+                          ? 'Monitor drift'
+                          : 'Severe drift'}
+                      </span>
+                      <span className="text-[10px] font-medium tracking-normal text-white/70">
+                        {calibrationAggregate.sampleCount} sample
+                        {calibrationAggregate.sampleCount === 1 ? '' : 's'}
+                      </span>
                     </div>
-                  ) : null}
-                  {calibrationAggregate.recommendation ? (
-                    <p className="mt-1 text-[11px] text-white/80">{calibrationAggregate.recommendation}</p>
-                  ) : null}
-                </div>
-              ) : null}
-              {recentCalibrationHistory.length > 0 ? (
-                <div className="space-y-2">
-                  {recentCalibrationHistory.map(entry => {
-                    const timestamp = new Date(entry.completedAt);
-                    const formattedTime = Number.isNaN(timestamp.getTime())
-                      ? 'Unknown time'
-                      : timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    const toneClass = entry.success ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : 'border-red-400/50 bg-red-500/10 text-red-100';
-
-                    return (
-                      <div
-                        key={entry.id}
-                        className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${toneClass}`}
-                      >
-                        <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide">
-                          <span>{entry.success ? 'Success' : 'Needs attention'}</span>
-                          <span className="text-[10px] font-medium tracking-normal text-white/70">{formattedTime}</span>
+                    <p className="mt-1 text-xs text-white/90">{calibrationAggregate.summary}</p>
+                    <p className="mt-1 text-[11px] text-white/80">
+                      Mean offset Δx {calibrationAggregate.meanOffset.x}px (|Δx| ≈{' '}
+                      {calibrationAggregate.meanAbsoluteOffset.x}px), Δy {calibrationAggregate.meanOffset.y}px (|Δy| ≈{' '}
+                      {calibrationAggregate.meanAbsoluteOffset.y}px)
+                      {calibrationAggregate.meanDistance !== null
+                        ? `, avg distance ${calibrationAggregate.meanDistance}px`
+                        : ''}
+                      .
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/70">
+                      Success rate {Math.round((1 - calibrationAggregate.failureRate) * 100)}% ({calibrationAggregate.successCount}{' '}
+                      success{calibrationAggregate.successCount === 1 ? '' : 'es'}, {calibrationAggregate.failureCount} failure
+                      {calibrationAggregate.failureCount === 1 ? '' : 's'}).
+                    </p>
+                    {calibrationAggregate.transform ? (
+                      <div className="mt-2 rounded-md border border-white/20 bg-white/5 px-2.5 py-2 text-[11px] text-white/85">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                          Transform analysis
                         </div>
-                        {entry.notes.length > 0 ? (
-                          <p className="mt-1 text-xs text-white/90">{entry.notes[0]}</p>
+                        <p className="mt-1 text-xs text-white/90">{calibrationAggregate.transform.summary}</p>
+                        {calibrationAggregate.transform.detailLines.length > 0 ? (
+                          <ul className="mt-1 space-y-1 text-[11px] text-white/80">
+                            {calibrationAggregate.transform.detailLines.map((line, index) => (
+                              <li key={`${line}-${index}`} className="list-inside list-disc marker:text-white/50">
+                                {line}
+                              </li>
+                            ))}
+                          </ul>
                         ) : null}
-                        {entry.offset ? (
-                          <p className="mt-1 text-[11px] text-white/80">
-                            Offset Δx {entry.offset.x}px, Δy {entry.offset.y}px
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[11px] text-white/80">No cursor movement recorded.</p>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-xs text-slate-200/80">
-                  No calibration runs yet. Use the button above to collect coordinate samples.
-                </p>
-              )}
-            </div>
+                    ) : null}
+                    {calibrationAggregate.recommendation ? (
+                      <p className="mt-1 text-[11px] text-white/80">{calibrationAggregate.recommendation}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {recentCalibrationHistory.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentCalibrationHistory.map(entry => {
+                      const timestamp = new Date(entry.completedAt);
+                      const formattedTime = Number.isNaN(timestamp.getTime())
+                        ? 'Unknown time'
+                        : timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                      const toneClass = entry.success ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : 'border-red-400/50 bg-red-500/10 text-red-100';
+
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${toneClass}`}
+                        >
+                          <div className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide">
+                            <span>{entry.success ? 'Success' : 'Needs attention'}</span>
+                            <span className="text-[10px] font-medium tracking-normal text-white/70">{formattedTime}</span>
+                          </div>
+                          {entry.notes.length > 0 ? (
+                            <p className="mt-1 text-xs text-white/90">{entry.notes[0]}</p>
+                          ) : null}
+                          {entry.offset ? (
+                            <p className="mt-1 text-[11px] text-white/80">
+                              Offset Δx {entry.offset.x}px, Δy {entry.offset.y}px
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-white/80">No cursor movement recorded.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-xs text-slate-200/80">
+                    No calibration runs yet. Use the button above to collect coordinate samples.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
           ) : (
             showTriggerButton && (
