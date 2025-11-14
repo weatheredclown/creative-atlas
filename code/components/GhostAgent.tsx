@@ -18,6 +18,12 @@ import { SparklesIcon, XMarkIcon } from './Icons';
 
 type Html2CanvasFn = typeof import('html2canvas')['default'];
 
+declare global {
+  interface Window {
+    html2canvas?: Html2CanvasFn;
+  }
+}
+
 const AGENT_UI_ID = 'ghost-agent-ui';
 const MAX_STEPS = 20;
 const MAX_LOGS = 10;
@@ -89,6 +95,19 @@ interface CalibrationRun {
   startedAt: number;
   previousObjective: string;
   hasRecordedResult: boolean;
+}
+
+interface PayloadPreviewData {
+  screenshotDataUrl: string;
+  payloadSummary: {
+    step: number;
+    objective: string;
+    screenWidth: number;
+    screenHeight: number;
+    history: GhostAgentHistoryEntry[];
+    screenshotBase64Length: number;
+    screenshotBase64Preview: string;
+  };
 }
 
 const delay = (ms: number): Promise<void> =>
@@ -627,6 +646,200 @@ const StopIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () => void }> = ({
+  preview,
+  onClose,
+}) => {
+  const payloadJson = useMemo(() => JSON.stringify(preview.payloadSummary, null, 2), [preview]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
+    active: false,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const clampToViewport = useCallback((next: { x: number; y: number }) => {
+    if (typeof window === 'undefined') {
+      return next;
+    }
+
+    const margin = 16;
+    const panel = panelRef.current;
+    const panelWidth = panel?.offsetWidth ?? 720;
+    const panelHeight = panel?.offsetHeight ?? 520;
+    const maxX = Math.max(margin, window.innerWidth - panelWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - panelHeight - margin);
+
+    return {
+      x: clamp(next.x, margin, maxX),
+      y: clamp(next.y, margin, maxY),
+    };
+  }, []);
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { x: 24, y: 24 };
+    }
+
+    const estimatedWidth = Math.min(window.innerWidth - 64, 960);
+    const estimatedHeight = Math.min(window.innerHeight - 96, 720);
+    const defaultX = clamp((window.innerWidth - estimatedWidth) / 2, 24, Math.max(24, window.innerWidth - estimatedWidth - 24));
+    const defaultY = clamp((window.innerHeight - estimatedHeight) / 2, 24, Math.max(24, window.innerHeight - estimatedHeight - 24));
+
+    return clampToViewport({ x: defaultX, y: defaultY });
+  });
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragStateRef.current.active) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const next = {
+        x: event.clientX - dragStateRef.current.offsetX,
+        y: event.clientY - dragStateRef.current.offsetY,
+      };
+
+      setPosition(clampToViewport(next));
+    },
+    [clampToViewport],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    if (!dragStateRef.current.active) {
+      return;
+    }
+
+    dragStateRef.current.active = false;
+    setIsDragging(false);
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    }
+  }, [handlePointerMove]);
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || typeof window === 'undefined') {
+        return;
+      }
+
+      if (event.target instanceof HTMLElement && event.target.closest('button')) {
+        return;
+      }
+
+      dragStateRef.current.active = true;
+      dragStateRef.current.offsetX = event.clientX - position.x;
+      dragStateRef.current.offsetY = event.clientY - position.y;
+      setIsDragging(true);
+
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+
+      event.preventDefault();
+    },
+    [handlePointerMove, handlePointerUp, position.x, position.y],
+  );
+
+  useEffect(() => {
+    setPosition(previous => clampToViewport(previous));
+  }, [clampToViewport]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleResize = (): void => {
+      setPosition(previous => clampToViewport(previous));
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [clampToViewport]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+      }
+    };
+  }, [handlePointerMove, handlePointerUp]);
+
+  return (
+    <div className="ghost-agent-ignore fixed inset-0 z-[10020] pointer-events-none">
+      <div
+        className="pointer-events-auto absolute"
+        style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      >
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Ghost agent payload preview"
+          className="ghost-agent-ignore flex max-h-[85vh] flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+          style={{ width: 'min(90vw, 960px)', maxHeight: 'min(85vh, 720px)' }}
+        >
+          <div
+            className={`flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-5 py-3 text-white ${
+              isDragging ? 'cursor-grabbing select-none' : 'cursor-grab select-none'
+            }`}
+            onPointerDown={handlePointerDown}
+          >
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">
+                Model payload preview
+              </div>
+              <div className="text-sm text-slate-100">Step {preview.payloadSummary.step}</div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-900/70 p-2 text-slate-200 transition hover:bg-slate-800"
+              aria-label="Close payload preview"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid gap-4 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div className="space-y-3">
+              <div className="overflow-hidden rounded-xl border border-white/10 bg-black/60">
+                <img
+                  src={preview.screenshotDataUrl}
+                  alt="Screenshot that will be sent to the model"
+                  className="max-h-[60vh] w-full object-contain"
+                />
+              </div>
+              <p className="text-xs text-slate-300/80">
+                This is the captured html2canvas output that is encoded and sent with the agent request.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Objective</div>
+                <p className="mt-1 whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm leading-relaxed text-slate-100">
+                  {preview.payloadSummary.objective || '—'}
+                </p>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Request payload</div>
+                <pre className="mt-1 max-h-[50vh] overflow-auto rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-100">
+                  {payloadJson}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export interface GhostAgentHandle {
   open: () => void;
   close: () => void;
@@ -651,6 +864,8 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
   const [isClicking, setIsClicking] = useState(false);
   const [calibrationOverlay, setCalibrationOverlay] = useState<CalibrationTarget | null>(null);
   const [calibrationHistory, setCalibrationHistory] = useState<CalibrationHistoryEntry[]>([]);
+  const [payloadPreview, setPayloadPreview] = useState<PayloadPreviewData | null>(null);
+  const [isPayloadPreviewOpen, setIsPayloadPreviewOpen] = useState(false);
   const [isAgentDebugMode] = useState(() => detectAgentDebugMode());
 
   const normalizedProjectContext = useMemo(() => {
@@ -812,11 +1027,13 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
     }
 
     html2CanvasRef.current = fn;
+    window.html2canvas = fn;
     return fn;
   }, []);
 
   interface CapturedScreenshot {
     base64: string;
+    dataUrl: string;
     viewport: { width: number; height: number };
   }
 
@@ -852,13 +1069,13 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const [, base64] = dataUrl.split(',');
-
       if (!base64) {
         return null;
       }
 
       return {
         base64,
+        dataUrl,
         viewport: { width: canvasWidth, height: canvasHeight },
       };
     } catch (error) {
@@ -915,6 +1132,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
       setIsAwaitingFeedback(false);
       setPendingQuestion(null);
       setFeedbackInput('');
+      setIsPayloadPreviewOpen(false);
       stepCountRef.current = 0;
       historyRef.current = [];
       if (message) {
@@ -1104,13 +1322,36 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
             return;
           }
 
+          const { base64: screenshotBase64, dataUrl: screenshotDataUrl, viewport } = screenshot;
+          const historySnapshot = JSON.parse(
+            JSON.stringify(historyRef.current),
+          ) as GhostAgentHistoryEntry[];
+          const payloadSummary: PayloadPreviewData['payloadSummary'] = {
+            step: stepCountRef.current + 1,
+            objective: trimmedObjective,
+            screenWidth: viewport.width,
+            screenHeight: viewport.height,
+            history: historySnapshot,
+            screenshotBase64Length: screenshotBase64.length,
+            screenshotBase64Preview:
+              screenshotBase64.length > 120
+                ? `${screenshotBase64.slice(0, 120)}…`
+                : screenshotBase64,
+          };
+
+          setPayloadPreview({
+            screenshotDataUrl,
+            payloadSummary,
+          });
+          setIsPayloadPreviewOpen(true);
+
           let action: GhostAgentAction | null = null;
           try {
             action = await requestGhostAgentStep({
               objective: trimmedObjective,
-              screenshotBase64: screenshot.base64,
-              screenWidth: screenshot.viewport.width,
-              screenHeight: screenshot.viewport.height,
+              screenshotBase64: screenshotBase64,
+              screenWidth: viewport.width,
+              screenHeight: viewport.height,
               history: historyRef.current,
               projectContext: normalizedProjectContext,
             });
@@ -1240,6 +1481,24 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
     };
   }, []);
 
+  useEffect(() => {
+    if (!isPayloadPreviewOpen || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsPayloadPreviewOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPayloadPreviewOpen]);
+
   const isStartDisabled = useMemo(() => isRunning || objective.trim().length === 0, [isRunning, objective]);
 
   const statusAccentClass = isAwaitingFeedback ? 'text-amber-200' : 'text-indigo-200';
@@ -1314,6 +1573,13 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {payloadPreview && isPayloadPreviewOpen ? (
+        <PayloadPreviewModal
+          preview={payloadPreview}
+          onClose={() => setIsPayloadPreviewOpen(false)}
+        />
+      ) : null}
 
       {isAgentDebugMode && calibrationOverlay ? (
         <div
@@ -1397,6 +1663,17 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
                       </div>
                     ))}
                   </div>
+                  {payloadPreview ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsPayloadPreviewOpen(true)}
+                        className="text-[11px] font-semibold text-indigo-200 transition hover:text-indigo-100"
+                      >
+                        View last request payload
+                      </button>
+                    </div>
+                  ) : null}
                   {isAwaitingFeedback ? (
                     <div className="space-y-3">
                       {pendingQuestion ? (
