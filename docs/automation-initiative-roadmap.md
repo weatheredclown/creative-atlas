@@ -86,7 +86,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - ✅ `/api/github/publish/status/:jobId` now returns queued/running/succeeded/failed metadata recorded during publish jobs; next, persist status records beyond process restarts and stream updates to the client.
 - Capture the current template recommendation heuristic and outline enhancements for richer ranking.
-- ✅ Firebase Hosting workflows now use the official `firebase/firebase-hosting-action@v0` so deploys rely on the supported GitHub Action going forward.
+- ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
 
 ## Done
 
