@@ -18,6 +18,12 @@ import { SparklesIcon, XMarkIcon } from './Icons';
 
 type Html2CanvasFn = typeof import('html2canvas')['default'];
 
+declare global {
+  interface Window {
+    html2canvas?: Html2CanvasFn;
+  }
+}
+
 const AGENT_UI_ID = 'ghost-agent-ui';
 const MAX_STEPS = 20;
 const MAX_LOGS = 10;
@@ -887,6 +893,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     }
 
     html2CanvasRef.current = fn;
+    window.html2canvas = fn;
     return fn;
   }, []);
 
