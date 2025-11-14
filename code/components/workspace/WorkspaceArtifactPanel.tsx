@@ -23,11 +23,12 @@ import {
   TableCellsIcon,
   ViewColumnsIcon,
 } from '../Icons';
-import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
+import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
 import { sanitizeSceneArtifactData } from '../../utils/sceneArtifacts';
+import { recoverNarrativeScenes } from '../../utils/narrativeScenes';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 import type { CharacterArcEvaluation } from '../../utils/characterProgression';
 
@@ -100,32 +101,6 @@ const coerceString = (value: unknown): string => {
     return '';
   }
   return String(value);
-};
-
-const sanitizeSceneList = (value: unknown, timestamp: number): Scene[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry, index) => {
-      if (!entry || typeof entry !== 'object') {
-        return null;
-      }
-
-      const raw = entry as Partial<Scene> & Record<string, unknown>;
-      const title = coerceString(raw.title).trim();
-      const summary = coerceString(raw.summary);
-      const rawId = coerceString(raw.id).trim();
-      const id = rawId.length > 0 ? rawId : createRecoveryId('scene', timestamp, index);
-
-      return {
-        id,
-        title: title.length > 0 ? title : `Scene ${index + 1}`,
-        summary,
-      };
-    })
-    .filter((scene): scene is Scene => scene !== null);
 };
 
 const sanitizeCharacterData = (value: unknown, timestamp: number): CharacterData => {
@@ -326,7 +301,7 @@ const canRecoverArtifact = (artifact: Artifact): boolean =>
 const recoverArtifactData = (artifact: Artifact, timestamp: number): Artifact['data'] | null => {
   try {
     if (isNarrativeArtifactType(artifact.type)) {
-      return sanitizeSceneList(artifact.data, timestamp);
+      return recoverNarrativeScenes(artifact.data, timestamp);
     }
 
     switch (artifact.type) {

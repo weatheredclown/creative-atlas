@@ -20,6 +20,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - GitHub publish API client now unwraps job results so success links point at the correct repository paths; next, expose queued/running states inside the modal while the job completes.
 - Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
   - Error boundary now offers a recovery button that coerces malformed artifact payloads into safe editor defaults; add coverage that exercises the new UI flow with corrupted wiki content.
+  - Narrative editors now normalize story payloads before rendering so novel artifacts without scene arrays no longer crash; follow up by backfilling regression tests for the sanitized flow.
 
 ### Interoperability & Collaboration (Connect People & Tools)
 - Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.

@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Artifact, ArtifactType, Scene, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
+import { normalizeNarrativeScenes } from '../utils/narrativeScenes';
 
 const CAST_TARGET_TYPES: ArtifactType[] = [ArtifactType.Character, ArtifactType.Faction];
 const STORY_SUPPORT_TYPES: ArtifactType[] = [
@@ -34,7 +35,10 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
   onAddRelation,
   onRemoveRelation,
 }) => {
-  const scenes = (artifact.data as Scene[]) || [];
+  const scenes = useMemo<Scene[]>(
+    () => normalizeNarrativeScenes(artifact.data),
+    [artifact.data],
+  );
   const [newSceneTitle, setNewSceneTitle] = useState('');
   const [newSceneSummary, setNewSceneSummary] = useState('');
   const { showDetailedFields } = useDepthPreferences();
