@@ -47,6 +47,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
+
+      if (target instanceof Element && target.closest('[data-modal-ignore="true"]')) {
+        return;
+      }
+
       if (modalRef.current && target && !modalRef.current.contains(target)) {
         onClose();
       }
@@ -216,7 +221,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
