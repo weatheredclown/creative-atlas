@@ -40,6 +40,21 @@ import {
 
 const router = Router();
 
+export class ShareLookupError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ShareLookupError';
+    this.status = status;
+  }
+}
+
+export interface SharedProjectPayload {
+  project: Project;
+  artifacts: Artifact[];
+}
+
 const respondWithComplianceError = (res: Response, error: unknown): error is ComplianceError => {
   if (error instanceof ComplianceError) {
     const status = error.violation === 'retention' ? 410 : 422;
@@ -303,64 +318,74 @@ const ensureProjectOwnership = async (
   return projectSnapshot;
 };
 
+export const loadSharedProjectPayload = async (shareId: string): Promise<SharedProjectPayload> => {
+  if (!shareId) {
+    throw new ShareLookupError(400, 'Share identifier is required.');
+  }
+
+  const shareSnapshot = await firestore.collection('projectShares').doc(shareId).get();
+  if (!shareSnapshot.exists) {
+    throw new ShareLookupError(404, 'Shared project not found.');
+  }
+
+  try {
+    await enforceShareLinkRetention(shareSnapshot, async () => {
+      await shareSnapshot.ref.delete();
+    });
+  } catch (error) {
+    if (error instanceof ComplianceError) {
+      throw error;
+    }
+    throw error;
+  }
+
+  const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
+  const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
+  const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
+
+  if (!projectId || !ownerId) {
+    throw new ShareLookupError(404, 'Shared project not found.');
+  }
+
+  const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
+  if (!projectSnapshot.exists) {
+    throw new ShareLookupError(404, 'Shared project not found.');
+  }
+
+  const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
+  if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
+    throw new ShareLookupError(404, 'Shared project not found.');
+  }
+
+  const artifactsSnapshot = await firestore
+    .collection('artifacts')
+    .where('projectId', '==', projectId)
+    .get();
+
+  const project = sanitizeForExternalShare(mapProject(projectSnapshot, ownerId));
+  const artifacts = artifactsSnapshot.docs.map((doc) =>
+    sanitizeForExternalShare(mapArtifact(doc, ownerId)),
+  );
+
+  return { project, artifacts };
+};
+
 router.get(
   '/share/:shareId',
   asyncHandler(async (req, res) => {
-    const { shareId } = req.params;
-    if (!shareId) {
-      res.status(400).json({ error: 'Share identifier is required.' });
-      return;
-    }
-
-    const shareSnapshot = await firestore.collection('projectShares').doc(shareId).get();
-    if (!shareSnapshot.exists) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
     try {
-      await enforceShareLinkRetention(shareSnapshot, async () => {
-        await shareSnapshot.ref.delete();
-      });
+      const payload = await loadSharedProjectPayload(req.params.shareId);
+      res.json(payload);
     } catch (error) {
       if (respondWithComplianceError(res, error)) {
         return;
       }
+      if (error instanceof ShareLookupError) {
+        res.status(error.status).json({ error: error.message });
+        return;
+      }
       throw error;
     }
-
-    const shareData = shareSnapshot.data() as { projectId?: unknown; ownerId?: unknown } | undefined;
-    const projectId = typeof shareData?.projectId === 'string' ? shareData.projectId : null;
-    const ownerId = typeof shareData?.ownerId === 'string' ? shareData.ownerId : null;
-
-    if (!projectId || !ownerId) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const projectSnapshot = await firestore.collection('projects').doc(projectId).get();
-    if (!projectSnapshot.exists) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const projectOwner = (projectSnapshot.data() as { ownerId?: unknown })?.ownerId;
-    if (typeof projectOwner !== 'string' || projectOwner !== ownerId) {
-      res.status(404).json({ error: 'Shared project not found.' });
-      return;
-    }
-
-    const artifactsSnapshot = await firestore
-      .collection('artifacts')
-      .where('projectId', '==', projectId)
-      .get();
-
-    const project = sanitizeForExternalShare(mapProject(projectSnapshot, ownerId));
-    const artifacts = artifactsSnapshot.docs.map((doc) =>
-      sanitizeForExternalShare(mapArtifact(doc, ownerId)),
-    );
-
-    res.json({ project, artifacts });
   }),
 );
 

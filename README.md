@@ -122,6 +122,7 @@ To enable the "Publish to GitHub" feature, you'll need to create a GitHub OAuth 
         *   `CA_GITHUB_CLIENT_SECRET`: The "Client Secret" of your GitHub OAuth app.
         *   `APP_BASE_URL`: The base URL of your frontend application for local development (e.g., `http://localhost:5173`). When deploying, replace this with the public URL of your backend (for example, the `defaultHostname` reported by `gcloud app describe` such as `https://creative-atlas.uc.r.appspot.com`).
         *   `SESSION_SECRET`: A long, random string used to sign user sessions. Generate one with `openssl rand -hex 32`.
+        *   `SHARE_PREVIEW_IMAGE_URL` (optional): Absolute URL for the Open Graph preview image exposed at `/share/:id`. When omitted the server references the default `/share-preview.png` asset published with the frontend build.
 
 3.  **Configure Deployment Secrets:**
     *   For the GitHub integration to work in the deployed application, you must also configure these variables as secrets in your GitHub repository.
