@@ -793,6 +793,9 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                 addXp={(amount) => {
                   void addXp(amount);
                 }}
+                onSelectArtifact={(artifactId) => {
+                  onSelectArtifact(artifactId);
+                }}
               />
               {selectedArtifact.type === ArtifactType.Conlang ? (
                 <ConlangLexiconEditor
