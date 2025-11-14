@@ -3,6 +3,12 @@ import { createEmptySceneArtifactData } from './sceneArtifacts';
 
 export const getDefaultDataForType = (type: ArtifactType, title: string): Artifact['data'] => {
   switch (type) {
+    case ArtifactType.Story:
+    case ArtifactType.Novel:
+    case ArtifactType.ShortStory:
+    case ArtifactType.WebComic:
+    case ArtifactType.Audiobook:
+      return [];
     case ArtifactType.Wiki:
       return { content: `# ${title}\n\n` };
     case ArtifactType.Task:

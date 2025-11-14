@@ -44,6 +44,7 @@ import {
   normalizeArtifact,
   normalizeArtifacts,
 } from '../utils/artifactNormalization';
+import { getDefaultDataForType } from '../utils/artifactDefaults';
 import { createArtifactResidueStore } from '../utils/artifactResidueStore';
 
 interface ProfileUpdate
@@ -701,18 +702,23 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (isGuestMode || !isDataApiConfigured) {
         const ownerId = profile?.uid ?? 'guest';
         const timestamp = Date.now();
-        const artifactsToAdd = drafts.map((draft, index) => ({
-          id: draft.id ?? `art-${timestamp + index}`,
-          ownerId,
-          projectId,
-          type: draft.type,
-          title: draft.title,
-          summary: draft.summary ?? '',
-          status: draft.status ?? 'idea',
-          tags: draft.tags ?? [],
-          relations: draft.relations ?? [],
-          data: draft.data ?? {},
-        }));
+        const artifactsToAdd = drafts.map((draft, index) => {
+          const defaultData =
+            draft.data !== undefined ? draft.data : getDefaultDataForType(draft.type, draft.title);
+
+          return {
+            id: draft.id ?? `art-${timestamp + index}`,
+            ownerId,
+            projectId,
+            type: draft.type,
+            title: draft.title,
+            summary: draft.summary ?? '',
+            status: draft.status ?? 'idea',
+            tags: draft.tags ?? [],
+            relations: draft.relations ?? [],
+            data: defaultData ?? {},
+          };
+        });
         const normalizedGuestArtifacts = sanitizeArtifacts(artifactsToAdd);
         mergeArtifacts(projectId, normalizedGuestArtifacts);
         return normalizedGuestArtifacts;
