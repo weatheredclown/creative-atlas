@@ -90,6 +90,21 @@ const delay = (ms: number): Promise<void> =>
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
 
+const readViewportSize = (): { width: number; height: number } => {
+  if (typeof window === 'undefined') {
+    return { width: 0, height: 0 };
+  }
+
+  const viewport = window.visualViewport;
+  const width = viewport?.width ?? window.innerWidth;
+  const height = viewport?.height ?? window.innerHeight;
+
+  return {
+    width: Math.max(0, Math.round(width)),
+    height: Math.max(0, Math.round(height)),
+  };
+};
+
 const normalizeCoordinate = (value: unknown, max: number): number | null => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return null;
@@ -638,6 +653,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const calibrationShouldStopRef = useRef(false);
   const hasLoadedCalibrationHistoryRef = useRef(false);
   const hasCursorMovedRef = useRef(false);
+  const lastViewportSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const addLog = useCallback((message: string) => {
     setLogs(previous => [...previous.slice(-(MAX_LOGS - 1)), message]);
@@ -768,27 +784,90 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     return fn;
   }, []);
 
-  const captureScreen = useCallback(async (): Promise<string | null> => {
+  interface CapturedScreenshot {
+    base64: string;
+    viewport: { width: number; height: number };
+  }
+
+  const captureScreen = useCallback(async (): Promise<CapturedScreenshot | null> => {
     try {
       const html2canvas = await loadHtml2Canvas();
+      const viewport = readViewportSize();
+      const width = Math.max(1, viewport.width);
+      const height = Math.max(1, viewport.height);
+      const scrollX = Math.round(window.scrollX ?? window.pageXOffset ?? 0);
+      const scrollY = Math.round(window.scrollY ?? window.pageYOffset ?? 0);
+
       const options: Parameters<Html2CanvasFn>[1] = {
         scale: 1,
         useCORS: true,
         logging: false,
+        width,
+        height,
+        windowWidth: width,
+        windowHeight: height,
+        x: scrollX,
+        y: scrollY,
+        scrollX,
+        scrollY,
         ignoreElements: element =>
           element?.id === AGENT_UI_ID || element?.classList.contains('ghost-agent-ignore'),
       };
 
       const canvas = await html2canvas(document.body, options);
+      const canvasWidth = Math.max(1, Math.round(canvas.width));
+      const canvasHeight = Math.max(1, Math.round(canvas.height));
+      lastViewportSizeRef.current = { width: canvasWidth, height: canvasHeight };
+
       const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const [, base64] = dataUrl.split(',');
-      return base64 ?? null;
+
+      if (!base64) {
+        return null;
+      }
+
+      return {
+        base64,
+        viewport: { width: canvasWidth, height: canvasHeight },
+      };
     } catch (error) {
       console.error('Screen capture failed', error);
       addLog('❌ Unable to capture the screen. Please try again.');
       return null;
     }
   }, [addLog, loadHtml2Canvas]);
+
+  const convertCoordinate = useCallback(
+    (value: unknown, axis: 'x' | 'y'): number | null => {
+      const referenceViewport = lastViewportSizeRef.current;
+      const currentViewport = readViewportSize();
+      const referenceSize = referenceViewport
+        ? axis === 'x'
+          ? referenceViewport.width
+          : referenceViewport.height
+        : axis === 'x'
+        ? currentViewport.width
+        : currentViewport.height;
+
+      const coordinate = normalizeCoordinate(value, referenceSize);
+      if (coordinate === null) {
+        return null;
+      }
+
+      const currentSize = axis === 'x' ? currentViewport.width : currentViewport.height;
+      if (!referenceViewport || referenceSize === currentSize || referenceSize === 0) {
+        return clamp(coordinate, 0, currentSize);
+      }
+
+      if (currentSize === 0) {
+        return clamp(coordinate, 0, referenceSize);
+      }
+
+      const scaled = Math.round((coordinate / referenceSize) * currentSize);
+      return clamp(scaled, 0, currentSize);
+    },
+    [],
+  );
 
   const stopAgent = useCallback(
     (message?: string) => {
@@ -866,8 +945,10 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       }
 
       if (actionLabel === 'scroll') {
-        const targetY = normalizeCoordinate(action.y, Math.max(document.body.scrollHeight, window.innerHeight));
-        const targetX = normalizeCoordinate(action.x ?? 0, Math.max(document.body.scrollWidth, window.innerWidth));
+        const maxScrollHeight = Math.max(document.body.scrollHeight, window.innerHeight);
+        const maxScrollWidth = Math.max(document.body.scrollWidth, window.innerWidth);
+        const targetY = normalizeCoordinate(action.y, maxScrollHeight);
+        const targetX = normalizeCoordinate(action.x ?? 0, maxScrollWidth);
 
         if (targetY === null) {
           addLog('⚠️ Scroll action was missing coordinates.');
@@ -883,8 +964,8 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
         return 'continue';
       }
 
-      const screenX = normalizeCoordinate(action.x, window.innerWidth);
-      const screenY = normalizeCoordinate(action.y, window.innerHeight);
+      const screenX = convertCoordinate(action.x, 'x');
+      const screenY = convertCoordinate(action.y, 'y');
 
       if (screenX === null || screenY === null) {
         addLog('⚠️ Action was missing screen coordinates.');
@@ -951,7 +1032,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       addLog(`⚠️ Unsupported action received: ${actionLabel}`);
       return 'continue';
     },
-    [addLog, setFeedbackInput, setIsAwaitingFeedback, setPendingQuestion, updateCursor],
+    [addLog, convertCoordinate, setFeedbackInput, setIsAwaitingFeedback, setPendingQuestion, updateCursor],
   );
 
   const runAgentLoop = useCallback(
@@ -996,9 +1077,9 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
           try {
             action = await requestGhostAgentStep({
               objective: trimmedObjective,
-              screenshotBase64: screenshot,
-              screenWidth: window.innerWidth,
-              screenHeight: window.innerHeight,
+              screenshotBase64: screenshot.base64,
+              screenWidth: screenshot.viewport.width,
+              screenHeight: screenshot.viewport.height,
               history: historyRef.current,
             });
           } catch (error) {
