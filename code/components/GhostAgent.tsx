@@ -82,6 +82,19 @@ interface CalibrationRun {
   hasRecordedResult: boolean;
 }
 
+interface PayloadPreviewData {
+  screenshotDataUrl: string;
+  payloadSummary: {
+    step: number;
+    objective: string;
+    screenWidth: number;
+    screenHeight: number;
+    history: GhostAgentHistoryEntry[];
+    screenshotBase64Length: number;
+    screenshotBase64Preview: string;
+  };
+}
+
 const delay = (ms: number): Promise<void> =>
   new Promise(resolve => {
     window.setTimeout(resolve, ms);
@@ -603,6 +616,77 @@ const StopIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () => void }> = ({
+  preview,
+  onClose,
+}) => {
+  const payloadJson = useMemo(() => JSON.stringify(preview.payloadSummary, null, 2), [preview]);
+
+  return (
+    <div
+      className="ghost-agent-ignore fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/80 px-4 py-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ghost agent payload preview"
+    >
+      <div className="relative flex h-full w-full max-w-5xl items-center justify-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute inset-0 h-full w-full cursor-pointer bg-transparent"
+          aria-label="Dismiss payload preview"
+        />
+        <div className="relative z-10 max-h-full w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-5 py-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">
+                Model payload preview
+              </div>
+              <div className="text-sm text-slate-100">Step {preview.payloadSummary.step}</div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-900/70 p-2 text-slate-200 transition hover:bg-slate-800"
+              aria-label="Close payload preview"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid gap-4 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div className="space-y-3">
+              <div className="overflow-hidden rounded-xl border border-white/10 bg-black/60">
+                <img
+                  src={preview.screenshotDataUrl}
+                  alt="Screenshot that will be sent to the model"
+                  className="max-h-[70vh] w-full object-contain"
+                />
+              </div>
+              <p className="text-xs text-slate-300/80">
+                This is the captured html2canvas output that is encoded and sent with the agent request.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Objective</div>
+                <p className="mt-1 whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm leading-relaxed text-slate-100">
+                  {preview.payloadSummary.objective || '—'}
+                </p>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Request payload</div>
+                <pre className="mt-1 max-h-[60vh] overflow-auto rounded-lg border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-100">
+                  {payloadJson}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export interface GhostAgentHandle {
   open: () => void;
   close: () => void;
@@ -625,6 +709,8 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
   const [isClicking, setIsClicking] = useState(false);
   const [calibrationOverlay, setCalibrationOverlay] = useState<CalibrationTarget | null>(null);
   const [calibrationHistory, setCalibrationHistory] = useState<CalibrationHistoryEntry[]>([]);
+  const [payloadPreview, setPayloadPreview] = useState<PayloadPreviewData | null>(null);
+  const [isPayloadPreviewOpen, setIsPayloadPreviewOpen] = useState(false);
 
   const objectiveFieldId = useId();
   const feedbackFieldId = useId();
@@ -768,7 +854,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     return fn;
   }, []);
 
-  const captureScreen = useCallback(async (): Promise<string | null> => {
+  const captureScreen = useCallback(async (): Promise<{ base64: string; dataUrl: string } | null> => {
     try {
       const html2canvas = await loadHtml2Canvas();
       const options: Parameters<Html2CanvasFn>[1] = {
@@ -782,7 +868,11 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       const canvas = await html2canvas(document.body, options);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const [, base64] = dataUrl.split(',');
-      return base64 ?? null;
+      if (!base64) {
+        return null;
+      }
+
+      return { base64, dataUrl };
     } catch (error) {
       console.error('Screen capture failed', error);
       addLog('❌ Unable to capture the screen. Please try again.');
@@ -805,6 +895,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
       setIsAwaitingFeedback(false);
       setPendingQuestion(null);
       setFeedbackInput('');
+      setIsPayloadPreviewOpen(false);
       stepCountRef.current = 0;
       historyRef.current = [];
       if (message) {
@@ -992,11 +1083,34 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
             return;
           }
 
+          const { base64: screenshotBase64, dataUrl: screenshotDataUrl } = screenshot;
+          const historySnapshot = JSON.parse(
+            JSON.stringify(historyRef.current),
+          ) as GhostAgentHistoryEntry[];
+          const payloadSummary: PayloadPreviewData['payloadSummary'] = {
+            step: stepCountRef.current + 1,
+            objective: trimmedObjective,
+            screenWidth: window.innerWidth,
+            screenHeight: window.innerHeight,
+            history: historySnapshot,
+            screenshotBase64Length: screenshotBase64.length,
+            screenshotBase64Preview:
+              screenshotBase64.length > 120
+                ? `${screenshotBase64.slice(0, 120)}…`
+                : screenshotBase64,
+          };
+
+          setPayloadPreview({
+            screenshotDataUrl,
+            payloadSummary,
+          });
+          setIsPayloadPreviewOpen(true);
+
           let action: GhostAgentAction | null = null;
           try {
             action = await requestGhostAgentStep({
               objective: trimmedObjective,
-              screenshotBase64: screenshot,
+              screenshotBase64: screenshotBase64,
               screenWidth: window.innerWidth,
               screenHeight: window.innerHeight,
               history: historyRef.current,
@@ -1114,6 +1228,24 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
     };
   }, []);
 
+  useEffect(() => {
+    if (!isPayloadPreviewOpen || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsPayloadPreviewOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPayloadPreviewOpen]);
+
   const isStartDisabled = useMemo(() => isRunning || objective.trim().length === 0, [isRunning, objective]);
 
   const statusAccentClass = isAwaitingFeedback ? 'text-amber-200' : 'text-indigo-200';
@@ -1188,6 +1320,13 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {payloadPreview && isPayloadPreviewOpen ? (
+        <PayloadPreviewModal
+          preview={payloadPreview}
+          onClose={() => setIsPayloadPreviewOpen(false)}
+        />
+      ) : null}
 
       {calibrationOverlay ? (
         <div
@@ -1270,6 +1409,17 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(({ showTriggerB
                       </div>
                     ))}
                   </div>
+                  {payloadPreview ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsPayloadPreviewOpen(true)}
+                        className="text-[11px] font-semibold text-indigo-200 transition hover:text-indigo-100"
+                      >
+                        View last request payload
+                      </button>
+                    </div>
+                  ) : null}
                   {isAwaitingFeedback ? (
                     <div className="space-y-3">
                       {pendingQuestion ? (
