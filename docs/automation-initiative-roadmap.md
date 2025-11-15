@@ -89,8 +89,9 @@ This document tracks the multi-session automation initiative to deliver the full
 - Investigate Firebase Hosting deploy instability after migrating share rewrites off Cloud Run.
   - Replaced the unsupported `/share/**` rewrite with the `shareMetadata` Cloud Function proxy so Hosting deploys succeed without the experimental `app` target, and updated CI to deploy the function alongside the frontend build. Next, monitor the proxy for latency or quota regressions and backfill tests that exercise the function against representative share payloads.
   - Firebase CLI deploys now read hosting + functions config from the repo root so the `shareMetadata` function deploy no longer fails with "../functions is outside of project directory." Next, confirm the updated workflows stabilize the merge + preview pipelines before re-enabling any additional targets.
-- Capture the current template recommendation heuristic and outline enhancements for richer ranking.
-- ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
+  - Production Hosting workflow no longer relies on `FirebaseExtended/action-hosting-deploy`; the job now shells out to `firebase deploy --only hosting --except extensions` so the service account avoids 403s when listing Firebase Extensions instances. Observe upcoming merge runs to confirm the manual deploy path remains stable before applying the same pattern to preview channels.
+  - Capture the current template recommendation heuristic and outline enhancements for richer ranking.
+  - ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
 
 ## Done
 
