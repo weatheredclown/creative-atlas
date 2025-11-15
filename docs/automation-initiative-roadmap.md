@@ -131,6 +131,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Shared project links now surface App Engine-rendered Open Graph metadata so social unfurls display the project title, summary highlights, and a branded preview card instead of the generic "Creative Atlas" label.
 - ✅ Artifact relation entries now act as navigation links so editors can jump between related artifacts without searching manually.
 - ✅ Workspace section index links now use smooth scrolling with header offset awareness so hash navigation no longer triggers browser extension message-channel errors.
+- ✅ Added a prominent skip navigation control so keyboard users can jump straight to the main workspace content without tabbing through header actions.
 
 ### Onboarding & Education (Help New Creators Succeed)
 - ✅ Bilingual tutorial copy now respects an `?hl=` query parameter (replacing the dropdown selector) while keeping screen-reader-friendly step status messaging.
