@@ -51,6 +51,7 @@ jobs:
           channelId: live
           projectId: creative-atlas
           entryPoint: code
+          firebaseToolsVersion: 14.25.0
   deploy_api:
     name: Deploy API to App Engine
     needs: build_and_deploy

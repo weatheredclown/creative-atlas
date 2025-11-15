@@ -40,3 +40,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
           projectId: creative-atlas
           entryPoint: code
+          firebaseToolsVersion: 14.25.0
