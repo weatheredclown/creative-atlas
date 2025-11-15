@@ -12,6 +12,7 @@ When validating recent Firebase Hosting and Functions deploy fixes, run a quick 
 1. Trigger the merge workflow and verify the Hosting deploy reports "App aware" status alongside the `shareMetadata` function.
 2. Visit a freshly deployed share link to ensure the proxy returns metadata without 5xx errors.
 3. Re-run the workflow if either step fails so the deployment pipeline captures the remediation in its next pass.
+4. Capture a short note in the deployment log so future verifications have traceable context for what was exercised.
 
 ## Issue Drafts from Documentation
 
