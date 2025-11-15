@@ -42,6 +42,14 @@ The interactive prototype lives in the `code/` directory and is a client-side Re
    npm install
    ```
 
+   When you're just validating an end-to-end pipeline run, pair the install with a quick lint smoke test from the repository root:
+
+   ```bash
+   npm run lint --prefix code
+   ```
+
+   The command mirrors the continuous integration requirement noted below and confirms the frontend still compiles cleanly before you push a trial change.
+
 ### 2. Configure environment variables
 
 The frontend expects Firebase configuration in `code/.env.local`:
