@@ -136,5 +136,6 @@ This document tracks the multi-session automation initiative to deliver the full
 ### Operational Excellence & Compliance (Keep Operations Running)
 - ✅ Integrate analytics & monitoring: instrument key flows, set up alerting, and document operational runbooks.
 - ✅ Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
+- ✅ Pinned `firebase-tools` v14.25.0 in Hosting workflows so the App Engine share rewrite deploys without config validation failures.
 
 When a segment is cleared, remove its heading entirely. If new priorities emerge, add them as new segments so the roadmap always reflects the next meaningful slices of work.
