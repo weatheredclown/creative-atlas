@@ -8,12 +8,6 @@
     ],
     "rewrites": [
       {
-        "source": "/share/**",
-        "app": {
-           "appId": "creative-atlas"
-        }
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
