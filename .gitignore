@@ -4,6 +4,7 @@ code/node_modules/
 code/dist/
 server/node_modules/
 server/dist/
+functions/node_modules/
 
 # Environment files
 code/.env

@@ -44,6 +44,17 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: code
+      - name: Install function dependencies
+        run: npm ci
+        working-directory: functions
+      - name: Deploy share metadata function
+        env:
+          FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: |
+          printf '%s' "${FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
+          npx firebase-tools@14.25.0 deploy --only functions:shareMetadata --project creative-atlas --non-interactive --force
+        working-directory: code
       - uses: FirebaseExtended/action-hosting-deploy@v0.9.0
         with:
           repoToken: ${{ secrets.CA_GITHUB_TOKEN }}
