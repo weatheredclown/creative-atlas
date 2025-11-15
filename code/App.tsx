@@ -73,7 +73,7 @@ const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) 
         <h1 className="text-xl font-bold text-slate-100">Creative Atlas</h1>
       </div>
     </header>
-    <main className="flex flex-1 items-center justify-center p-8">
+    <main id="main-content" className="flex flex-1 items-center justify-center p-8">
       <div className="text-center space-y-4" aria-live="polite">
         <div className="flex items-center justify-center">
           <div
@@ -689,6 +689,9 @@ export default function App() {
     <TutorialLanguageProvider language={tutorialProgress.language}>
       <DepthPreferencesProvider>
         <div className="min-h-screen flex flex-col">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       {isTutorialVisible && (
         <ErrorBoundary>
           <TutorialGuide
@@ -732,7 +735,7 @@ export default function App() {
           <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
+      <main id="main-content" className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <WorkspaceSidebar
           profile={profile}
           level={level}
