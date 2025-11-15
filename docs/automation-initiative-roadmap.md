@@ -6,6 +6,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Always update this roadmap before ending a work session so the next agent inherits an accurate state snapshot.
 - Prefer small, verifiable tasks. If a task balloons, split it into sub-bullets and keep only the next actionable slice here.
 - Add links to relevant docs, designs, or code modules so future agents can jump straight into implementation.
+- 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
 
 ## Not Done
 
