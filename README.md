@@ -5,6 +5,14 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 📘 **Universe Briefs:** Looking for a deep dive on a flagship world? Start with the [Dustland Project Overview](docs/dustland-overview.md) to see how the retro RPG framework, persona mask system, and CRT aesthetic map into Creative Atlas artifacts.
 📘 Lore reference: see [`docs/darv-language.md`](docs/darv-language.md) for the Darv language primer that anchors Tamenzut rituals, myths, and conlang work.
 
+## Deployment Smoke Test Checklist
+
+When validating recent Firebase Hosting and Functions deploy fixes, run a quick smoke test to confirm both surfaces ship cleanly:
+
+1. Trigger the merge workflow and verify the Hosting deploy reports "App aware" status alongside the `shareMetadata` function.
+2. Visit a freshly deployed share link to ensure the proxy returns metadata without 5xx errors.
+3. Re-run the workflow if either step fails so the deployment pipeline captures the remediation in its next pass.
+
 ## Issue Drafts from Documentation
 
 The `issue-drafts/` directory contains GitHub issue bodies generated from unchecked tasks in the documentation. Refresh the drafts after editing the docs:
