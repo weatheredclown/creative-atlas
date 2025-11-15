@@ -53,7 +53,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
         run: |
           printf '%s' "${FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
-          npx firebase-tools@14.25.0 deploy --only functions:shareMetadata --project creative-atlas --non-interactive --force
+          npx firebase-tools@14.25.0 deploy --only functions:shareMetadata --except extensions --project creative-atlas --non-interactive --force
       - name: Deploy hosting
         env:
           FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREATIVE_ATLAS }}
