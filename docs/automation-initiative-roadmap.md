@@ -7,6 +7,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - Prefer small, verifiable tasks. If a task balloons, split it into sub-bullets and keep only the next actionable slice here.
 - Add links to relevant docs, designs, or code modules so future agents can jump straight into implementation.
 - 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
+- 2025-02-15: Verified README pipeline guidance while running an end-to-end deploy test; roadmap status unchanged.
 
 ## Not Done
 
