@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "../functions"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -9,9 +12,7 @@
     "rewrites": [
       {
         "source": "/share/**",
-        "app": {
-           "appId": "creative-atlas"
-        }
+        "function": "shareMetadata"
       },
       {
         "source": "**",

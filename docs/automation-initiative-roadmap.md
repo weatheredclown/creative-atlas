@@ -85,6 +85,8 @@ This document tracks the multi-session automation initiative to deliver the full
 ### Operational Excellence & Compliance (Keep Operations Running)
 - Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
   - ✅ `/api/github/publish/status/:jobId` now returns queued/running/succeeded/failed metadata recorded during publish jobs; next, persist status records beyond process restarts and stream updates to the client.
+- Investigate Firebase Hosting deploy instability after migrating share rewrites off Cloud Run.
+  - Replaced the unsupported `/share/**` rewrite with the `shareMetadata` Cloud Function proxy so Hosting deploys succeed without the experimental `app` target, and updated CI to deploy the function alongside the frontend build. Next, monitor the proxy for latency or quota regressions and backfill tests that exercise the function against representative share payloads.
 - Capture the current template recommendation heuristic and outline enhancements for richer ranking.
 - ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
 
