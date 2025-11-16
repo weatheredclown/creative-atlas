@@ -86,7 +86,7 @@ const nanoBananaArtModeSchema = z.enum(NANO_BANANA_ART_MODE_VALUES);
 
 const nanoBananaGenerationSchema = z
   .object({
-    mode: nanoBananaArtModeSchema.default('aurora'),
+    mode: nanoBananaArtModeSchema.default('retro'),
   })
   .strict();
 

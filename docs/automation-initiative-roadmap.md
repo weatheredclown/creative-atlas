@@ -195,4 +195,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-02-16: Added Creative Atlas art mode selector and multi-variant hero previews inside `ProjectOverview`; no roadmap bullets impacted.
 - 2025-02-17: Updated GitHub publish tests to reflect job metadata response shape; no roadmap items impacted.
 - 2025-11-16: Resolved Gemini safety typing regressions blocking the workspace route build; no roadmap bullets impacted.
+- 2025-11-16: Swapped Nano Banana art modes to retro/modern/futuristic names plus prompt descriptors; no roadmap bullets impacted.
 
