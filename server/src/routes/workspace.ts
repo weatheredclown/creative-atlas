@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { Response } from 'express';
+import { Buffer } from 'node:buffer';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import type { DocumentSnapshot, QueryDocumentSnapshot, Timestamp, WriteResult } from 'firebase-admin/firestore';
 import { firestore } from '../firebaseAdmin.js';
@@ -68,6 +69,13 @@ const respondWithComplianceError = (res: Response, error: unknown): error is Com
   return false;
 };
 
+const normalizeNanoBananaImage = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  return nanoBananaImagePattern.test(value) ? value : null;
+};
+
 const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
   const data = doc.data() ?? {};
   return {
@@ -77,6 +85,7 @@ const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: stri
     summary: typeof data.summary === 'string' ? data.summary : '',
     status: typeof data.status === 'string' ? data.status : 'active',
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    nanoBananaImage: normalizeNanoBananaImage((data as { nanoBananaImage?: unknown }).nanoBananaImage),
     createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
     updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
@@ -389,6 +398,37 @@ router.get(
   }),
 );
 
+router.get(
+  '/share/:shareId/nano-banana.png',
+  asyncHandler(async (req, res) => {
+    try {
+      const payload = await loadSharedProjectPayload(req.params.shareId);
+      const dataUrl = payload.project.nanoBananaImage;
+      if (!dataUrl || typeof dataUrl !== 'string' || !nanoBananaImagePattern.test(dataUrl)) {
+        res.status(404).json({ error: 'Nano banana image not found' });
+        return;
+      }
+      const [, encoded] = dataUrl.split(',', 2);
+      if (!encoded) {
+        res.status(404).json({ error: 'Nano banana image not found' });
+        return;
+      }
+      const buffer = Buffer.from(encoded, 'base64');
+      res.set('Cache-Control', 'public, max-age=600');
+      res.type('png').send(buffer);
+    } catch (error) {
+      if (respondWithComplianceError(res, error)) {
+        return;
+      }
+      if (error instanceof ShareLookupError) {
+        res.status(error.status).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+  }),
+);
+
 router.use(authenticate);
 
 router.get(
@@ -458,12 +498,20 @@ const defaultSettings = {
 
 const themePreferenceSchema = z.enum(['system', 'light', 'dark']);
 
+const nanoBananaImagePattern = /^data:image\/png;base64,/i;
+
+const nanoBananaImageSchema = z
+  .string()
+  .regex(nanoBananaImagePattern, 'Nano banana image must be a base64-encoded PNG data URL.')
+  .max(1_200_000, 'Nano banana image is too large.');
+
 const projectSchema = z.object({
   id: z.string().min(1).optional(),
   title: z.string().min(1),
   summary: z.string().default(''),
   status: z.string().default('active'),
   tags: z.array(z.string()).default([]),
+  nanoBananaImage: nanoBananaImageSchema.optional().nullable(),
 });
 
 const projectUpdateSchema = projectSchema.partial().refine((value) => Object.keys(value).length > 0, {
@@ -910,6 +958,7 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
     summary: parsed.summary ?? '',
     status: parsed.status ?? 'active',
     tags: parsed.tags ?? [],
+    nanoBananaImage: parsed.nanoBananaImage ?? null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -1001,6 +1050,7 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
   if (parsed.summary !== undefined) update.summary = parsed.summary;
   if (parsed.status !== undefined) update.status = parsed.status;
   if (parsed.tags !== undefined) update.tags = parsed.tags;
+  if (parsed.nanoBananaImage !== undefined) update.nanoBananaImage = parsed.nanoBananaImage;
 
   try {
     assertProjectContentCompliance(

@@ -4,6 +4,7 @@ import { formatStatusLabel, getStatusClasses } from '../utils/status';
 import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 import ProjectSettingsPanel from './ProjectSettingsPanel';
+import { generateNanoBananaImage } from '../utils/nanoBananaGenerator';
 
 interface ProjectOverviewProps {
   project: Project;
@@ -99,6 +100,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   const [factSuggestion, setFactSuggestion] = useState<FactPrompt | null>(null);
   const [factFeedback, setFactFeedback] = useState<string | null>(null);
   const [lastFactId, setLastFactId] = useState<string | null>(null);
+  const [isGeneratingNanoBanana, setIsGeneratingNanoBanana] = useState(false);
+  const [nanoBananaError, setNanoBananaError] = useState<string | null>(null);
   const feedbackTimeoutRef = useRef<number | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -116,6 +119,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     setFactSuggestion(null);
     setFactFeedback(null);
     setLastFactId(null);
+    setNanoBananaError(null);
+    setIsGeneratingNanoBanana(false);
     if (feedbackTimeoutRef.current) {
       window.clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = null;
@@ -351,6 +356,29 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     }
   };
 
+  const handleGenerateNanoBanana = () => {
+    setNanoBananaError(null);
+    setIsGeneratingNanoBanana(true);
+    try {
+      const image = generateNanoBananaImage({
+        title: project.title,
+        summary: project.summary,
+        tags: project.tags,
+      });
+      onUpdateProject(project.id, { nanoBananaImage: image });
+    } catch (error) {
+      console.error('Failed to generate nano banana image', error);
+      setNanoBananaError('We could not generate the nano banana image. Try reloading and generating again.');
+    } finally {
+      setIsGeneratingNanoBanana(false);
+    }
+  };
+
+  const handleRemoveNanoBanana = () => {
+    setNanoBananaError(null);
+    onUpdateProject(project.id, { nanoBananaImage: null });
+  };
+
   return (
     <>
       <section className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 space-y-8">
@@ -488,6 +516,54 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             </div>
             </div>
         </header>
+
+        <div className="space-y-4 rounded-xl border border-amber-400/30 bg-amber-500/5 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Nano banana summary art</p>
+              <h3 className="text-sm font-semibold text-slate-100">Generate a share-ready hero image</h3>
+              <p className="text-xs text-slate-400">
+                This art displays above your workspace summary and becomes the open graph thumbnail when you share the atlas.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateNanoBanana}
+                className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isGeneratingNanoBanana}
+              >
+                {isGeneratingNanoBanana ? 'Generating…' : 'Generate nano banana'}
+              </button>
+              {project.nanoBananaImage ? (
+                <button
+                  type="button"
+                  onClick={handleRemoveNanoBanana}
+                  className="inline-flex items-center gap-2 rounded-md border border-amber-400/50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amber-200 transition-colors hover:border-amber-300 hover:text-white"
+                >
+                  Remove image
+                </button>
+              ) : null}
+            </div>
+          </div>
+          {nanoBananaError ? <p className="text-xs font-semibold text-rose-300">{nanoBananaError}</p> : null}
+          {project.nanoBananaImage ? (
+            <figure className="overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/60">
+              <img
+                src={project.nanoBananaImage}
+                alt={`${project.title} nano banana summary art`}
+                className="h-auto w-full object-cover"
+              />
+              <figcaption className="border-t border-slate-800/60 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
+                Updated automatically across shared links
+              </figcaption>
+            </figure>
+          ) : (
+            <div className="rounded-lg border border-dashed border-amber-400/40 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
+              Generate a nano banana to preview how your project will look in the hero panel and on social cards.
+            </div>
+          )}
+        </div>
 
         <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

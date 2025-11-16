@@ -78,6 +78,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
   - ✅ The Graph view now opens with an Arc Stage Spotlight explainer and counts, guiding editors toward the new filtering workflow; next, replicate the guidance inside the Family Tree tools.
 - Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
+- Cache nano banana share art: persist the generated PNGs to Cloud Storage (or another CDN-backed bucket) and point `/share/:id/nano-banana.png` at the cached asset so social crawlers aren't pulling large data URLs from Firestore on every request.
 
 ### Onboarding & Education (Help New Creators Succeed)
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)

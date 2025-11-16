@@ -25,6 +25,7 @@ export interface Project {
   summary: string;
   status: string;
   tags: string[];
+  nanoBananaImage?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
