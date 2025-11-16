@@ -163,6 +163,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Introduced a workspace content picker for Atlas Intelligence prompt slots so creators can insert project, artifact, and milestone IDs without leaving the flow.
 - ✅ Atlas Intelligence fallback responses now replace workspace IDs with human-readable artifact and project labels so offline drafts stay readable.
 - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
+- ✅ Nano Banana previews are now resized client-side before saving so Firestore updates no longer fail when Gemini returns larger PNGs.
 
 ### Reporting & Project Insights (Understand & Explore Work)
 - ✅ Exposed an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
