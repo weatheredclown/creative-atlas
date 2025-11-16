@@ -6,116 +6,136 @@ This document tracks the multi-session automation initiative to deliver the full
 - Always update this roadmap before ending a work session so the next agent inherits an accurate state snapshot.
 - Prefer small, verifiable tasks. If a task balloons, split it into sub-bullets and keep only the next actionable slice here.
 - Add links to relevant docs, designs, or code modules so future agents can jump straight into implementation.
-- 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
-- 2025-02-15: Documented deployment smoke test logging note in `README.md`; no roadmap items impacted.
 
 ## Not Done
 
 ### Stability & Reliability (Protect the Experience)
-- Implement resilient collaboration primitives: decide on the shared editing model, then scaffold WebSocket/CRDT support under `server/src/collaboration/` with optimistic UI hooks in `code/src/`.
-  - ✅ Collaboration gateway scaffolding now lives under `server/src/collaboration/` with an in-memory adapter registered in the Express app; WebSocket transport now bridges sessions to connected clients, so the next step is threading CRDT-aware operations and persistence into the adapter.
-- _(Low priority)_ Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
-- _(Low priority)_ Validate imports on the server: move CSV/Markdown parsing into Express handlers, returning structured validation errors to the frontend.
-- Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
-  - Publish modal now surfaces validation failures immediately, throwing errors for missing project content so the UI shows inline feedback instead of silently doing nothing before the status endpoints arrive.
-  - Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
-  - GitHub publish API client now unwraps job results so success links point at the correct repository paths; next, expose queued/running states inside the modal while the job completes.
-- Add regression coverage for artifact normalization so partial records from the data API never crash the workspace editors.
-  - Error boundary now offers a recovery button that coerces malformed artifact payloads into safe editor defaults; add coverage that exercises the new UI flow with corrupted wiki content.
+- **Implement resilient collaboration primitives.**
+  - _Context:_ Collaboration gateway scaffolding now lives under `server/src/collaboration/` with an in-memory adapter wired into the Express app, and WebSocket transport bridges sessions to connected clients.
+  - _Next actions:_
+    - [ ] Thread CRDT-aware operations through the adapter and persist them to a durable store (start with a Firestore-backed adapter in `server/src/collaboration/adapters/firestoreAdapter.ts`).
+    - [ ] Add optimistic UI hooks in `code/src/` so editors can apply CRDT patches locally before the server ACK.
+- **Add regression coverage for artifact normalization.**
+  - _Context:_ The error boundary now offers a recovery button that coerces malformed artifact payloads into safe editor defaults.
+  - _Next actions:_
+    - [ ] Create corrupted wiki fixture payloads under `code/test/fixtures/`.
+    - [ ] Write UI tests that click the recovery button and verify the editors continue functioning.
+- **Document collaboration scope decisions.**
+  - _Context:_ Real-time collaboration blockers remain hazy.
+  - _Next action:_ Capture a short design note summarizing the decision tree (real-time vs. turn-based, dependency list) and link it here before deeper implementation work starts.
+- **Low-priority backlog (keep at the bottom):**
+  - [ ] Ship offline caching: persist drafts locally (IndexedDB or browser storage) and add background sync queues so editors function during outages.
+  - [ ] Validate imports on the server by moving CSV/Markdown parsing into Express handlers and surfacing structured validation errors in the frontend.
 
 ### Interoperability & Collaboration (Connect People & Tools)
-- Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
-  - ✅ Authored reusable macro definitions under `server/src/routes/agentMacros.ts` and threaded them into the Gemini prompt so the agent can reason about multi-step patterns; next, expose macro selections to the client UI so operators can trigger them explicitly.
-  - Updated Gemini SDK usage in the agent proxy to match the 1.x API, keeping `/api/agent/step` functional after upstream changes.
-  - Add regression coverage so tool config changes (e.g., reintroducing `allowedFunctionNames`) surface in tests before the Gemini API rejects requests.
-  - Injected selected-project context (title, summary, artifact mix, and highlights) into the ghost agent prompt so Gemini understands the workspace before acting; next, surface the currently focused artifact and unsaved edits once that state is exposed in the workspace UI.
-- Surfaced a payload preview modal in the ghost agent UI that shows the captured screenshot and serialized request; next, add a setting so operators can opt out of auto-opening the preview during long runs.
-  - ✅ Converted the payload preview modal into a draggable floating window so it no longer blocks other workspace dialogs; add the opt-out control next.
-- ✅ Normalized viewport coordinate scaling so 0-1000 grid actions land on the intended DOM targets (frontend now trusts the server's pixel coordinates instead of re-scaling them); next, log sampled coordinate translations to validate the new heuristics before expanding macro coverage.
-- ✅ Normalized viewport coordinate scaling so 0-1000 grid actions land on the intended DOM targets; next, log sampled coordinate translations to validate the new heuristics before expanding macro coverage.
-- ✅ Corrected server-side Y-axis scaling for 1000x1000 grid actions so calibration mode no longer inverts vertical movement; next, observe calibration reports to confirm sustained alignment before extending macro coverage.
-- Captured viewport-aligned screenshots (including viewport dimensions) before each agent step so calibration drift analysis can compare like-for-like coordinates; monitor new samples and persist transform metrics when stable.
-  - ✅ Modals now render correctly in captured screenshots by reworking the workspace modal layout to avoid whiteout frames when dialogs open.
-  - Dialog capture now keeps workspace modals visible when responding via the agent panel—outside clicks no longer dismiss the dialog and fade-in transitions were removed to prevent blank frames; next, confirm the ghost agent can submit sequential feedback with screenshots attached.
-  - Exposed the loaded `html2canvas` helper on `window` so operators can reproduce capture failures from the console when diagnosing ghost agent screenshot issues; confirm this reduces the "screenshot could not be captured" interruptions during modal workflows.
-- ✅ Added an in-app calibration mode that spawns a red target square, records ghost cursor offsets, and surfaces debugging suggestions/history so operators can validate coordinate normalization; aggregated local calibration samples to highlight persistent drift trends with transform analysis that flags mirroring/rotation/skew patterns; next, persist aggregated metrics (including the transform model) to the backend so multiple operators can compare drift across sessions.
-  - Added a manual reset control for calibration history so operators can clear stale samples when iterating on alignment logic.
-  - Calibration widgets now stay hidden by default and reappear when `?agentdebug=1` is present, keeping the core UI streamlined while preserving the debugging workflow.
-- Implement canon enforcement workflows: add NPC memory mode, truth/canon lock approvals, and lore distillation pipelines.
-  - Added NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk. Follow-up: wire in truth-lock approvals and lore distillation cues.
-- Document decisions required for collaboration scope (real-time vs. turn-based) and list dependencies before implementation begins.
+- **Ghost automation agent macros + UI exposure.**
+  - _Context:_ `/api/agent/step` brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and already threads reusable macro definitions from `server/src/routes/agentMacros.ts` into the prompt. Operators still trigger macros indirectly.
+  - _Next actions:_
+    - [ ] Surface macro selections inside the ghost agent client so operators can trigger macros explicitly (hook into `code/components/AgentPanel/`).
+    - [ ] Add regression coverage so tool config changes (e.g., reintroducing `allowedFunctionNames`) fail fast before hitting the Gemini API.
+- **Ghost agent context & preview ergonomics.**
+  - _Context:_ The payload preview modal now behaves as a draggable floating window, and the ghost agent prompt includes project context (title, summary, artifact mix, highlights).
+  - _Next actions:_
+    - [ ] Add a client-side setting that lets operators opt out of auto-opening the payload preview during long runs.
+    - [ ] Surface the currently focused artifact and unsaved edits inside the prompt once that state is exposed from the workspace UI.
+- **Coordinate normalization, calibration, and screenshot reliability.**
+  - _Context:_ Viewport coordinate scaling and Y-axis calibration now align the 0-1000 grid with DOM targets, dialog capture keeps modals visible, and an in-app calibration mode logs cursor offsets with manual reset + debug toggles.
+  - _Next actions:_
+    - [ ] Log sampled coordinate translations server-side to validate heuristics before expanding macro coverage.
+    - [ ] Persist aggregated calibration metrics (including the selected transform model) to the backend so operators can compare drift across sessions.
+    - [ ] Confirm the ghost agent can submit sequential feedback with screenshots attached using the updated dialog capture flow, and expose the loaded `html2canvas` helper via documentation so operators can debug capture failures.
+- **Canon enforcement workflows.**
+  - _Context:_ NPC memory sync scope filters, Firestore NPC run API, and World Simulation surfacing of canon risk are live.
+  - _Next actions:_
+    - [ ] Wire in truth-lock approvals and lore distillation cues (start with workflow stubs in `code/components/canon/`).
+- **Dialogue Forge export integration.**
+  - _Context:_ `/api/ai/dialogue/scene` assembles prompts, enforces Gemini safety checks, and returns structured dialogue. Dialogue Forge previews render inside the shared project view, prompt trimming/length guards are in place, and the prompt builder injects project/artifact context.
+  - _Next actions:_
+    - [ ] Extend scene/chapter template renderers to surface the richer outlines directly in the workspace editors (`code/components/workspace/templates/`).
+    - [ ] Extend export flows so Dialogue Forge transcripts ride along with scene exports.
+- **Low-priority backlog (keep at the bottom):**
+  - [ ] Implement canon enforcement NPC memory mode enhancements flagged above once higher-priority automation work is stable.
 
 ### Content Creation & Expansion (Build More, Faster)
-- Deliver character arc tooling: family tree visualizations now support multi-parent households (duplicate child rendering fixed) and share stage overlays with the relationship graph; next expose stage filters so editors can spotlight characters by arc state.
-- Deliver character arc tooling: family tree visualizations and creation flows now connect from character sheets and the tree itself; progression states need to surface across the graph.
-  - Introduce stage filters in the graph view so editors can spotlight characters in a specific arc phase.
-    - ✅ Graph view now includes an Arc Stage Spotlight filter that dims non-matching nodes and surfaces per-stage summaries; next, persist the selected stage and add unit coverage for the filtering logic.
-- _(Low priority)_ Expand export formats: support Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
-- App refactor: extracted artifact workflows into a dedicated `ProjectWorkspace` component, moving modal orchestration and quick fact flows out of `App.tsx`; hero, artifact, activity, and modal subcomponents now live under `code/components/workspace/`.
-  - Assess breaking `WorkspaceArtifactPanel.tsx` into smaller editors if follow-up work continues to grow the file.
-  - Add component-level tests for artifact filters, activity panel toggles, and modal wiring to cover the new structure.
-- Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines to match the richer skeletons now produced.
-- ➕ Dialogue Forge scene generator lets creators feed a prompt and selected characters to Atlas Intelligence and receive structured dialogue with beat suggestions; wire its outputs into scene templates and exports next.
-  - ✅ Backend now exposes `/api/ai/dialogue/scene` to assemble Dialogue Forge prompts, enforce Gemini safety checks, and return structured dialogue so the UI no longer hand-crafts prompts.
-  - ✅ Sanitized the dialogue response trimming so optional speaker/direction fields no longer break the TypeScript build when empty entries arrive from Gemini.
-  - ✅ Shared project view now renders Dialogue Forge previews for scene artifacts so guests can sample generated conversations; next, extend export flows to include the dialogue transcript.
-  - Added prompt length guards so Dialogue Forge trims lengthy bios, prompts, and beats before sending Gemini requests.
-  - Widened the Dialogue Forge prompt budget so prompts (2.6k chars, up from 1.2k), summaries (2k, up from 1.2k), beats (3k shared across up to 10 beats instead of 1.2k apiece), and cast bios (3.4k shared, up from 400-character snippets) can reach Gemini without triggering the oversized-request error.
-  - Gemini prompt builder now injects project, artifact, and milestone context into Gemini requests so Atlas Intelligence returns grounded drafts; next, extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors.
+- **Character arc tooling (family tree + graph).**
+  - _Context:_ Family tree visualizations share stage overlays with the relationship graph, creation flows connect from sheets and the tree, and the Graph view now includes an Arc Stage Spotlight filter with summaries.
+  - _Next actions:_
+    - [ ] Persist the selected stage filter and add unit coverage for the filtering logic.
+    - [ ] Expose the same guidance inside the Family Tree tools.
+- **Character arc progression state surfacing.**
+  - _Context:_ Quick fact capture improvements and shared progression calculations are live.
+  - _Next action:_ Introduce additional stage filters so editors can spotlight characters in a specific arc phase and reflect the progression state everywhere the family tree graph renders.
+- **Project workspace refactor follow-ups.**
+  - _Context:_ Artifact workflows now live inside the `ProjectWorkspace` component with hero, artifact, activity, and modal subcomponents relocated under `code/components/workspace/`.
+  - _Next actions:_
+    - [ ] Break `WorkspaceArtifactPanel.tsx` into smaller editors if continued growth warrants.
+    - [ ] Add component-level tests for artifact filters, activity panel toggles, and modal wiring.
+- **Dialogue Forge prompt budget + template rendering.**
+  - _Context:_ Prompt budgets widened (prompts: 2.6k chars, summaries: 2k, beats: 3k shared, bios: 3.4k shared) and sanitization handles empty speaker/direction fields.
+  - _Next action:_ Extend the scene/chapter template renderer to surface the richer outlines directly in the workspace editors (share work with the export integration above to avoid divergence).
+- **Low-priority backlog (keep at the bottom):**
+  - [ ] Expand export formats: Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
+  - [ ] Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines.
+  - [ ] Cache nano banana share art by persisting generated PNGs to Cloud Storage (or another CDN bucket) and pointing `/share/:id/nano-banana.png` at the cached asset.
 
 ### Reporting & Project Insights (Understand & Explore Work)
-- _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
-- _(Low priority)_ Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
-  - ✅ World filters now distinguish between local timelines and remote Firestore snapshots, exposing a dedicated "current project" option; next, surface per-world counts and persist filter choices between sessions.
-- _(Low priority)_ Ship the simulated history heatmap: aggregate timeline data in Firestore and render the visualization in `code/src/features/history/SimulatedHistoryHeatmap.tsx` with filters for worlds/eras.
-  - Connect the heatmap UI to the new aggregation source and expose world/era filters in the panel UI.
-
-### Workflow Efficiency & Usability (Smoother Everyday Editing)
-- Address the usability fixes outlined in `docs/usability-improvement-tips.md`:
-  - Refine artifact detail panel tabs with clear labelling and full keyboard support.
-  - Layer guidance into Graph view and Family Tree tools so linking workflows feel discoverable.
-  - Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
-  - Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
-  - ✅ The Graph view now opens with an Arc Stage Spotlight explainer and counts, guiding editors toward the new filtering workflow; next, replicate the guidance inside the Family Tree tools.
-- Align artifact workspace header actions with the refreshed project overview layout so import/export controls and quick-fact capture live in a unified command shelf.
-- Cache nano banana share art: persist the generated PNGs to Cloud Storage (or another CDN-backed bucket) and point `/share/:id/nano-banana.png` at the cached asset so social crawlers aren't pulling large data URLs from Firestore on every request.
+- **Simulated history heatmap.**
+  - _Context:_ Scope captured in `docs/history-heatmap-overview.md`.
+  - _Next actions:_
+    - [ ] Build aggregation jobs that populate the `timelineHeatmap` collection with world/era filters.
+    - [ ] Wire `code/src/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data with the new filters.
+- **Workspace UX polish.**
+  - _Context:_ Arc Stage Spotlight explainers now appear in the Graph view.
+  - _Next actions:_
+    - [ ] Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
+    - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
+    - [ ] Replicate the Arc Stage Spotlight guidance inside the Family Tree tools.
+- **Low-priority backlog (keep at the bottom):**
+  - [ ] Align artifact workspace header actions with the refreshed project overview layout.
 
 ### Onboarding & Education (Help New Creators Succeed)
-- Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button; continue auditing remaining tutorial interactions.)
+- Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button.)
+  - _Next actions:_
+    - [ ] Continue auditing tutorial interactions for accessibility issues.
+    - [ ] Render the FAQ entries in `code/src/data/supportFaqs.ts` inside the support drawer.
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
-  - ✅ Seeded `code/src/data/supportFaqs.ts` with FAQ entries covering collaboration, stage filters, Dialogue Forge, publish status polling, and offline drafting; next, render the entries inside the support drawer.
+- **Low-priority backlog (keep at the bottom):**
+  - [ ] Produce additional localization assets once core onboarding tasks stabilize.
 
 ### Operational Excellence & Compliance (Keep Operations Running)
-- Surface GitHub publish job status endpoints so the UI can report progress and outcomes for the static site deployment flow. (Repo picker now uses the data API with authenticated requests; wire up backend status endpoints next.)
-  - ✅ `/api/github/publish/status/:jobId` now returns queued/running/succeeded/failed metadata recorded during publish jobs; next, persist status records beyond process restarts and stream updates to the client.
-- Investigate Firebase Hosting deploy instability after migrating share rewrites off Cloud Run.
-  - Replaced the unsupported `/share/**` rewrite with the `shareMetadata` Cloud Function proxy so Hosting deploys succeed without the experimental `app` target, and updated CI to deploy the function alongside the frontend build. Next, monitor the proxy for latency or quota regressions and backfill tests that exercise the function against representative share payloads.
-  - Firebase CLI deploys now explicitly run from `${GITHUB_WORKSPACE}` with `npx --yes` so the `shareMetadata` function deploy no longer attempts to load `../functions` outside the repo root. Next, monitor upcoming merge + preview runs to confirm the workflows stay stable before re-enabling any additional targets.
-  - Production Hosting workflow no longer relies on `FirebaseExtended/action-hosting-deploy`; the job now shells out to `firebase deploy --only hosting --except extensions` so the service account avoids 403s when listing Firebase Extensions instances. Observe upcoming merge runs to confirm the manual deploy path remains stable before applying the same pattern to preview channels.
-  - Share metadata function deploy now shells out to `firebase-tools` with the same service-account credentials used for Hosting, avoiding interactive `gcloud` auth while keeping extension discovery disabled. Monitor upcoming runs to confirm the CLI path stays reliable before layering on additional deploy targets.
-  - Frontend dependency installs now trigger the Cloud Function `postinstall` hook so `firebase-functions` is always available before `firebase deploy` analyzes the triggers, and the CI workflow explicitly installs the function dependencies so GitHub Actions mirrors the local bootstrap flow. Next, keep the documentation in sync if additional automation is added (e.g., emulator smoke tests) so local CLI invocations stay smooth.
-  - Frontend dependency installs now trigger the Cloud Function `postinstall` hook so `firebase-functions` is always available before `firebase deploy` analyzes the triggers. Next, keep the documentation in sync if additional automation is added (e.g., emulator smoke tests) so local CLI invocations stay smooth.
-  - Capture the current template recommendation heuristic and outline enhancements for richer ranking.
-  - ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
+- **GitHub publish job status + modal feedback (single source of truth).**
+  - _Context:_ Repo picker uses the data API with authenticated requests, the publish modal surfaces validation failures inline, ESLint regressions in `code/hooks/useGitHubPublish.ts` were resolved, and `/api/github/publish/status/:jobId` returns queued/running/succeeded/failed metadata.
+  - _Next actions:_
+    - [ ] Persist status records beyond process restarts (extend the status model in `server/src/routes/github/publishStatus.ts`).
+    - [ ] Stream updates to the client so the modal can expose queued/running states without polling.
+    - [ ] Surface queued/running states inside the modal UI using the unwrapped job results.
+- **Firebase Hosting deploy stability.**
+  - _Context:_ `/share/**` rewrite replaced with the `shareMetadata` Cloud Function proxy; CI deploys now co-deploy the function, run from `${GITHUB_WORKSPACE}`, and shell out to `firebase deploy --only hosting --except extensions`. Share metadata deploys reuse the same credentials, and the Hosting workflows now pin `firebase-tools` v14.25.0. Postinstall hooks ensure `firebase-functions` installs before deploy analysis.
+  - _Next actions:_
+    - [ ] Monitor the proxy for latency/quota regressions and backfill tests covering representative share payloads.
+    - [ ] Confirm upcoming merge + preview runs stay stable before re-enabling additional deploy targets.
+    - [ ] Keep the documentation in sync if further automation (e.g., emulator smoke tests) is added.
+  - _Low priority cleanup:_ Capture the current template recommendation heuristic and outline enhancements for richer ranking once deploy stability is confirmed.
+- **Investigate Firebase Hosting deploy instability follow-ups.**
+  - _Context:_ Frontend dependency installs now trigger the Cloud Function `postinstall` hook so `firebase-functions` is available before `firebase deploy` analyzes triggers, and the CI workflow explicitly installs function dependencies.
+  - _Next action:_ Continue monitoring workflows to ensure the bootstrap flow remains stable before adding emulator smoke tests.
 
 ## Done
 
 ### Stability & Reliability (Protect the Experience)
-- ✅ Firebase Hosting now rewrites /share/** to the App Engine default service so share metadata deploys without requiring Cloud Run.
+- ✅ Firebase Hosting now rewrites `/share/**` to the App Engine default service so share metadata deploys without requiring Cloud Run.
 - ✅ Frontend deployment pipeline now forwards `VITE_API_BASE_URL` from GitHub Actions variables so production builds receive the required configuration.
 - ✅ CI workflow now exports `VITE_API_BASE_URL` so verification builds succeed without manual intervention.
 - ✅ Artifact detail panel now tolerates malformed tag and relation arrays and defaults missing project artifact collections so workspace editors stay stable when wiki payloads arrive incomplete.
 - ✅ Artifact filter hook now tolerates artifacts missing tag arrays so wiki selections don't crash the explorer.
 - ✅ Workspace artifact list view now renders as card markup with keyboard support, eliminating `<tr>` hydration crashes in guest mode.
 - ✅ Kanban board normalizes missing task states so workspace cards stay visible when tasks lack a stored status.
-- Ghost automation agent: `/api/agent/step` now brokers Gemini 2.5 computer-use responses to the in-app ghost UI, retains action history, and supports ask/scroll feedback loops; next, design higher-level action macros so the agent can assemble timelines without brittle coordinate scripts.
-  - ✅ Hardened the `/api/agent/step` Gemini request by attaching the Computer Use tool and a custom `ghost_agent_action` function so the API no longer returns 400 errors when the ghost agent runs.
-  - ✅ Corrected the agent prompt template so the TypeScript build succeeds after recent string interpolation edits.
-  - ✅ Removed the unsupported `allowedFunctionNames` tool config so the Gemini computer-use model accepts ghost agent requests again.
-  - ✅ Replaced the generic action schema with explicit click/type/scroll/ask/done tools, instructing the model on the 1000x1000 grid and scaling coordinates to the live viewport.
 
 ### Interoperability & Collaboration (Connect People & Tools)
 - ✅ Hardened the `/api/agent/step` Gemini request by attaching the Computer Use tool and a custom `ghost_agent_action` function so the API no longer returns 400 errors when the ghost agent runs.
+- ✅ Corrected the agent prompt template so the TypeScript build succeeds after recent string interpolation edits.
+- ✅ Removed the unsupported `allowedFunctionNames` tool config so the Gemini computer-use model accepts ghost agent requests again.
+- ✅ Replaced the generic action schema with explicit click/type/scroll/ask/done tools, instructing the model on the 1000x1000 grid and scaling coordinates to the live viewport.
 
 ### Content Creation & Expansion (Build More, Faster)
 - ✅ Family tree tools now display progression badges derived from shared arc analysis so stage overlays are consistent with the tracker.
@@ -127,13 +147,13 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
 
 ### Reporting & Project Insights (Understand & Explore Work)
-- ✅ Expose an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
+- ✅ Exposed an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
 - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
 - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)
 - ✅ Artifact action menu now includes inline rename controls so workspace editors can retitle artifacts without leaving the detail view.
-- ✅ Persist manual graph view layouts so dragged artifact positions survive reloads and future sessions.
+- ✅ Persisted manual graph view layouts so dragged artifact positions survive reloads and future sessions.
 - ✅ Moved the Creative Atlas Agent trigger into the header action bar so it aligns with other workspace controls.
 - ✅ Shared project links now surface App Engine-rendered Open Graph metadata so social unfurls display the project title, summary highlights, and a branded preview card instead of the generic "Creative Atlas" label.
 - ✅ Artifact relation entries now act as navigation links so editors can jump between related artifacts without searching manually.
@@ -142,11 +162,14 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Onboarding & Education (Help New Creators Succeed)
 - ✅ Bilingual tutorial copy now respects an `?hl=` query parameter (replacing the dropdown selector) while keeping screen-reader-friendly step status messaging.
-- ✅ Expand localization to contextual tooltips and onboarding banners that appear outside the tutorial popover.
+- ✅ Expanded localization to contextual tooltips and onboarding banners that appear outside the tutorial popover.
 
 ### Operational Excellence & Compliance (Keep Operations Running)
-- ✅ Integrate analytics & monitoring: instrument key flows, set up alerting, and document operational runbooks.
+- ✅ Integrate analytics & monitoring: instrumented key flows, set up alerting, and documented operational runbooks.
 - ✅ Resolved ESLint regressions in `code/hooks/useGitHubPublish.ts` so the GitHub publish flow stays unblocked while backend status endpoints are still pending.
 - ✅ Pinned `firebase-tools` v14.25.0 in Hosting workflows so the App Engine share rewrite deploys without config validation failures.
+- ✅ Firebase Hosting workflows now use `FirebaseExtended/action-hosting-deploy@v0.9.0` so deploys rely on the supported GitHub Action with app-aware hosting support.
 
-When a segment is cleared, remove its heading entirely. If new priorities emerge, add them as new segments so the roadmap always reflects the next meaningful slices of work.
+## Session Log
+- 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
+- 2025-02-15: Documented deployment smoke test logging note in `README.md`; no roadmap items impacted.
