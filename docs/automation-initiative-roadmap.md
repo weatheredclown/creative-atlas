@@ -187,3 +187,4 @@ This document tracks the multi-session automation initiative to deliver the full
 ## Session Log
 - 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
 - 2025-02-15: Documented deployment smoke test logging note in `README.md`; no roadmap items impacted.
+- 2025-02-16: Added Creative Atlas art mode selector and multi-variant hero previews inside `ProjectOverview`; no roadmap bullets impacted.

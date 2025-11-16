@@ -4,7 +4,11 @@ import { formatStatusLabel, getStatusClasses } from '../utils/status';
 import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 import ProjectSettingsPanel from './ProjectSettingsPanel';
-import { generateNanoBananaImage } from '../utils/nanoBananaGenerator';
+import {
+  generateNanoBananaImage,
+  NANO_BANANA_ART_MODES,
+  NanoBananaArtMode,
+} from '../utils/nanoBananaGenerator';
 
 interface ProjectOverviewProps {
   project: Project;
@@ -20,6 +24,13 @@ interface FactPrompt {
   category: string;
   prompt: string;
   spark: string;
+}
+
+interface NanoBananaDraft {
+  id: string;
+  image: string;
+  variant: number;
+  mode: NanoBananaArtMode;
 }
 
 const FACT_PROMPTS: readonly FactPrompt[] = [
@@ -108,6 +119,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   const [lastFactId, setLastFactId] = useState<string | null>(null);
   const [isGeneratingNanoBanana, setIsGeneratingNanoBanana] = useState(false);
   const [nanoBananaError, setNanoBananaError] = useState<string | null>(null);
+  const [nanoBananaMode, setNanoBananaMode] = useState<NanoBananaArtMode>('aurora');
+  const [nanoBananaDrafts, setNanoBananaDrafts] = useState<NanoBananaDraft[]>([]);
   const feedbackTimeoutRef = useRef<number | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -127,6 +140,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     setLastFactId(null);
     setNanoBananaError(null);
     setIsGeneratingNanoBanana(false);
+    setNanoBananaMode('aurora');
+    setNanoBananaDrafts([]);
     if (feedbackTimeoutRef.current) {
       window.clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = null;
@@ -366,12 +381,20 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     setNanoBananaError(null);
     setIsGeneratingNanoBanana(true);
     try {
-      const image = generateNanoBananaImage({
-        title: project.title,
-        summary: project.summary,
-        tags: project.tags,
-      });
-      onUpdateProject(project.id, { nanoBananaImage: image });
+      const timestamp = Date.now();
+      const options = Array.from({ length: 3 }, (_, index) => ({
+        id: `${nanoBananaMode}-${timestamp}-${index}`,
+        image: generateNanoBananaImage({
+          title: project.title,
+          summary: project.summary,
+          tags: project.tags,
+          mode: nanoBananaMode,
+          variant: index,
+        }),
+        variant: index,
+        mode: nanoBananaMode,
+      }));
+      setNanoBananaDrafts(options);
     } catch (error) {
       console.error('Failed to generate Creative Atlas generative art preview', error);
       setNanoBananaError(
@@ -380,6 +403,15 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     } finally {
       setIsGeneratingNanoBanana(false);
     }
+  };
+
+  const handleApplyNanoBanana = (image: string) => {
+    setNanoBananaError(null);
+    onUpdateProject(project.id, { nanoBananaImage: image });
+  };
+
+  const handleClearNanoBananaDrafts = () => {
+    setNanoBananaDrafts([]);
   };
 
   const handleRemoveNanoBanana = () => {
@@ -541,7 +573,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isGeneratingNanoBanana}
               >
-                {isGeneratingNanoBanana ? 'Generating…' : 'Generate Creative Atlas art'}
+                {isGeneratingNanoBanana ? 'Generating…' : 'Generate 3 art options'}
               </button>
               {project.nanoBananaImage ? (
                 <button
@@ -554,6 +586,102 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
               ) : null}
             </div>
           </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">Art mode</p>
+              <div className="grid gap-2 md:grid-cols-3">
+                {(Object.entries(NANO_BANANA_ART_MODES) as [
+                  NanoBananaArtMode,
+                  (typeof NANO_BANANA_ART_MODES)[NanoBananaArtMode],
+                ][]).map(([modeKey, modeConfig]) => (
+                  <label
+                    key={modeKey}
+                    className={`flex cursor-pointer flex-col rounded-lg border px-3 py-3 text-xs transition ${
+                      nanoBananaMode === modeKey
+                        ? 'border-amber-300/60 bg-amber-300/10 text-amber-100'
+                        : 'border-amber-200/20 bg-slate-900/40 text-slate-300 hover:border-amber-200/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{modeConfig.label}</p>
+                      <input
+                        type="radio"
+                        name="nano-banana-mode"
+                        value={modeKey}
+                        checked={nanoBananaMode === modeKey}
+                        onChange={() => setNanoBananaMode(modeKey)}
+                        className="sr-only"
+                      />
+                      <span
+                        className={`inline-flex h-2 w-2 rounded-full ${
+                          nanoBananaMode === modeKey ? 'bg-amber-300' : 'bg-slate-500'
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {modeConfig.description}
+                    </p>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          {nanoBananaDrafts.length > 0 ? (
+            <div className="space-y-3 rounded-lg border border-amber-400/30 bg-slate-950/30 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                    Pick your favorite
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    Apply a thumbnail to the project or regenerate to explore more looks.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearNanoBananaDrafts}
+                  className="text-[11px] font-semibold uppercase tracking-wide text-amber-200 underline-offset-2 hover:underline"
+                >
+                  Clear gallery
+                </button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {nanoBananaDrafts.map((draft) => {
+                  const modeConfig = NANO_BANANA_ART_MODES[draft.mode];
+                  return (
+                    <div
+                      key={draft.id}
+                      className="flex flex-col overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/70"
+                    >
+                      <div className="aspect-[1200/630] w-full border-b border-slate-800/60 bg-slate-950/40">
+                        <img
+                          src={draft.image}
+                          alt={`${project.title} ${modeConfig.label} preview option`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-1 flex-col gap-2 p-3 text-xs text-slate-300">
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            {modeConfig.label} option {draft.variant + 1}
+                          </p>
+                          <p className="text-[11px] text-slate-400">{modeConfig.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyNanoBanana(draft.image)}
+                          className="inline-flex items-center justify-center rounded-md bg-amber-400/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-950 transition hover:bg-amber-300"
+                        >
+                          Use this image
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {nanoBananaError ? (
             <div className="space-y-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-xs text-rose-100">
               <p className="font-semibold">{nanoBananaError}</p>
