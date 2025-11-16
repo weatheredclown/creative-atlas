@@ -1,25 +1,25 @@
 const SUMMARY_LIMIT = 600;
 const MAX_TAGS = 8;
 
-export const NANO_BANANA_ART_MODE_VALUES = ['aurora', 'sunrise', 'prismatic'] as const;
+export const NANO_BANANA_ART_MODE_VALUES = ['retro', 'modern', 'futuristic'] as const;
 
 export type NanoBananaArtMode = (typeof NANO_BANANA_ART_MODE_VALUES)[number];
 
 const MODE_DESCRIPTORS: Record<NanoBananaArtMode, { label: string; palette: string; texture: string }> = {
-  aurora: {
-    label: 'Aurora Drift',
-    palette: 'cool cosmic gradients, luminous auroras, distant nebula silhouettes',
-    texture: 'flowing energy ribbons, soft atmospheric light, subtle starfields',
+  retro: {
+    label: 'Retro',
+    palette: 'muted jewel tones, sun-faded posters, vintage neon pops',
+    texture: 'film grain, halftone gradients, soft vignette glow',
   },
-  sunrise: {
-    label: 'Sunrise Bloom',
-    palette: 'warm sunbursts, peach and amber glows, lush botanicals',
-    texture: 'layered petals, dust motes, soft painterly washes',
+  modern: {
+    label: 'Modern',
+    palette: 'clean neutrals, gallery whites, confident accent colors',
+    texture: 'sleek lighting, crisp edges, editorial negative space',
   },
-  prismatic: {
-    label: 'Prismatic Pulse',
-    palette: 'neon prisms, saturated violets, cyan laser grids',
-    texture: 'crystalline facets, geometric flares, high-contrast glows',
+  futuristic: {
+    label: 'Futuristic',
+    palette: 'holographic blues, luminous chrome, ultraviolet highlights',
+    texture: 'kinetic energy trails, refracted glass, volumetric light',
   },
 };
 
@@ -75,7 +75,7 @@ export const buildNanoBananaPrompt = ({
   title,
   summary,
   tags,
-  mode = 'aurora',
+  mode = 'retro',
 }: NanoBananaPromptInput): string => {
   const cleanedTitle = cleanText(title) || 'Untitled Creative Atlas project';
   const cleanedSummary = cleanText(summary);
@@ -86,7 +86,7 @@ export const buildNanoBananaPrompt = ({
       ? `Theme tags: ${normalizedTags.join(', ')}.`
       : null;
 
-  const descriptor = MODE_DESCRIPTORS[mode] ?? MODE_DESCRIPTORS.aurora;
+  const descriptor = MODE_DESCRIPTORS[mode] ?? MODE_DESCRIPTORS.retro;
   const lines: string[] = [
     'You are Creative Atlas\'s Nano Banana art renderer.',
     'Generate a single 1200x630 cinematic digital painting without text overlays.',

@@ -16,7 +16,7 @@ export interface Project {
   nanoBananaImage?: string | null;
 }
 
-export type NanoBananaArtMode = 'aurora' | 'sunrise' | 'prismatic';
+export type NanoBananaArtMode = 'retro' | 'modern' | 'futuristic';
 
 export interface NanoBananaGenerationResult {
   image: string;

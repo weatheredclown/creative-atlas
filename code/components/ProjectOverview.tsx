@@ -34,17 +34,17 @@ const NANO_BANANA_ART_MODES: Record<
   NanoBananaArtMode,
   { label: string; description: string }
 > = {
-  aurora: {
-    label: 'Aurora Drift',
-    description: 'Cool cosmic gradients with flowing aurora streaks.',
+  retro: {
+    label: 'Retro',
+    description: 'Analog halftones, worn film grain, and bold poster palettes.',
   },
-  sunrise: {
-    label: 'Sunrise Bloom',
-    description: 'Warm blooms, sunbursts, and atmospheric dust.',
+  modern: {
+    label: 'Modern',
+    description: 'Gallery-lit minimalism with confident editorial contrast.',
   },
-  prismatic: {
-    label: 'Prismatic Pulse',
-    description: 'High-contrast prisms with neon grid energy.',
+  futuristic: {
+    label: 'Futuristic',
+    description: 'Holographic light, chrome edges, and kinetic energy.',
   },
 };
 
@@ -155,7 +155,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   const [lastFactId, setLastFactId] = useState<string | null>(null);
   const [isGeneratingNanoBanana, setIsGeneratingNanoBanana] = useState(false);
   const [nanoBananaError, setNanoBananaError] = useState<string | null>(null);
-  const [nanoBananaMode, setNanoBananaMode] = useState<NanoBananaArtMode>('aurora');
+  const [nanoBananaMode, setNanoBananaMode] = useState<NanoBananaArtMode>('retro');
   const [nanoBananaDrafts, setNanoBananaDrafts] = useState<NanoBananaDraft[]>([]);
   const canRequestNanoBanana = !isGuestMode && isDataApiConfigured;
   const feedbackTimeoutRef = useRef<number | null>(null);
@@ -177,7 +177,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     setLastFactId(null);
     setNanoBananaError(null);
     setIsGeneratingNanoBanana(false);
-    setNanoBananaMode('aurora');
+    setNanoBananaMode('retro');
     setNanoBananaDrafts([]);
     if (feedbackTimeoutRef.current) {
       window.clearTimeout(feedbackTimeoutRef.current);

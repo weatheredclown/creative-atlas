@@ -7,13 +7,13 @@ describe('buildNanoBananaPrompt', () => {
       title: 'Skyward Archives',
       summary: 'A rebel archivist preserves skyship memories while storms erase history.',
       tags: ['Skyships', 'Memory Heists', 'Storm magic'],
-      mode: 'sunrise',
+      mode: 'retro',
     });
 
     expect(prompt).toContain('Project title: Skyward Archives.');
     expect(prompt).toContain('Project overview: A rebel archivist preserves skyship memories while storms erase history.');
     expect(prompt).toContain('Theme tags: Skyships, Memory Heists, Storm magic.');
-    expect(prompt).toContain('Sunrise Bloom');
+    expect(prompt).toContain('Retro');
   });
 
   it('truncates long summaries and deduplicates tags', () => {
@@ -22,7 +22,7 @@ describe('buildNanoBananaPrompt', () => {
       title: 'Echoes of the Pit',
       summary: longSummary,
       tags: ['Echoes', 'echoes', 'Fractures', 'Echoes'],
-      mode: 'prismatic',
+      mode: 'futuristic',
     });
 
     expect(prompt).toContain('Echoes of the Pit');
