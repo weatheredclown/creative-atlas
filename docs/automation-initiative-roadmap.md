@@ -58,7 +58,7 @@ This document tracks the multi-session automation initiative to deliver the full
 
 ### Content Creation & Expansion (Build More, Faster)
 - **Gemini-driven Nano Banana prompts + endpoint.**
-  - _Context:_ `/api/projects/:id/nano-banana/generate` now builds Gemini image prompts from project metadata (title, summary, tags, art mode) so thumbnails reflect canon instead of raw user text, and server-side rate limits (3 per project/day, 5 per user/day) keep the flow from turning into a general-purpose image generator.
+  - _Context:_ `/api/projects/:id/nano-banana/generate` now builds Gemini image prompts from project metadata (title, summary, tags, art mode) so thumbnails reflect canon instead of raw user text, and server-side rate limits (9 per project/day, 20 per user/day) keep the flow from turning into a general-purpose image generator.
   - _Next actions:_
     - [ ] Cache Gemini-rendered thumbnails alongside the existing deterministic canvas fallback so social shares load instantly.
 - **Character arc tooling (family tree + graph).**
