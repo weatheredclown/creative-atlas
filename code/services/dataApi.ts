@@ -2,6 +2,8 @@ import type {
   Artifact,
   ConlangLexeme,
   MemorySyncConversation,
+  NanoBananaArtMode,
+  NanoBananaGenerationResult,
   NpcMemoryRun,
   Project,
   ProjectShareStatus,
@@ -158,6 +160,16 @@ export const updateProjectViaApi = async (
   projectId: string,
   updates: Partial<Pick<Project, 'title' | 'summary' | 'status' | 'tags' | 'nanoBananaImage'>>,
 ): Promise<Project> => sendJson<Project>(token, `/api/projects/${projectId}`, { method: 'PATCH', body: updates });
+
+export const generateNanoBananaViaApi = async (
+  token: string | null,
+  projectId: string,
+  params: { mode?: NanoBananaArtMode } = {},
+): Promise<NanoBananaGenerationResult> =>
+  sendJson<NanoBananaGenerationResult>(token, `/api/projects/${projectId}/nano-banana/generate`, {
+    method: 'POST',
+    body: params,
+  });
 
 export const deleteProjectViaApi = async (token: string | null, projectId: string): Promise<void> => {
   if (!isDataApiConfigured) {
