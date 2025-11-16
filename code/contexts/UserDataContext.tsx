@@ -629,6 +629,9 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (updates.summary !== undefined) sanitized.summary = updates.summary;
         if (updates.status !== undefined) sanitized.status = updates.status;
         if (updates.tags !== undefined) sanitized.tags = updates.tags;
+        if (updates.nanoBananaImage !== undefined) {
+          sanitized.nanoBananaImage = updates.nanoBananaImage;
+        }
         const updated = await updateProjectViaApi(token, projectId, sanitized);
         setProjects((current) =>
           current.map((project) => (project.id === projectId ? { ...project, ...updated } : project)),

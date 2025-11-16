@@ -196,27 +196,31 @@ const renderShareDocument = (meta: SharePageMeta, shouldBootClient: boolean): st
 </html>`;
 };
 
+const resolveBaseUrl = (req: Request): string => `${req.protocol}://${req.get('host') ?? 'localhost'}`;
+
 const resolveImageUrl = (req: Request): string => {
-  const base = `${req.protocol}://${req.get('host') ?? 'localhost'}`;
   const imagePath = process.env.SHARE_PREVIEW_IMAGE_URL ?? '/share-preview.png';
-  return new URL(imagePath, base).toString();
+  return new URL(imagePath, resolveBaseUrl(req)).toString();
 };
 
-const resolveShareUrl = (req: Request): string => {
-  const base = `${req.protocol}://${req.get('host') ?? 'localhost'}`;
-  return new URL(req.originalUrl || req.url, base).toString();
-};
+const resolveShareUrl = (req: Request): string => new URL(req.originalUrl || req.url, resolveBaseUrl(req)).toString();
+
+const resolveNanoBananaImageUrl = (req: Request, shareId: string): string =>
+  new URL(`/share/${encodeURIComponent(shareId)}/nano-banana.png`, resolveBaseUrl(req)).toString();
 
 router.get(
   '/share/:shareId',
   asyncHandler(async (req: Request, res: Response) => {
     const shareUrl = resolveShareUrl(req);
-    const imageUrl = resolveImageUrl(req);
+    const defaultImageUrl = resolveImageUrl(req);
     const crawlerRequest = isCrawlerRequest(req);
 
     try {
       const payload = await loadSharedProjectPayload(req.params.shareId);
-      const meta = buildShareMeta(payload, shareUrl, imageUrl);
+      const shareImageUrl = payload.project.nanoBananaImage
+        ? resolveNanoBananaImageUrl(req, req.params.shareId)
+        : defaultImageUrl;
+      const meta = buildShareMeta(payload, shareUrl, shareImageUrl);
       const document = renderShareDocument(meta, !crawlerRequest);
       res.set('Cache-Control', 'public, max-age=300');
       res.type('html').send(document);
@@ -226,7 +230,7 @@ router.get(
           title: 'Creative Atlas share expired',
           description: 'This Creative Atlas share link has expired or is no longer available.',
           shareUrl,
-          imageUrl,
+          imageUrl: defaultImageUrl,
           robots: 'noindex, nofollow',
         } satisfies SharePageMeta;
         const document = renderShareDocument(meta, !crawlerRequest);
@@ -243,7 +247,7 @@ router.get(
           title: 'Creative Atlas share not found',
           description: 'The shared project you are looking for could not be found.',
           shareUrl,
-          imageUrl,
+          imageUrl: defaultImageUrl,
           robots: 'noindex, nofollow',
         } satisfies SharePageMeta;
         const document = renderShareDocument(meta, !crawlerRequest);

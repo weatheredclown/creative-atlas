@@ -156,7 +156,7 @@ export const createProjectViaApi = async (
 export const updateProjectViaApi = async (
   token: string | null,
   projectId: string,
-  updates: Partial<Pick<Project, 'title' | 'summary' | 'status' | 'tags'>>,
+  updates: Partial<Pick<Project, 'title' | 'summary' | 'status' | 'tags' | 'nanoBananaImage'>>,
 ): Promise<Project> => sendJson<Project>(token, `/api/projects/${projectId}`, { method: 'PATCH', body: updates });
 
 export const deleteProjectViaApi = async (token: string | null, projectId: string): Promise<void> => {

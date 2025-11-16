@@ -13,6 +13,7 @@ export interface Project {
   summary: string;
   status: ProjectStatus;
   tags: string[];
+  nanoBananaImage?: string | null;
 }
 
 export interface ProjectShareStatus {

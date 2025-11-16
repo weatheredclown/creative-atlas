@@ -47,6 +47,9 @@ const resolveImageUrl = (req) => new URL(SHARE_PREVIEW_IMAGE_URL, resolveBaseUrl
 
 const resolveShareUrl = (req) => new URL(req.originalUrl ?? req.url ?? '/', resolveBaseUrl(req)).toString();
 
+const buildNanoBananaImageUrl = (shareId) =>
+  new URL(`/share/${encodeURIComponent(shareId)}/nano-banana.png`, APP_ENGINE_API_BASE_URL).toString();
+
 const buildShareMeta = (payload, shareUrl, imageUrl) => {
   const projectTitle = normalizeWhitespace(payload.project?.title ?? 'Creative Atlas Project');
   const summary = normalizeWhitespace(payload.project?.summary ?? '');
@@ -261,7 +264,10 @@ export const shareMetadata = onRequest({ region: 'us-central1' }, async (req, re
     const { response, body } = await fetchSharedProjectPayload(shareId);
 
     if (response.ok && body && typeof body === 'object') {
-      const meta = buildShareMeta(body, shareUrl, imageUrl);
+      const shareImageUrl = body?.project?.nanoBananaImage
+        ? buildNanoBananaImageUrl(shareId)
+        : imageUrl;
+      const meta = buildShareMeta(body, shareUrl, shareImageUrl);
       const document = renderShareDocument(meta, !crawlerRequest);
       res.status(200).set('Cache-Control', 'public, max-age=300').type('html').send(document);
       return;

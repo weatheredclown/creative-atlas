@@ -192,6 +192,18 @@ const SharedProjectPage: React.FC = () => {
             )}
           </div>
         </header>
+        {project?.nanoBananaImage ? (
+          <figure className="overflow-hidden rounded-3xl border border-amber-400/20 bg-slate-900/50">
+            <img
+              src={project.nanoBananaImage}
+              alt={`${project.title} nano banana share art`}
+              className="h-auto w-full object-cover"
+            />
+            <figcaption className="border-t border-slate-800/50 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
+              Nano banana summary art used for social previews
+            </figcaption>
+          </figure>
+        ) : null}
 
         {loading && (
           <div className="flex items-center gap-3 text-sm text-slate-400">
