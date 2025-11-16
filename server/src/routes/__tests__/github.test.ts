@@ -235,10 +235,20 @@ describe('GitHub routes', () => {
         .expect(200);
 
       expect(response.body).toEqual({
-        message: 'Published test-user/demo-site from the gh-pages branch.',
-        repository: 'test-user/demo-site',
-        pagesUrl: 'https://test-user.github.io/demo-site',
+        jobId: expect.any(String),
+        status: {
+          id: expect.any(String),
+          state: 'succeeded',
+          updatedAt: expect.any(String),
+        },
+        result: {
+          message: 'Published test-user/demo-site from the gh-pages branch.',
+          repository: 'test-user/demo-site',
+          pagesUrl: 'https://test-user.github.io/demo-site',
+        },
       });
+
+      expect(response.body.jobId).toBe(response.body.status.id);
 
       expect(fetchMock).toHaveBeenCalledTimes(9);
 
@@ -306,10 +316,20 @@ describe('GitHub routes', () => {
         .expect(200);
 
       expect(response.body).toEqual({
-        message: 'Published test-user/demo-site from the gh-pages branch.',
-        repository: 'test-user/demo-site',
-        pagesUrl: 'https://test-user.github.io/demo-site',
+        jobId: expect.any(String),
+        status: {
+          id: expect.any(String),
+          state: 'succeeded',
+          updatedAt: expect.any(String),
+        },
+        result: {
+          message: 'Published test-user/demo-site from the gh-pages branch.',
+          repository: 'test-user/demo-site',
+          pagesUrl: 'https://test-user.github.io/demo-site',
+        },
       });
+
+      expect(response.body.jobId).toBe(response.body.status.id);
 
       expect(fetchMock).toHaveBeenCalledTimes(8);
 
@@ -370,6 +390,7 @@ describe('GitHub routes', () => {
         .send({ repoName: 'demo-site', publishDir: '', siteFiles })
         .expect(502);
 
+      expect(response.body.jobId).toEqual(expect.any(String));
       expect(response.body.error).toContain('Failed to create Git tree for publication');
       expect(response.body.error).toContain('tree failure');
     });
