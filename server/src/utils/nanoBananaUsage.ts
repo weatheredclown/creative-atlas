@@ -69,7 +69,7 @@ export interface EnforceNanoBananaUsageResult {
 export const enforceNanoBananaUsageLimits = async (
   options: EnforceNanoBananaUsageOptions,
 ): Promise<EnforceNanoBananaUsageResult> => {
-  const { userId, projectId, perUserLimit = 5, perProjectLimit = 3 } = options;
+  const { userId, projectId, perUserLimit = 20, perProjectLimit = 9 } = options;
   const today = toDailyKey();
   const docRef = firestore.collection(NANO_BANANA_USAGE_COLLECTION).doc(userId);
 
