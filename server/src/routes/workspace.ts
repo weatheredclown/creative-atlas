@@ -13,6 +13,7 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   type GenerateContentResponse,
+  type SafetySetting,
 } from '@google/genai';
 import asyncHandler from '../utils/asyncHandler.js';
 import {
@@ -62,7 +63,7 @@ const router = Router();
 
 const NANO_BANANA_IMAGE_MODEL = 'gemini-2.5-flash-image-preview';
 
-const NANO_BANANA_IMAGE_SAFETY_SETTINGS = [
+const NANO_BANANA_IMAGE_SAFETY_SETTINGS: SafetySetting[] = [
   {
     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
     threshold: HarmBlockThreshold.BLOCK_NONE,
@@ -79,7 +80,7 @@ const NANO_BANANA_IMAGE_SAFETY_SETTINGS = [
     category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
     threshold: HarmBlockThreshold.BLOCK_NONE,
   },
-] as const;
+];
 
 const nanoBananaArtModeSchema = z.enum(NANO_BANANA_ART_MODE_VALUES);
 
@@ -1240,7 +1241,7 @@ router.post('/projects/:id/nano-banana/generate', asyncHandler(async (req: Authe
       if (!finishReason) {
         return false;
       }
-      if (finishReason === FinishReason.FINISH_REASON_SAFETY) {
+      if (finishReason === FinishReason.SAFETY) {
         return true;
       }
       return typeof finishReason === 'string' && finishReason.toUpperCase() === 'SAFETY';
