@@ -46,6 +46,8 @@ import {
 } from '../utils/artifactNormalization';
 import { getDefaultDataForType } from '../utils/artifactDefaults';
 import { createArtifactResidueStore } from '../utils/artifactResidueStore';
+import { clampNanoBananaImage } from '../utils/nanoBananaImage';
+import { emitToast } from './ToastContext';
 
 interface ProfileUpdate
   extends Partial<Omit<UserProfile, 'settings' | 'achievementsUnlocked' | 'questlinesClaimed'>> {
@@ -611,12 +613,40 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateProject = useCallback(
     async (projectId: string, updates: Partial<Project>) => {
+      const nextUpdates: Partial<Project> = { ...updates };
+
+      if (typeof updates.nanoBananaImage === 'string') {
+        try {
+          const { image, wasClamped } = await clampNanoBananaImage(updates.nanoBananaImage);
+          nextUpdates.nanoBananaImage = image;
+          if (wasClamped) {
+            emitToast('We resized the Creative Atlas generative art preview to keep it shareable.', {
+              variant: 'info',
+            });
+          }
+        } catch (imageError) {
+          reportError(
+            'Failed to prepare Creative Atlas generative art preview',
+            imageError,
+            'We could not prepare the Creative Atlas generative art preview. Please try again.',
+            { suppressState: true },
+          );
+          emitToast('We could not prepare the Creative Atlas generative art preview. Please try again.', {
+            variant: 'error',
+          });
+          return null;
+        }
+      } else if (updates.nanoBananaImage === null) {
+        nextUpdates.nanoBananaImage = null;
+      }
+
       setProjects((current) =>
-        current.map((project) => (project.id === projectId ? { ...project, ...updates } : project)),
+        current.map((project) => (project.id === projectId ? { ...project, ...nextUpdates } : project)),
       );
 
       if (isGuestMode || !isDataApiConfigured) {
-        return projects.find((project) => project.id === projectId) ?? null;
+        const localProject = projects.find((project) => project.id === projectId);
+        return localProject ? { ...localProject, ...nextUpdates } : null;
       }
 
       try {
@@ -625,12 +655,12 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           throw new Error('Missing authentication token.');
         }
         const sanitized: Partial<Project> = {};
-        if (updates.title !== undefined) sanitized.title = updates.title;
-        if (updates.summary !== undefined) sanitized.summary = updates.summary;
-        if (updates.status !== undefined) sanitized.status = updates.status;
-        if (updates.tags !== undefined) sanitized.tags = updates.tags;
-        if (updates.nanoBananaImage !== undefined) {
-          sanitized.nanoBananaImage = updates.nanoBananaImage;
+        if (nextUpdates.title !== undefined) sanitized.title = nextUpdates.title;
+        if (nextUpdates.summary !== undefined) sanitized.summary = nextUpdates.summary;
+        if (nextUpdates.status !== undefined) sanitized.status = nextUpdates.status;
+        if (nextUpdates.tags !== undefined) sanitized.tags = nextUpdates.tags;
+        if (nextUpdates.nanoBananaImage !== undefined) {
+          sanitized.nanoBananaImage = nextUpdates.nanoBananaImage;
         }
         const updated = await updateProjectViaApi(token, projectId, sanitized);
         setProjects((current) =>
