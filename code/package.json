@@ -8,6 +8,7 @@
     "build": "vite build",
     "prepreview": "npm run build",
     "preview": "vite preview",
+    "postinstall": "npm install --prefix ../functions",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest run",
     "test:watch": "vitest",

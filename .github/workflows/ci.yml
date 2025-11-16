@@ -28,6 +28,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install share metadata function dependencies
+        run: npm ci
+        working-directory: functions
+
       - name: Run linting
         run: npm run lint
 

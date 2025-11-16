@@ -42,6 +42,10 @@ The interactive prototype lives in the `code/` directory and is a client-side Re
    npm install
    ```
 
+   The install step now also bootstraps the Cloud Function dependencies that power the `/share/:id` metadata proxy. If you skip
+   the UI setup and only need to deploy `shareMetadata`, run `npm install --prefix functions` manually before invoking `firebase
+   deploy` so the CLI can resolve `firebase-functions` when it analyzes the triggers.
+
    When you're just validating an end-to-end pipeline run, pair the install with a quick lint smoke test from the repository root:
 
    ```bash
