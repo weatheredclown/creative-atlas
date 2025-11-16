@@ -38,6 +38,12 @@ import {
   enforceShareLinkRetention,
   sanitizeForExternalShare,
 } from '../compliance/enforcement.js';
+import {
+  cacheNanoBananaImage,
+  deleteCachedNanoBananaImage,
+  getCachedNanoBananaUrl,
+  isNanoBananaCacheEnabled,
+} from '../utils/nanoBananaCache.js';
 
 const router = Router();
 
@@ -402,7 +408,17 @@ router.get(
   '/share/:shareId/nano-banana.png',
   asyncHandler(async (req, res) => {
     try {
-      const payload = await loadSharedProjectPayload(req.params.shareId);
+      const { shareId } = req.params;
+
+      if (isNanoBananaCacheEnabled()) {
+        const cachedUrl = await getCachedNanoBananaUrl(shareId);
+        if (cachedUrl) {
+          res.set('Cache-Control', 'public, max-age=300').redirect(cachedUrl);
+          return;
+        }
+      }
+
+      const payload = await loadSharedProjectPayload(shareId);
       const dataUrl = payload.project.nanoBananaImage;
       if (!dataUrl || typeof dataUrl !== 'string' || !nanoBananaImagePattern.test(dataUrl)) {
         res.status(404).json({ error: 'Creative Atlas generative image not found' });
@@ -414,6 +430,19 @@ router.get(
         return;
       }
       const buffer = Buffer.from(encoded, 'base64');
+
+      if (isNanoBananaCacheEnabled()) {
+        try {
+          const cachedUrl = await cacheNanoBananaImage(shareId, buffer);
+          if (cachedUrl) {
+            res.set('Cache-Control', 'public, max-age=300').redirect(cachedUrl);
+            return;
+          }
+        } catch (cacheError) {
+          console.warn('Failed to cache nano banana image', cacheError);
+        }
+      }
+
       res.set('Cache-Control', 'public, max-age=600');
       res.type('png').send(buffer);
     } catch (error) {
@@ -1029,6 +1058,11 @@ router.delete('/projects/:id/share', asyncHandler(async (req: AuthenticatedReque
   }
 
   await existing.ref.delete();
+  if (isNanoBananaCacheEnabled()) {
+    deleteCachedNanoBananaImage(existing.id).catch((error) => {
+      console.warn('Failed to delete cached nano banana image', error);
+    });
+  }
   res.json({ success: true });
 }));
 
