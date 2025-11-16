@@ -405,12 +405,12 @@ router.get(
       const payload = await loadSharedProjectPayload(req.params.shareId);
       const dataUrl = payload.project.nanoBananaImage;
       if (!dataUrl || typeof dataUrl !== 'string' || !nanoBananaImagePattern.test(dataUrl)) {
-        res.status(404).json({ error: 'Nano banana image not found' });
+        res.status(404).json({ error: 'Creative Atlas generative image not found' });
         return;
       }
       const [, encoded] = dataUrl.split(',', 2);
       if (!encoded) {
-        res.status(404).json({ error: 'Nano banana image not found' });
+        res.status(404).json({ error: 'Creative Atlas generative image not found' });
         return;
       }
       const buffer = Buffer.from(encoded, 'base64');
@@ -502,8 +502,8 @@ const nanoBananaImagePattern = /^data:image\/png;base64,/i;
 
 const nanoBananaImageSchema = z
   .string()
-  .regex(nanoBananaImagePattern, 'Nano banana image must be a base64-encoded PNG data URL.')
-  .max(1_200_000, 'Nano banana image is too large.');
+  .regex(nanoBananaImagePattern, 'Creative Atlas generative image must be a base64-encoded PNG data URL.')
+  .max(1_200_000, 'Creative Atlas generative image is too large.');
 
 const projectSchema = z.object({
   id: z.string().min(1).optional(),

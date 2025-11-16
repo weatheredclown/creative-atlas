@@ -209,11 +209,11 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             <figure className="overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-900/80">
               <img
                 src={project.nanoBananaImage}
-                alt={`${project.title} nano banana preview`}
+                alt={`${project.title} Creative Atlas generative art preview`}
                 className="h-auto w-full object-cover"
               />
               <figcaption className="border-t border-slate-700/60 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
-                Nano banana summary art
+                Creative Atlas Generative AI preview
               </figcaption>
             </figure>
           ) : null}
