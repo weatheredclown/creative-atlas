@@ -60,7 +60,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - **Gemini-driven Nano Banana prompts + endpoint.**
   - _Context:_ `/api/projects/:id/nano-banana/generate` now builds Gemini image prompts from project metadata (title, summary, tags, art mode) so thumbnails reflect canon instead of raw user text, and server-side rate limits (3 per project/day, 5 per user/day) keep the flow from turning into a general-purpose image generator.
   - _Next actions:_
-    - [ ] Wire the workspace thumbnail UI to call the new endpoint with optimistic loading/error states.
     - [ ] Cache Gemini-rendered thumbnails alongside the existing deterministic canvas fallback so social shares load instantly.
 - **Character arc tooling (family tree + graph).**
   - _Context:_ Family tree visualizations share stage overlays with the relationship graph, creation flows connect from sheets and the tree, and the Graph view now includes an Arc Stage Spotlight filter with summaries.

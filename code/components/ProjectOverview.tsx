@@ -1,14 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Project, ProjectComponentKey, ProjectStatus, ProjectVisibilitySettings } from '../types';
+import { Project, ProjectComponentKey, ProjectStatus, ProjectVisibilitySettings, NanoBananaArtMode } from '../types';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
 import { PlusIcon, SparklesIcon, TagIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
 import ProjectSettingsPanel from './ProjectSettingsPanel';
-import {
-  generateNanoBananaImage,
-  NANO_BANANA_ART_MODES,
-  NanoBananaArtMode,
-} from '../utils/nanoBananaGenerator';
+import { useAuth } from '../contexts/AuthContext';
+import { generateNanoBananaViaApi, isDataApiConfigured } from '../services/dataApi';
 
 interface ProjectOverviewProps {
   project: Project;
@@ -29,9 +26,27 @@ interface FactPrompt {
 interface NanoBananaDraft {
   id: string;
   image: string;
-  variant: number;
   mode: NanoBananaArtMode;
+  prompt: string;
 }
+
+const NANO_BANANA_ART_MODES: Record<
+  NanoBananaArtMode,
+  { label: string; description: string }
+> = {
+  aurora: {
+    label: 'Aurora Drift',
+    description: 'Cool cosmic gradients with flowing aurora streaks.',
+  },
+  sunrise: {
+    label: 'Sunrise Bloom',
+    description: 'Warm blooms, sunbursts, and atmospheric dust.',
+  },
+  prismatic: {
+    label: 'Prismatic Pulse',
+    description: 'High-contrast prisms with neon grid energy.',
+  },
+};
 
 const FACT_PROMPTS: readonly FactPrompt[] = [
   {
@@ -92,10 +107,30 @@ const statusOrder: ProjectStatus[] = [
 ];
 
 const GENERATIVE_IMAGE_TROUBLESHOOTING: readonly string[] = [
-  'Refresh the page and try generating the Creative Atlas art again.',
-  'Ensure your browser allows Canvas drawing and disable extensions blocking graphics or scripts.',
-  'Shorten extremely long summaries or tags before retrying so the preview has less text to render.',
+  'Sign in with a full Creative Atlas account—guest mode cannot call the Gemini thumbnail service.',
+  'Gemini enforces community guidelines. Simplify the title, summary, or tags if the request is blocked for safety reasons.',
+  'You can request up to 3 previews per project/day and 5 per user/day. Wait until the limit resets before trying again.',
 ];
+
+const parseNanoBananaErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    try {
+      const parsed = JSON.parse(error.message);
+      if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+        const extracted = (parsed as { error?: unknown }).error;
+        if (typeof extracted === 'string' && extracted.trim()) {
+          return extracted;
+        }
+      }
+    } catch {
+      // Ignore JSON parse failures and fall through to the default string.
+    }
+    if (error.message.trim()) {
+      return error.message;
+    }
+  }
+  return 'Creative Atlas generative art request failed. Please try again in a few moments.';
+};
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   project,
@@ -105,6 +140,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   onToggleVisibility,
   onResetVisibility,
 }) => {
+  const { getIdToken, isGuestMode } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(project.title);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -121,6 +157,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   const [nanoBananaError, setNanoBananaError] = useState<string | null>(null);
   const [nanoBananaMode, setNanoBananaMode] = useState<NanoBananaArtMode>('aurora');
   const [nanoBananaDrafts, setNanoBananaDrafts] = useState<NanoBananaDraft[]>([]);
+  const canRequestNanoBanana = !isGuestMode && isDataApiConfigured;
   const feedbackTimeoutRef = useRef<number | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -377,29 +414,32 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     }
   };
 
-  const handleGenerateNanoBanana = () => {
+  const handleGenerateNanoBanana = async () => {
+    if (!canRequestNanoBanana) {
+      setNanoBananaError('Creative Atlas generative art is only available for signed-in creators.');
+      return;
+    }
+
     setNanoBananaError(null);
     setIsGeneratingNanoBanana(true);
     try {
-      const timestamp = Date.now();
-      const options = Array.from({ length: 3 }, (_, index) => ({
-        id: `${nanoBananaMode}-${timestamp}-${index}`,
-        image: generateNanoBananaImage({
-          title: project.title,
-          summary: project.summary,
-          tags: project.tags,
-          mode: nanoBananaMode,
-          variant: index,
-        }),
-        variant: index,
-        mode: nanoBananaMode,
-      }));
-      setNanoBananaDrafts(options);
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error('Authentication is required to call the Gemini thumbnail service.');
+      }
+      const result = await generateNanoBananaViaApi(token, project.id, { mode: nanoBananaMode });
+      setNanoBananaDrafts((current) => {
+        const draft: NanoBananaDraft = {
+          id: `${result.mode}-${Date.now()}`,
+          image: result.image,
+          mode: result.mode,
+          prompt: result.prompt,
+        };
+        return [draft, ...current].slice(0, 3);
+      });
     } catch (error) {
-      console.error('Failed to generate Creative Atlas generative art preview', error);
-      setNanoBananaError(
-        'Creative Atlas Generative AI could not render this preview. Review the troubleshooting steps below and try again.',
-      );
+      console.error('Failed to request Creative Atlas generative art preview', error);
+      setNanoBananaError(parseNanoBananaErrorMessage(error));
     } finally {
       setIsGeneratingNanoBanana(false);
     }
@@ -571,10 +611,15 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 type="button"
                 onClick={handleGenerateNanoBanana}
                 className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isGeneratingNanoBanana}
+                disabled={isGeneratingNanoBanana || !canRequestNanoBanana}
               >
-                {isGeneratingNanoBanana ? 'Generating…' : 'Generate 3 art options'}
+                {isGeneratingNanoBanana ? 'Generating…' : 'Generate art preview'}
               </button>
+              {!canRequestNanoBanana ? (
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+                  Sign in to use Creative Atlas generative art
+                </p>
+              ) : null}
               {project.nanoBananaImage ? (
                 <button
                   type="button"
@@ -635,7 +680,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     Pick your favorite
                   </p>
                   <p className="text-xs text-slate-300">
-                    Apply a thumbnail to the project or regenerate to explore more looks.
+                    Apply a thumbnail to the project or keep generating to explore more looks.
                   </p>
                 </div>
                 <button
@@ -647,7 +692,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 </button>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                {nanoBananaDrafts.map((draft) => {
+                {nanoBananaDrafts.map((draft, index) => {
                   const modeConfig = NANO_BANANA_ART_MODES[draft.mode];
                   return (
                     <div
@@ -664,9 +709,11 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                       <div className="flex flex-1 flex-col gap-2 p-3 text-xs text-slate-300">
                         <div>
                           <p className="text-sm font-semibold text-white">
-                            {modeConfig.label} option {draft.variant + 1}
+                            {modeConfig.label} preview {index + 1}
                           </p>
-                          <p className="text-[11px] text-slate-400">{modeConfig.description}</p>
+                          <p className="text-[11px] text-slate-400" title={draft.prompt}>
+                            {draft.prompt.length > 110 ? `${draft.prompt.slice(0, 110)}…` : draft.prompt}
+                          </p>
                         </div>
                         <button
                           type="button"
