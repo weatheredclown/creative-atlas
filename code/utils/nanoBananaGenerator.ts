@@ -114,7 +114,7 @@ const drawBanana = (
 
 export const generateNanoBananaImage = (input: NanoBananaGeneratorInput): string => {
   if (typeof document === 'undefined') {
-    throw new Error('Nano banana generator requires a browser environment.');
+    throw new Error('Creative Atlas Generative AI previews require a browser environment.');
   }
 
   const canvas = document.createElement('canvas');
@@ -124,11 +124,11 @@ export const generateNanoBananaImage = (input: NanoBananaGeneratorInput): string
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    throw new Error('Unable to create drawing context for nano banana art.');
+    throw new Error('Unable to create drawing context for Creative Atlas generative art.');
   }
 
   const seedSource = `${input.title}|${input.summary ?? ''}|${(input.tags ?? []).join(',')}`;
-  const random = mulberry32(stringToSeed(seedSource || 'nano-banana'));
+  const random = mulberry32(stringToSeed(seedSource || 'creative-atlas-generative-ai'));
   const baseHue = Math.floor(random() * 360);
 
   const gradient = ctx.createLinearGradient(0, 0, width, height);
@@ -162,7 +162,7 @@ export const generateNanoBananaImage = (input: NanoBananaGeneratorInput): string
   ctx.shadowBlur = 15;
   ctx.fillStyle = 'rgba(226, 232, 240, 0.9)';
   ctx.font = '400 28px "Inter", "Segoe UI", sans-serif';
-  const summary = input.summary?.trim() || 'A new nano banana spark is ready to share.';
+  const summary = input.summary?.trim() || 'A new Creative Atlas generative spark is ready to share.';
   const summaryLines = wrapLines(ctx, summary, width - 200, 2);
   summaryLines.forEach((line, index) => {
     ctx.fillText(line, 80, 420 + titleLines.length * 64 + 20 + index * 40);

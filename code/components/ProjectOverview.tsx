@@ -80,6 +80,12 @@ const statusOrder: ProjectStatus[] = [
   ProjectStatus.Archived,
 ];
 
+const GENERATIVE_IMAGE_TROUBLESHOOTING: readonly string[] = [
+  'Refresh the page and try generating the Creative Atlas art again.',
+  'Ensure your browser allows Canvas drawing and disable extensions blocking graphics or scripts.',
+  'Shorten extremely long summaries or tags before retrying so the preview has less text to render.',
+];
+
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   project,
   onUpdateProject,
@@ -367,8 +373,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
       });
       onUpdateProject(project.id, { nanoBananaImage: image });
     } catch (error) {
-      console.error('Failed to generate nano banana image', error);
-      setNanoBananaError('We could not generate the nano banana image. Try reloading and generating again.');
+      console.error('Failed to generate Creative Atlas generative art preview', error);
+      setNanoBananaError(
+        'Creative Atlas Generative AI could not render this preview. Review the troubleshooting steps below and try again.',
+      );
     } finally {
       setIsGeneratingNanoBanana(false);
     }
@@ -520,7 +528,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
         <div className="space-y-4 rounded-xl border border-amber-400/30 bg-amber-500/5 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Nano banana summary art</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Creative Atlas generative art</p>
               <h3 className="text-sm font-semibold text-slate-100">Generate a share-ready hero image</h3>
               <p className="text-xs text-slate-400">
                 This art displays above your workspace summary and becomes the open graph thumbnail when you share the atlas.
@@ -533,7 +541,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isGeneratingNanoBanana}
               >
-                {isGeneratingNanoBanana ? 'Generating…' : 'Generate nano banana'}
+                {isGeneratingNanoBanana ? 'Generating…' : 'Generate Creative Atlas art'}
               </button>
               {project.nanoBananaImage ? (
                 <button
@@ -546,12 +554,20 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
               ) : null}
             </div>
           </div>
-          {nanoBananaError ? <p className="text-xs font-semibold text-rose-300">{nanoBananaError}</p> : null}
-          {project.nanoBananaImage ? (
+          {nanoBananaError ? (
+            <div className="space-y-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-xs text-rose-100">
+              <p className="font-semibold">{nanoBananaError}</p>
+              <ul className="list-disc space-y-1 pl-5 text-rose-200">
+                {GENERATIVE_IMAGE_TROUBLESHOOTING.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          ) : project.nanoBananaImage ? (
             <figure className="overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/60">
               <img
                 src={project.nanoBananaImage}
-                alt={`${project.title} nano banana summary art`}
+                alt={`${project.title} Creative Atlas generative art preview`}
                 className="h-auto w-full object-cover"
               />
               <figcaption className="border-t border-slate-800/60 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
@@ -560,7 +576,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             </figure>
           ) : (
             <div className="rounded-lg border border-dashed border-amber-400/40 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
-              Generate a nano banana to preview how your project will look in the hero panel and on social cards.
+              Generate Creative Atlas generative art to preview how your project will look in the hero panel and on social cards.
             </div>
           )}
         </div>
