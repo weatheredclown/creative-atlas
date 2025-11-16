@@ -10,4 +10,5 @@ env_variables:
   CA_GITHUB_CLIENT_SECRET: "placeholder"
   APP_BASE_URL: "placeholder"
   SESSION_SECRET: "replace_me"
+  NANO_BANANA_CACHE_BUCKET: "creative-atlas-nano-bananas"
   GEMINI_API_KEY: "placeholder"

@@ -110,6 +110,10 @@ Set `ALLOWED_ORIGINS` (comma-separated) so deployed environments return the prop
 ALLOWED_ORIGINS=https://creative-atlas.web.app,https://staging.creative-atlas.web.app
 ```
 
+#### Nano banana share art caching
+
+To keep `/share/:id/nano-banana.png` responses fast for social crawlers, configure a public Cloud Storage bucket (the default is `creative-atlas-nano-bananas`) and optionally expose it to the API via `NANO_BANANA_CACHE_BUCKET` in `server/.env` if you need to override or disable caching. Grant the App Engine service account **Storage Object Admin** so it can upload PNGs and make the bucket (or its objects) publicly readable (for example, `gsutil iam ch allUsers:objectViewer gs://<bucket>` when uniform access is enabled). Every request to the share image endpoint now redirects to the cached CDN URL once the PNG has been uploaded, so the bucket should enforce long-lived caching (the server saves each image with `Cache-Control: public, max-age=31536000, immutable`).
+
 Atlas Intelligence features now proxy Gemini requests through the backend. Provide a `GEMINI_API_KEY` in `server/.env` (and mirror it in your deployment secrets) so the Express API can authorize calls without exposing the key to the browser.
 
 For App Engine deployments, mirror these values in [`server/app.yaml`](server/app.yaml) so the runtime picks up the environment variables automatically.
