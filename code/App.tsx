@@ -324,9 +324,11 @@ export default function App() {
       return;
     }
 
-    if (projectIdFromUrl && projects.some((project) => project.id === projectIdFromUrl)) {
-      if (projectIdFromUrl !== selectedProjectId) {
-        setSelectedProjectId(projectIdFromUrl);
+    if (projectIdFromUrl) {
+      if (projects.some((project) => project.id === projectIdFromUrl)) {
+        if (projectIdFromUrl !== selectedProjectId) {
+          setSelectedProjectId(projectIdFromUrl);
+        }
       }
       return;
     }
