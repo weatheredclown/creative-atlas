@@ -268,6 +268,11 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({
     return buildCharacterArcEvaluationMap(artifacts);
   }, [artifacts, characterProgressionMap]);
 
+  const trackedArcCount = useMemo(
+    () => characters.reduce((count, character) => (progressionMap.has(character.id) ? count + 1 : count), 0),
+    [characters, progressionMap],
+  );
+
   const stageDistribution = useMemo(() => {
     const distribution = ARC_STAGE_CONFIG.reduce<Record<ArcStageId, number>>((acc, stage) => {
       acc[stage.id] = 0;
@@ -477,11 +482,28 @@ const FamilyTreeTools: React.FC<FamilyTreeToolsProps> = ({
       </dl>
 
       <div className="space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Arc progression overlay</h4>
-          <p className="text-xs text-slate-400">
-            Track how characters advance through their arcs and spot households clustered in the same stage.
-          </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Arc progression overlay</h4>
+            <p className="text-xs text-slate-400">
+              Track how characters advance through their arcs and spot households clustered in the same stage.
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-700/70 bg-slate-800/60 p-3 text-xs text-slate-200 shadow-inner shadow-slate-950/10">
+            <p className="font-semibold text-slate-100">Arc Stage Spotlight guidance</p>
+            {trackedArcCount > 0 ? (
+              <p className="mt-1 leading-relaxed text-slate-300">
+                Use the stage filter in the relationship graph to spotlight a phase while this overlay shows how families cluster
+                around it. {trackedArcCount} character{trackedArcCount === 1 ? '' : 's'} already carry arc evaluations you can
+                build on.
+              </p>
+            ) : (
+              <p className="mt-1 leading-relaxed text-slate-300">
+                Assign arc stages in the graph view or character editors to unlock the spotlight. Once evaluations exist, this
+                overlay highlights where households concentrate in each stage.
+              </p>
+            )}
+          </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {ARC_STAGE_CONFIG.map((stage) => {
