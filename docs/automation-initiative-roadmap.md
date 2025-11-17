@@ -200,4 +200,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Softened Nano Banana storage failures so project updates can proceed even when generative art persistence is unavailable; no roadmap bullets impacted.
 - 2025-11-18: Surfaced Nano Banana storage failures to clients instead of silently clearing thumbnails; no roadmap bullets impacted.
 - 2025-11-17: Updated App Engine version pruning to skip active versions after deployment; no roadmap bullets impacted.
+- 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullet
+s impacted.
 
