@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Artifact,
@@ -65,7 +65,7 @@ const truncateForContext = (value: string, maxLength: number): string => {
   return `${value.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
 };
 
-const DashboardShellPlaceholder: React.FC<{ loading: boolean }> = ({ loading }) => (
+const DashboardShellPlaceholder: FC<{ loading: boolean }> = ({ loading }) => (
   <div className="min-h-screen flex flex-col bg-slate-950">
     <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800/70 px-4 sm:px-8 py-3">
       <div className="flex items-center gap-3">
