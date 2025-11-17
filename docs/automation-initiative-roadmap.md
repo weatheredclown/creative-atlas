@@ -196,4 +196,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-16: Resolved Gemini safety typing regressions blocking the workspace route build; no roadmap bullets impacted.
 - 2025-11-16: Swapped Nano Banana art modes to retro/modern/futuristic names plus prompt descriptors; no roadmap bullets impacted.
 - 2025-11-17: Stored Nano Banana previews in Cloud Storage to replace oversized Firestore payloads and cleared the Nano Banana share caching backlog item.
+- 2025-11-17: Added App Engine version pruning to the deploy workflow; no roadmap bullets impacted.
 

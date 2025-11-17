@@ -156,3 +156,8 @@ jobs:
       - name: Deploy to App Engine
         run: gcloud app deploy app.yaml --quiet
         working-directory: server
+      - name: Prune old App Engine versions
+        run: |
+          gcloud app versions list --service="default" --sort-by="~VERSION.CREATE_TIME" --format="value(version.id)" \
+            | tail -n +6 \
+            | xargs -r gcloud app versions delete --service="default" --quiet
