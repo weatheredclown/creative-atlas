@@ -316,7 +316,6 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
             xpProgress,
             statusLabel: formatStatusLabel(project.status),
             showProjectHero: visibilitySettings.projectHero,
-            showProjectOverview: visibilitySettings.projectOverview,
             showQuickFactsPanel: visibilitySettings.quickFactsPanel,
             visibilitySettings,
             onOpenCreateArtifactModal: () => onOpenCreateArtifactModal(),

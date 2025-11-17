@@ -450,7 +450,6 @@ export interface UserProfile {
 
 export const PROJECT_COMPONENT_KEYS = [
   'projectHero',
-  'projectOverview',
   'quickFactsPanel',
   'projectInsights',
   'aiCopilot',
