@@ -36,7 +36,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - **Ghost agent context & preview ergonomics.**
   - _Context:_ The payload preview modal now behaves as a draggable floating window, and the ghost agent prompt includes project context (title, summary, artifact mix, highlights).
   - _Next actions:_
-    - [ ] Add a client-side setting that lets operators opt out of auto-opening the payload preview during long runs.
     - [ ] Surface the currently focused artifact and unsaved edits inside the prompt once that state is exposed from the workspace UI.
 - **Coordinate normalization, calibration, and screenshot reliability.**
   - _Context:_ Viewport coordinate scaling and Y-axis calibration now align the 0-1000 grid with DOM targets, dialog capture keeps modals visible, and an in-app calibration mode logs cursor offsets with manual reset + debug toggles.
@@ -200,6 +199,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Added App Engine version pruning to the deploy workflow; no roadmap bullets impacted.
 - 2025-11-17: Softened Nano Banana storage failures so project updates can proceed even when generative art persistence is unavailable; no roadmap bullets impacted.
 - 2025-11-18: Surfaced Nano Banana storage failures to clients instead of silently clearing thumbnails; no roadmap bullets impacted.
+- 2025-11-18: Added a payload preview auto-open preference to the ghost agent UI and persisted the setting locally; advanced the "Ghost agent context & preview ergonomics" roadmap item.
 - 2025-11-17: Updated App Engine version pruning to skip active versions after deployment; no roadmap bullets impacted.
 - 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullet
 s impacted.

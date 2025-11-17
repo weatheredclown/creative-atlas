@@ -31,6 +31,7 @@ const HISTORY_LIMIT = 40;
 const CURSOR_MOVE_DELAY_MS = 700;
 const POST_ACTION_DELAY_MS = 1200;
 const CALIBRATION_STORAGE_KEY = 'ghost-agent-calibration-history';
+const PAYLOAD_PREVIEW_STORAGE_KEY = 'ghost-agent-auto-open-preview';
 const CALIBRATION_OBJECTIVE =
   'Calibration check: Move the ghost cursor into the center of the red calibration square on the screen, then report done once you are fully inside the square.';
 const CALIBRATION_HISTORY_LIMIT = 12;
@@ -866,6 +867,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
   const [calibrationHistory, setCalibrationHistory] = useState<CalibrationHistoryEntry[]>([]);
   const [payloadPreview, setPayloadPreview] = useState<PayloadPreviewData | null>(null);
   const [isPayloadPreviewOpen, setIsPayloadPreviewOpen] = useState(false);
+  const [autoOpenPayloadPreview, setAutoOpenPayloadPreview] = useState(true);
   const [isAgentDebugMode] = useState(() => detectAgentDebugMode());
 
   const normalizedProjectContext = useMemo(() => {
@@ -890,6 +892,35 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
   const hasLoadedCalibrationHistoryRef = useRef(false);
   const hasCursorMovedRef = useRef(false);
   const lastViewportSizeRef = useRef<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const storedPreference = window.localStorage.getItem(PAYLOAD_PREVIEW_STORAGE_KEY);
+
+    if (storedPreference === 'false') {
+      setAutoOpenPayloadPreview(false);
+    } else if (storedPreference === 'true') {
+      setAutoOpenPayloadPreview(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        PAYLOAD_PREVIEW_STORAGE_KEY,
+        autoOpenPayloadPreview ? 'true' : 'false',
+      );
+    } catch (error) {
+      console.warn('Failed to persist payload preview preference', error);
+    }
+  }, [autoOpenPayloadPreview]);
 
   const addLog = useCallback((message: string) => {
     setLogs(previous => [...previous.slice(-(MAX_LOGS - 1)), message]);
@@ -1343,7 +1374,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
             screenshotDataUrl,
             payloadSummary,
           });
-          setIsPayloadPreviewOpen(true);
+          setIsPayloadPreviewOpen(previous => (autoOpenPayloadPreview ? true : previous));
 
           let action: GhostAgentAction | null = null;
           try {
@@ -1399,6 +1430,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
       addLog,
       captureScreen,
       executeAction,
+      autoOpenPayloadPreview,
       normalizedProjectContext,
       objective,
       setIsAwaitingFeedback,
@@ -1646,6 +1678,24 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
                 onChange={event => setObjective(event.target.value)}
                 disabled={isRunning}
               />
+
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/60 p-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Payload preview</div>
+                  <p className="text-[12px] leading-relaxed text-slate-300">
+                    Automatically open the model request payload while the agent runs.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-[12px] font-semibold text-slate-100">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-white/30 bg-slate-900 text-indigo-500 focus:ring-indigo-500"
+                    checked={autoOpenPayloadPreview}
+                    onChange={event => setAutoOpenPayloadPreview(event.target.checked)}
+                  />
+                  <span>Auto-open</span>
+                </label>
+              </div>
 
               {isRunning ? (
                 <div className="space-y-3">
