@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Artifact,
   Project,
@@ -297,6 +297,8 @@ export default function App() {
     [memoryConversations, selectedProjectId],
   );
 
+  const isAutoLoadingProjectsRef = useRef(false);
+
   const handleMemoryStatusChange = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
       updateMemorySuggestionStatus(conversationId, suggestionId, status);
@@ -325,6 +327,34 @@ export default function App() {
       setSelectedProjectId(projects[0].id);
     }
   }, [projectIdFromUrl, projects, selectedProjectId]);
+
+  useEffect(() => {
+    if (!projectIdFromUrl) {
+      return;
+    }
+
+    if (projects.some((project) => project.id === projectIdFromUrl)) {
+      return;
+    }
+
+    if (!canLoadMoreProjects || isAutoLoadingProjectsRef.current) {
+      return;
+    }
+
+    isAutoLoadingProjectsRef.current = true;
+    setIsLoadingMoreProjects(true);
+
+    void (async () => {
+      try {
+        await loadMoreProjects();
+      } catch (error) {
+        console.error('Failed to auto-load more projects for URL selection', error);
+      } finally {
+        isAutoLoadingProjectsRef.current = false;
+        setIsLoadingMoreProjects(false);
+      }
+    })();
+  }, [canLoadMoreProjects, loadMoreProjects, projectIdFromUrl, projects]);
 
   useEffect(() => {
     const currentProjectId = searchParams.get('projectId');
