@@ -49,8 +49,9 @@ import {
 import {
   cacheNanoBananaImage,
   deleteCachedNanoBananaImage,
-  getCachedNanoBananaUrl,
   isNanoBananaCacheEnabled,
+  isNanoBananaStorageEnabled,
+  persistNanoBananaImage,
 } from '../utils/nanoBananaCache.js';
 import { getGeminiClient } from '../utils/geminiClient.js';
 import { buildNanoBananaPrompt, NANO_BANANA_ART_MODE_VALUES } from '../utils/nanoBananaPrompt.js';
@@ -162,11 +163,19 @@ const respondWithComplianceError = (res: Response, error: unknown): error is Com
   return false;
 };
 
+const nanoBananaDataUrlPattern = /^data:image\/png;base64,/i;
+const nanoBananaImageUrlPattern = /^https?:\/\//i;
+
+const isNanoBananaDataUrl = (value: string): boolean => nanoBananaDataUrlPattern.test(value);
+
+const isNanoBananaImageUrl = (value: string): boolean => nanoBananaImageUrlPattern.test(value);
+
 const normalizeNanoBananaImage = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
   }
-  return nanoBananaImagePattern.test(value) ? value : null;
+  const trimmed = value.trim();
+  return isNanoBananaDataUrl(trimmed) || isNanoBananaImageUrl(trimmed) ? trimmed : null;
 };
 
 const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
@@ -497,21 +506,17 @@ router.get(
     try {
       const { shareId } = req.params;
 
-      if (isNanoBananaCacheEnabled()) {
-        const cachedUrl = await getCachedNanoBananaUrl(shareId);
-        if (cachedUrl) {
-          res.set('Cache-Control', 'public, max-age=300').redirect(cachedUrl);
-          return;
-        }
-      }
-
       const payload = await loadSharedProjectPayload(shareId);
-      const dataUrl = payload.project.nanoBananaImage;
-      if (!dataUrl || typeof dataUrl !== 'string' || !nanoBananaImagePattern.test(dataUrl)) {
+      const nanoBananaImage = normalizeNanoBananaImage(payload.project.nanoBananaImage);
+      if (!nanoBananaImage) {
         res.status(404).json({ error: 'Creative Atlas generative image not found' });
         return;
       }
-      const [, encoded] = dataUrl.split(',', 2);
+      if (isNanoBananaImageUrl(nanoBananaImage)) {
+        res.set('Cache-Control', 'public, max-age=300').redirect(nanoBananaImage);
+        return;
+      }
+      const [, encoded] = nanoBananaImage.split(',', 2);
       if (!encoded) {
         res.status(404).json({ error: 'Creative Atlas generative image not found' });
         return;
@@ -614,12 +619,32 @@ const defaultSettings = {
 
 const themePreferenceSchema = z.enum(['system', 'light', 'dark']);
 
-const nanoBananaImagePattern = /^data:image\/png;base64,/i;
+const nanoBananaImageSchema = z.string().trim().superRefine((value, ctx) => {
+  if (nanoBananaImageUrlPattern.test(value)) {
+    return true;
+  }
 
-const nanoBananaImageSchema = z
-  .string()
-  .regex(nanoBananaImagePattern, 'Creative Atlas generative image must be a base64-encoded PNG data URL.')
-  .max(1_200_000, 'Creative Atlas generative image is too large.');
+  if (!nanoBananaDataUrlPattern.test(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Creative Atlas generative image must be a base64-encoded PNG data URL or HTTPS URL.',
+    });
+    return false;
+  }
+
+  if (value.length > 1_200_000) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_big,
+      maximum: 1_200_000,
+      inclusive: true,
+      type: 'string',
+      message: 'Creative Atlas generative image is too large.',
+    });
+    return false;
+  }
+
+  return true;
+});
 
 const projectSchema = z.object({
   id: z.string().min(1).optional(),
@@ -1068,13 +1093,33 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
     }
   }
 
+  let nanoBananaImage = parsed.nanoBananaImage;
+  if (nanoBananaImage && isNanoBananaDataUrl(nanoBananaImage)) {
+    if (!isNanoBananaStorageEnabled()) {
+      res.status(503).json({ error: 'Creative Atlas generative art storage is not configured.' });
+      return;
+    }
+    try {
+      const storedUrl = await persistNanoBananaImage(docRef.id, nanoBananaImage);
+      if (!storedUrl) {
+        res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+        return;
+      }
+      nanoBananaImage = storedUrl;
+    } catch (error) {
+      console.error('Failed to persist Nano Banana image to storage', error);
+      res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+      return;
+    }
+  }
+
   const payload = {
     ownerId: uid,
     title: parsed.title,
     summary: parsed.summary ?? '',
     status: parsed.status ?? 'active',
     tags: parsed.tags ?? [],
-    nanoBananaImage: parsed.nanoBananaImage ?? null,
+    nanoBananaImage: nanoBananaImage ?? null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -1296,7 +1341,30 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
   if (parsed.summary !== undefined) update.summary = parsed.summary;
   if (parsed.status !== undefined) update.status = parsed.status;
   if (parsed.tags !== undefined) update.tags = parsed.tags;
-  if (parsed.nanoBananaImage !== undefined) update.nanoBananaImage = parsed.nanoBananaImage;
+  if (parsed.nanoBananaImage !== undefined) {
+    if (parsed.nanoBananaImage === null) {
+      update.nanoBananaImage = null;
+    } else if (isNanoBananaDataUrl(parsed.nanoBananaImage)) {
+      if (!isNanoBananaStorageEnabled()) {
+        res.status(503).json({ error: 'Creative Atlas generative art storage is not configured.' });
+        return;
+      }
+      try {
+        const storedUrl = await persistNanoBananaImage(docRef.id, parsed.nanoBananaImage);
+        if (!storedUrl) {
+          res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+          return;
+        }
+        update.nanoBananaImage = storedUrl;
+      } catch (error) {
+        console.error('Failed to persist Nano Banana image to storage', error);
+        res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+        return;
+      }
+    } else {
+      update.nanoBananaImage = parsed.nanoBananaImage;
+    }
+  }
 
   try {
     assertProjectContentCompliance(
