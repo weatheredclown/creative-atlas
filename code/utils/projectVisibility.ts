@@ -33,97 +33,93 @@ interface ComponentDefinition {
 export const PROJECT_COMPONENT_DEFINITIONS: Record<ProjectComponentKey, ComponentDefinition> = {
   projectHero: {
     label: 'Project hero',
-    description: 'Banner summary with quick stats, calls to action, and saved lore sparks.',
-    group: 'summary',
-  },
-  projectOverview: {
-    label: 'Project overview card',
-    description: 'Inline editor for title, summary, status, and tags.',
+    description:
+      'Workspace hero with status controls, hero art, quick actions, stats, quick fact previews, and project settings.',
     group: 'summary',
   },
   quickFactsPanel: {
     label: 'Quick facts shelf',
-    description: 'Lore sparks with copy-ready snippets and clipboard helpers.',
+    description: 'Lore sparks with wiki excerpts, copy-to-clipboard helpers, and add fact shortcuts.',
     group: 'summary',
   },
   artifactExplorer: {
     label: 'Artifact workspace',
-    description: 'Table, graph, and Kanban explorer with editors for individual artifacts.',
+    description: 'Table, graph, and Kanban explorer with inline editors, filters, and exports for individual artifacts.',
     group: 'summary',
   },
   projectInsights: {
     label: 'Project insights',
-    description: 'Auto-generated metrics across artifacts, relationships, and quests.',
+    description: 'Auto-generated metrics across artifact types, relations, task progress, and lexicon coverage.',
     group: 'analytics',
   },
   aiCopilot: {
     label: 'Atlas Intelligence studio',
-    description: 'Opt-in creative assistants with curated prompt slots.',
+    description: 'Opt-in creative assistants with curated prompt slots and result history.',
     group: 'analytics',
   },
   narrativeHealth: {
     label: 'Narrative health monitor',
-    description: 'Highlights story needs, momentum, and neglected beats.',
+    description: 'Highlights story needs, momentum, and neglected beats pulled from artifact metadata.',
     group: 'analytics',
   },
   continuityMonitor: {
     label: 'Continuity monitor',
-    description: 'Flags canon risks and suggests alignment fixes.',
+    description: 'Flags canon risks, surfacing lore mismatches and suggested fixes.',
     group: 'analytics',
   },
   worldSimulation: {
     label: 'World simulation lens',
-    description: 'Explore systems modelling timelines, factions, and physics drift.',
+    description: 'Simulation sandbox for system timelines, factions, and physics drift scenarios.',
     group: 'analytics',
   },
   inspirationDeck: {
     label: 'Inspiration deck',
-    description: 'Blend and capture inspiration cards to spark new scenes.',
+    description: 'Blend and capture inspiration cards to spark scenes, characters, and sensory details.',
     group: 'analytics',
   },
   memorySync: {
     label: 'Memory sync panel',
-    description: 'Review Atlas Intelligence memory suggestions and canon updates.',
+    description: 'Review Atlas Intelligence memory suggestions, canon updates, and apply or dismiss them.',
     group: 'tracking',
   },
   openTasks: {
     label: 'Open tasks',
-    description: 'Summaries of active questboard tasks with due date context.',
+    description: 'Summaries of active questboard tasks with due date context and quick filters.',
     group: 'tracking',
   },
   narrativePipeline: {
     label: 'Narrative pipeline board',
-    description: 'Pipeline view for tracking story states across production.',
+    description: 'Pipeline view for tracking story states across production with drag-and-drop lanes.',
     group: 'tracking',
   },
   characterArcTracker: {
     label: 'Character arc tracker',
-    description: 'Visualises beat coverage and continuity for key characters.',
+    description: 'Visualises beat coverage, progression stages, and continuity for key characters.',
     group: 'tracking',
   },
   familyTreeTools: {
     label: 'Family tree tools',
-    description: 'Diagram character lineages and household relationships.',
+    description: 'Diagram character lineages and relationship graphs with shared overlays.',
     group: 'tracking',
   },
   milestoneTracker: {
     label: 'Milestone tracker',
-    description: 'Roadmap-aligned progress tracker for upcoming milestones.',
+    description: 'Roadmap-aligned progress tracker for upcoming milestones and readiness signals.',
     group: 'tracking',
   },
   githubImport: {
     label: 'GitHub import',
-    description: 'Bring repositories, issues, and releases into your atlas.',
+    description: 'Import repositories, issues, and releases into the atlas and sync metadata.',
     group: 'distribution',
   },
   templates: {
     label: 'Template library',
-    description: 'Apply curated project templates or browse the gallery.',
+    description: 'Apply curated project templates or browse the gallery for reusable structures.',
     group: 'distribution',
   },
   releaseWorkflows: {
     label: 'Release workflows',
-    description: 'Generate release notes and access publish actions.',
+    description: 'Generate release notes, run publish actions, and share your atlas.',
     group: 'distribution',
   },
 };

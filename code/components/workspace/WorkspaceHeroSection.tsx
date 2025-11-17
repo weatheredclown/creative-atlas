@@ -1,7 +1,6 @@
 import React from 'react';
 
 import ProjectHero from '../ProjectHero';
-import ProjectOverview from '../ProjectOverview';
 import ProjectSharePanel from '../ProjectSharePanel';
 import QuickFactsPanel from '../QuickFactsPanel';
 import {
@@ -21,7 +20,6 @@ interface WorkspaceHeroSectionProps {
   xpProgress: number;
   statusLabel: string;
   showProjectHero: boolean;
-  showProjectOverview: boolean;
   showQuickFactsPanel: boolean;
   visibilitySettings: ProjectVisibilitySettings;
   onOpenCreateArtifactModal: () => void;
@@ -43,7 +41,6 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
   xpProgress,
   statusLabel,
   showProjectHero,
-  showProjectOverview,
   showQuickFactsPanel,
   visibilitySettings,
   onOpenCreateArtifactModal,
@@ -69,12 +66,6 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         onSelectQuickFact={(artifactId) => onSelectArtifact(artifactId)}
         level={level}
         xpProgress={xpProgress}
-      />
-    ) : null}
-    <ProjectSharePanel project={project} />
-    {showProjectOverview ? (
-      <ProjectOverview
-        project={project}
         onUpdateProject={onUpdateProject}
         onDeleteProject={onDeleteProject}
         visibilitySettings={visibilitySettings}
@@ -82,6 +73,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         onResetVisibility={onResetVisibility}
       />
     ) : null}
+    <ProjectSharePanel project={project} />
     {showQuickFactsPanel ? (
       <QuickFactsPanel
         facts={quickFactPreview}
