@@ -77,9 +77,7 @@ Production builds also require the primary API origin. Set `VITE_API_BASE_URL` t
 
 #### Simulated history heatmap data
 
-Signed-in collaborators automatically see additional timeline snapshots that have been published to Firestore for their account. The app queries the `timelineHeatmap` collection for documents where `ownerId` matches the viewer's UID; any matches are merged with the timelines already present in the workspace.
-
-To surface more history, publish timeline snapshots to Firestore with an `ownerId` for each collaborator who should see them. The default security rule (`allow read, write: if request.auth.uid == resource.data.ownerId;`) already authorizes those reads. See [`docs/firebase-timeline-heatmap-setup.md`](docs/firebase-timeline-heatmap-setup.md) for a lightweight data seeding guide.
+The history heatmap now visualizes only the timelines already in the current workspace. Add a timeline artifact, record dated events (years or centuries), and the heatmap will immediately bucket those beats into centuries so you can see dense eras or gaps. No extra Firestore collections or admin publishing steps are required.
 
 ### Analytics & monitoring
 

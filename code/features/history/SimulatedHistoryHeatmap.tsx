@@ -1,17 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FirebaseError } from 'firebase/app';
 import { Artifact, ArtifactType } from '../../types';
 import {
   buildSimulatedHistoryHeatmap,
   SimulatedHistoryHeatmap as SimulatedHistoryHeatmapData,
 } from '../../utils/worldSimulation';
 import { CalendarIcon } from '../../components/Icons';
-import {
-  buildTimelineArtifactsFromFirestore,
-  fetchSimulatedHistoryTimelines,
-  FirestoreTimelineHeatmapTimeline,
-} from '../../services/historyHeatmap';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface SimulatedHistoryHeatmapProps {
   artifacts: Artifact[];
@@ -89,146 +82,14 @@ const applyEraFilter = (
   };
 };
 
-const toWorldOptions = (timelines: FirestoreTimelineHeatmapTimeline[]) => {
-  const entries = new Map<string, string>();
-  timelines.forEach((timeline) => {
-    if (!entries.has(timeline.worldId)) {
-      entries.set(timeline.worldId, timeline.worldTitle);
-    }
-  });
-  return Array.from(entries.entries()).map(([value, label]) => ({ value, label }));
-};
-
 const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   artifacts,
   currentWorldLabel,
 }) => {
-  const [timelines, setTimelines] = useState<FirestoreTimelineHeatmapTimeline[]>([]);
-  const [worldFilter, setWorldFilter] = useState<string>('all');
   const [eraFilter, setEraFilter] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading, isGuestMode } = useAuth();
-
-  const isFirestorePermissionError = (error: unknown): error is FirebaseError => {
-    return (
-      error instanceof FirebaseError &&
-      (error.code === 'permission-denied' || error.code === 'unauthenticated')
-    );
-  };
-
-  const userId = user?.uid ?? null;
-
-  const ownerId = useMemo(() => {
-    if (authLoading || isGuestMode) {
-      return null;
-    }
-    return userId;
-  }, [authLoading, isGuestMode, userId]);
-
-  useEffect(() => {
-    if (!ownerId) {
-      setTimelines([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const loadedTimelines = await fetchSimulatedHistoryTimelines(ownerId);
-        if (!cancelled) {
-          setTimelines(loadedTimelines);
-          setError(null);
-        }
-      } catch (err) {
-        if (isFirestorePermissionError(err)) {
-          console.warn('Unable to load timeline heatmap snapshots for this account. Falling back to local data.');
-          if (!cancelled) {
-            setTimelines([]);
-            setError('Showing the timelines from your current workspace.');
-          }
-        } else {
-          console.error('Failed to load timeline heatmap data', err);
-          if (!cancelled) {
-            setTimelines([]);
-            setError('Unable to load additional timeline data right now. Showing your workspace timelines instead.');
-          }
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerId]);
-
-  const hasLocalTimelines = useMemo(
-    () => artifacts.some((artifact) => artifact.type === ArtifactType.Timeline),
-    [artifacts],
-  );
-
-  const worldOptions = useMemo(() => {
-    const remoteOptions = toWorldOptions(timelines);
-    if (hasLocalTimelines) {
-      remoteOptions.unshift({ value: 'local', label: currentWorldLabel ?? 'Current project timelines' });
-    }
-    return remoteOptions;
-  }, [currentWorldLabel, hasLocalTimelines, timelines]);
-
-  useEffect(() => {
-    if (worldFilter === 'all') {
-      return;
-    }
-    if (!worldOptions.some((option) => option.value === worldFilter)) {
-      setWorldFilter('all');
-    }
-  }, [worldFilter, worldOptions]);
-
-  const filteredTimelines = useMemo(() => {
-    if (worldFilter === 'all' || worldFilter === 'local') {
-      return timelines;
-    }
-    return timelines.filter((timeline) => timeline.worldId === worldFilter);
-  }, [timelines, worldFilter]);
-
-  const firestoreArtifacts = useMemo(() => {
-    if (filteredTimelines.length === 0 || worldFilter === 'local') {
-      return [] as Artifact[];
-    }
-    return buildTimelineArtifactsFromFirestore(filteredTimelines);
-  }, [filteredTimelines, worldFilter]);
-
-  const usingFirestore = timelines.length > 0;
-
   const artifactSource = useMemo(() => {
-    const includeLocal = !usingFirestore || worldFilter === 'all' || worldFilter === 'local';
-    const localTimelines = includeLocal
-      ? artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline)
-      : ([] as Artifact[]);
-
-    if (!usingFirestore || worldFilter === 'local') {
-      return localTimelines;
-    }
-
-    const merged = new Map<string, Artifact>();
-    localTimelines.forEach((artifact) => {
-      merged.set(artifact.id, artifact);
-    });
-    firestoreArtifacts.forEach((artifact) => {
-      merged.set(artifact.id, artifact);
-    });
-    return Array.from(merged.values());
-  }, [artifacts, firestoreArtifacts, usingFirestore, worldFilter]);
+    return artifacts.filter((artifact) => artifact.type === ArtifactType.Timeline);
+  }, [artifacts]);
 
   const baseHeatmap = useMemo<SimulatedHistoryHeatmapData>(() => {
     return buildSimulatedHistoryHeatmap(artifactSource);
@@ -250,17 +111,10 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
   const hasTimelineData = baseHeatmap.timelineCount > 0;
   const hasDatedEvents =
     baseHeatmap.buckets.length > 0 && baseHeatmap.rows.some((row) => row.totalEvents > 0);
-  const filtersApplied = eraFilter !== 'all' || (usingFirestore && worldFilter !== 'all');
+  const filtersApplied = eraFilter !== 'all';
   const filteredHasEvents =
     heatmap.buckets.length > 0 && heatmap.rows.some((row) => row.totalEvents > 0);
-
-  const worldLabel = useMemo(() => {
-    if (worldFilter === 'all' || worldOptions.length === 0) {
-      return currentWorldLabel;
-    }
-    const selected = worldOptions.find((option) => option.value === worldFilter);
-    return selected?.label ?? currentWorldLabel;
-  }, [currentWorldLabel, worldFilter, worldOptions]);
+  const worldLabel = currentWorldLabel;
 
   return (
     <section className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-4 space-y-4 shadow-lg shadow-emerald-900/10">
@@ -276,15 +130,9 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
         </div>
       </header>
 
-      {loading && <p className="text-xs text-emerald-100/70">Loading additional timeline data…</p>}
-
-      {error && (
-        <p className="text-xs text-emerald-100/70">{error}</p>
-      )}
-
       {!hasTimelineData && (
         <p className="text-sm text-emerald-100/80">
-          Create a timeline artifact and add dated events to begin charting the world&apos;s simulated history.
+          Create a timeline artifact and add dated events to begin charting this project&apos;s simulated history.
         </p>
       )}
 
@@ -296,42 +144,23 @@ const SimulatedHistoryHeatmap: React.FC<SimulatedHistoryHeatmapProps> = ({
 
       {hasTimelineData && hasDatedEvents && (
         <>
-          {(usingFirestore && (worldOptions.length > 1 || eraOptions.length > 1)) || eraOptions.length > 1 ? (
+          {eraOptions.length > 1 ? (
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-wide text-emerald-100/80">
-              {usingFirestore && worldOptions.length > 1 && (
-                <label className="flex items-center gap-2">
-                  <span className="text-emerald-100/60">World</span>
-                  <select
-                    className="rounded-md border border-emerald-400/40 bg-slate-950/60 px-2 py-1 text-xs text-emerald-50"
-                    value={worldFilter}
-                    onChange={(event) => setWorldFilter(event.target.value)}
-                  >
-                    <option value="all">All worlds</option>
-                    {worldOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {eraOptions.length > 1 && (
-                <label className="flex items-center gap-2">
-                  <span className="text-emerald-100/60">Era</span>
-                  <select
-                    className="rounded-md border border-emerald-400/40 bg-slate-950/60 px-2 py-1 text-xs text-emerald-50"
-                    value={eraFilter}
-                    onChange={(event) => setEraFilter(event.target.value)}
-                  >
-                    <option value="all">All eras</option>
-                    {eraOptions.map((label) => (
-                      <option key={label} value={label}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              <label className="flex items-center gap-2">
+                <span className="text-emerald-100/60">Era</span>
+                <select
+                  className="rounded-md border border-emerald-400/40 bg-slate-950/60 px-2 py-1 text-xs text-emerald-50"
+                  value={eraFilter}
+                  onChange={(event) => setEraFilter(event.target.value)}
+                >
+                  <option value="all">All eras</option>
+                  {eraOptions.map((label) => (
+                    <option key={label} value={label}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           ) : null}
 

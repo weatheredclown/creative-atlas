@@ -12,7 +12,6 @@ import AuthGate from './components/AuthGate';
 import GitHubCallback from './components/GitHubCallback';
 import TermsOfService from './pages/TermsOfService';
 import SharedProjectPage from './pages/SharedProjectPage';
-import AdminTimelineHeatmapPublisher from './pages/AdminTimelineHeatmapPublisher';
 
 const MissingApiBaseUrlMessage: React.FC = () => (
   <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center px-6 text-center">
@@ -60,14 +59,6 @@ if (shouldBlockRender) {
               element={(
                 <Protected>
                   <GitHubCallback />
-                </Protected>
-              )}
-            />
-            <Route
-              path="/admin/timeline-heatmap"
-              element={(
-                <Protected>
-                  <AdminTimelineHeatmapPublisher />
                 </Protected>
               )}
             />

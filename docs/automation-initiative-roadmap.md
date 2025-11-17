@@ -79,11 +79,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - [ ] Cache nano banana share art by persisting generated PNGs to Cloud Storage (or another CDN bucket) and pointing `/share/:id/nano-banana.png` at the cached asset.
 
 ### Reporting & Project Insights (Understand & Explore Work)
-- **Simulated history heatmap.**
-  - _Context:_ Scope captured in `docs/history-heatmap-overview.md`.
-  - _Next actions:_
-    - [ ] Build aggregation jobs that populate the `timelineHeatmap` collection with world/era filters.
-    - [ ] Wire `code/src/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data with the new filters.
 - **Workspace UX polish.**
   - _Context:_ Arc Stage Spotlight explainers now appear in the Graph view.
   - _Next actions:_
@@ -164,6 +159,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Exposed an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
 - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
 - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
+- ✅ Pivoted the simulated history heatmap to use only local project timelines, removed the Firestore snapshot tooling/routes, and updated the docs to reflect the single-project scope.
 
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)
 - ✅ Artifact action menu now includes inline rename controls so workspace editors can retitle artifacts without leaving the detail view.

@@ -39,7 +39,7 @@ The “Organize My Worlds Without Pain” release.
 - [x] Physics/metaphysics constraint annotations.
 - [x] "World age" progression that evolves lore events.
 - [x] Factions and conflicts system for PIT, Dustland, and the 4X project.
-- [ ] Simulated history heatmap and "What changed this century?" views.
+- [x] Simulated history heatmap that spotlights each project’s densest centuries and undated gaps.
 - [x] NPC memory map linking Dustland, Sacred Truth, Spatch, and beyond.
 
 ### Phase 4 — Narrative & Game Pipelines

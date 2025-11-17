@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Artifact,
   Project,
@@ -711,14 +710,6 @@ export default function App() {
         onStartTutorial={handleStartTutorial}
         adminAction={
           <div className="flex items-center gap-2">
-            {!isGuestMode ? (
-              <Link
-                to="/admin/timeline-heatmap"
-                className="px-3 py-1.5 text-xs font-semibold text-cyan-200 border border-cyan-500/60 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
-              >
-                Publish timelines
-              </Link>
-            ) : null}
             <button
               type="button"
               onClick={handleToggleGhostAgent}
