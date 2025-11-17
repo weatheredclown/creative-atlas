@@ -90,6 +90,7 @@ export const buildNanoBananaPrompt = ({
   const lines: string[] = [
     'You are Creative Atlas\'s Nano Banana art renderer.',
     'Generate a single 1200x630 cinematic digital painting without text overlays.',
+    'Design a simplified, logo-friendly emblem with clean silhouettes, strong contrast, and generous negative space so it reads at small sizes.',
     `Project title: ${cleanedTitle}.`,
   ];
 
@@ -105,7 +106,7 @@ export const buildNanoBananaPrompt = ({
     `Visual goals: ${descriptor.label} mode emphasizes ${descriptor.palette} with ${descriptor.texture}.`,
   );
   lines.push(
-    'Blend symbolism from the overview and tags, spotlight key motifs, and keep the composition bold and legible.',
+    'Blend symbolism from the overview and tags, spotlight key motifs, and keep the composition bold, legible, and uncluttered.',
   );
 
   return lines.join('\n');
