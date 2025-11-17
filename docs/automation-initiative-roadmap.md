@@ -204,3 +204,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullet
 s impacted.
 
+
+- 2025-11-17: Stabilized workspace project selection URL syncing to stop strobing between projects after creating a new project; no roadmap bullets impacted.

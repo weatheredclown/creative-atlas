@@ -468,6 +468,10 @@ export default function App() {
 
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('projectId', id);
+    setSearchParams(nextParams, { replace: true });
   };
 
   useEffect(() => {
@@ -497,6 +501,9 @@ export default function App() {
       void addXp(5);
       setIsCreateProjectModalOpen(false);
       setSelectedProjectId(created.id);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('projectId', created.id);
+      setSearchParams(nextParams, { replace: true });
       setProjectStatusFilter('ALL');
       setProjectSearchTerm('');
 
@@ -523,7 +530,7 @@ export default function App() {
         await createArtifactsBulk(created.id, drafts);
       }
     },
-    [profile, createProject, addXp, createArtifactsBulk],
+    [profile, createProject, addXp, createArtifactsBulk, searchParams, setSearchParams],
   );
 
   const handleDeleteProject = useCallback(
