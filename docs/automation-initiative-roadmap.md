@@ -205,3 +205,4 @@ s impacted.
 
 - 2025-11-17: Stabilized workspace project selection URL syncing to stop strobing between projects after creating a new project; no roadmap bullets impacted.
 - 2025-11-17: Removed an unused `Link` import in `code/App.tsx` so frontend linting passes; no roadmap bullets impacted.
+- 2025-11-21: Prevented workspace selection fallback from overriding in-flight URL project IDs so new projects don't strobe between selections; no roadmap bullets impacted.
