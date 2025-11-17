@@ -25,7 +25,15 @@ export interface SeedWorkspace {
 
 export const createSeedWorkspace = (ownerId: string): SeedWorkspace => {
   const projects: Project[] = [
-    { id: 'proj-1', ownerId, title: 'Tamenzut', summary: 'A series of high-fantasy novels.', status: ProjectStatus.Active, tags: ['novel', 'fantasy'] },
+    {
+      id: 'proj-1',
+      ownerId,
+      title: 'Tamenzut',
+      summary: 'A series of high-fantasy novels.',
+      status: ProjectStatus.Active,
+      tags: ['novel', 'fantasy'],
+      nanoBananaImage: '/tamenzut-thumb.svg',
+    },
     { id: 'proj-2', ownerId, title: 'Steamweave', summary: 'A coal-punk world of gears and magic.', status: ProjectStatus.Idea, tags: ['coal-punk', 'rpg'] },
     { id: 'proj-3', ownerId, title: 'Sacred Truth', summary: 'A supernatural investigation saga.', status: ProjectStatus.Active, tags: ['vampires', 'mystery'] },
     { id: 'proj-4', ownerId, title: 'Dustland', summary: 'A retro CRT RPG framework.', status: ProjectStatus.Active, tags: ['rpg', 'crt-aesthetic'] },
