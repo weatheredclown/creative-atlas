@@ -448,6 +448,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
   const handleApplyNanoBanana = (image: string) => {
     setNanoBananaError(null);
     onUpdateProject(project.id, { nanoBananaImage: image });
+    setNanoBananaDrafts([]);
   };
 
   const handleClearNanoBananaDrafts = () => {
@@ -458,6 +459,151 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     setNanoBananaError(null);
     onUpdateProject(project.id, { nanoBananaImage: null });
   };
+
+  const renderGenerativeArtSection = () => (
+    <div className="space-y-4 rounded-xl border border-amber-400/30 bg-amber-500/5 p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Creative Atlas generative art</p>
+          <h3 className="text-sm font-semibold text-slate-100">Generate a share-ready hero image</h3>
+          <p className="text-xs text-slate-400">
+            This art displays above your workspace summary and becomes the open graph thumbnail when you share the atlas.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleGenerateNanoBanana}
+            className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isGeneratingNanoBanana || !canRequestNanoBanana}
+          >
+            {isGeneratingNanoBanana ? 'Generating…' : 'Generate art preview'}
+          </button>
+          {!canRequestNanoBanana ? (
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+              Sign in to use Creative Atlas generative art
+            </p>
+          ) : null}
+          {project.nanoBananaImage ? (
+            <button
+              type="button"
+              onClick={handleRemoveNanoBanana}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-400/50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amber-200 transition-colors hover:border-amber-300 hover:text-white"
+            >
+              Remove image
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">Art mode</p>
+          <div className="grid gap-2 md:grid-cols-3">
+            {(Object.entries(NANO_BANANA_ART_MODES) as [
+              NanoBananaArtMode,
+              (typeof NANO_BANANA_ART_MODES)[NanoBananaArtMode],
+            ][]).map(([modeKey, modeConfig]) => (
+              <label
+                key={modeKey}
+                className={`flex cursor-pointer flex-col rounded-lg border px-3 py-3 text-xs transition ${
+                  nanoBananaMode === modeKey
+                    ? 'border-amber-300/60 bg-amber-300/10 text-amber-100'
+                    : 'border-amber-200/20 bg-slate-900/40 text-slate-300 hover:border-amber-200/40'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">{modeConfig.label}</p>
+                  <input
+                    type="radio"
+                    name="nano-banana-mode"
+                    value={modeKey}
+                    checked={nanoBananaMode === modeKey}
+                    onChange={() => setNanoBananaMode(modeKey)}
+                    className="sr-only"
+                  />
+                  <span
+                    className={`inline-flex h-2 w-2 rounded-full ${
+                      nanoBananaMode === modeKey ? 'bg-amber-300' : 'bg-slate-500'
+                    }`}
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">{modeConfig.description}</p>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+      {nanoBananaDrafts.length > 0 ? (
+        <div className="space-y-3 rounded-lg border border-amber-400/30 bg-slate-950/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Pick your favorite</p>
+              <p className="text-xs text-slate-300">Apply a thumbnail to the project or keep generating to explore more looks.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearNanoBananaDrafts}
+              className="text-[11px] font-semibold uppercase tracking-wide text-amber-200 underline-offset-2 hover:underline"
+            >
+              Clear gallery
+            </button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {nanoBananaDrafts.map((draft, index) => {
+              const modeConfig = NANO_BANANA_ART_MODES[draft.mode];
+              return (
+                <div key={draft.id} className="flex flex-col overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/70">
+                  <div className="aspect-[1200/630] w-full border-b border-slate-800/60 bg-slate-950/40">
+                    <img
+                      src={draft.image}
+                      alt={`${project.title} ${modeConfig.label} preview option`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-3 text-xs text-slate-300">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{modeConfig.label} preview {index + 1}</p>
+                      <p className="text-[11px] text-slate-400" title={draft.prompt}>
+                        {draft.prompt.length > 110 ? `${draft.prompt.slice(0, 110)}…` : draft.prompt}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyNanoBanana(draft.image)}
+                      className="inline-flex items-center justify-center rounded-md bg-amber-400/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-950 transition hover:bg-amber-300"
+                    >
+                      Use this image
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {nanoBananaError ? (
+        <div className="space-y-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-xs text-rose-100">
+          <p className="font-semibold">{nanoBananaError}</p>
+          <ul className="list-disc space-y-1 pl-5 text-rose-200">
+            {GENERATIVE_IMAGE_TROUBLESHOOTING.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+      ) : project.nanoBananaImage ? (
+        <div className="rounded-lg border border-amber-400/30 bg-slate-950/40 px-4 py-3 text-xs text-amber-100">
+          Creative Atlas generative art is applied to your project and will appear on shared links.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-amber-400/40 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
+          Generate Creative Atlas generative art to preview how your project will look in the hero panel and on social cards.
+        </div>
+      )}
+    </div>
+  );
+
+  const shouldShowGenerativeArtInOverview = !project.nanoBananaImage;
 
   return (
     <>
@@ -589,6 +735,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         onReset={onResetVisibility}
                         className="border-slate-800/70 bg-slate-900/80"
                       />
+                      {project.nanoBananaImage ? renderGenerativeArtSection() : null}
                     </div>
                   </div>
                 </div>
@@ -596,165 +743,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             </div>
             </div>
         </header>
-
-        <div className="space-y-4 rounded-xl border border-amber-400/30 bg-amber-500/5 p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">Creative Atlas generative art</p>
-              <h3 className="text-sm font-semibold text-slate-100">Generate a share-ready hero image</h3>
-              <p className="text-xs text-slate-400">
-                This art displays above your workspace summary and becomes the open graph thumbnail when you share the atlas.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleGenerateNanoBanana}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-400/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isGeneratingNanoBanana || !canRequestNanoBanana}
-              >
-                {isGeneratingNanoBanana ? 'Generating…' : 'Generate art preview'}
-              </button>
-              {!canRequestNanoBanana ? (
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">
-                  Sign in to use Creative Atlas generative art
-                </p>
-              ) : null}
-              {project.nanoBananaImage ? (
-                <button
-                  type="button"
-                  onClick={handleRemoveNanoBanana}
-                  className="inline-flex items-center gap-2 rounded-md border border-amber-400/50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amber-200 transition-colors hover:border-amber-300 hover:text-white"
-                >
-                  Remove image
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200">Art mode</p>
-              <div className="grid gap-2 md:grid-cols-3">
-                {(Object.entries(NANO_BANANA_ART_MODES) as [
-                  NanoBananaArtMode,
-                  (typeof NANO_BANANA_ART_MODES)[NanoBananaArtMode],
-                ][]).map(([modeKey, modeConfig]) => (
-                  <label
-                    key={modeKey}
-                    className={`flex cursor-pointer flex-col rounded-lg border px-3 py-3 text-xs transition ${
-                      nanoBananaMode === modeKey
-                        ? 'border-amber-300/60 bg-amber-300/10 text-amber-100'
-                        : 'border-amber-200/20 bg-slate-900/40 text-slate-300 hover:border-amber-200/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">{modeConfig.label}</p>
-                      <input
-                        type="radio"
-                        name="nano-banana-mode"
-                        value={modeKey}
-                        checked={nanoBananaMode === modeKey}
-                        onChange={() => setNanoBananaMode(modeKey)}
-                        className="sr-only"
-                      />
-                      <span
-                        className={`inline-flex h-2 w-2 rounded-full ${
-                          nanoBananaMode === modeKey ? 'bg-amber-300' : 'bg-slate-500'
-                        }`}
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      {modeConfig.description}
-                    </p>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-          {nanoBananaDrafts.length > 0 ? (
-            <div className="space-y-3 rounded-lg border border-amber-400/30 bg-slate-950/30 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
-                    Pick your favorite
-                  </p>
-                  <p className="text-xs text-slate-300">
-                    Apply a thumbnail to the project or keep generating to explore more looks.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleClearNanoBananaDrafts}
-                  className="text-[11px] font-semibold uppercase tracking-wide text-amber-200 underline-offset-2 hover:underline"
-                >
-                  Clear gallery
-                </button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {nanoBananaDrafts.map((draft, index) => {
-                  const modeConfig = NANO_BANANA_ART_MODES[draft.mode];
-                  return (
-                    <div
-                      key={draft.id}
-                      className="flex flex-col overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/70"
-                    >
-                      <div className="aspect-[1200/630] w-full border-b border-slate-800/60 bg-slate-950/40">
-                        <img
-                          src={draft.image}
-                          alt={`${project.title} ${modeConfig.label} preview option`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="flex flex-1 flex-col gap-2 p-3 text-xs text-slate-300">
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            {modeConfig.label} preview {index + 1}
-                          </p>
-                          <p className="text-[11px] text-slate-400" title={draft.prompt}>
-                            {draft.prompt.length > 110 ? `${draft.prompt.slice(0, 110)}…` : draft.prompt}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyNanoBanana(draft.image)}
-                          className="inline-flex items-center justify-center rounded-md bg-amber-400/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-950 transition hover:bg-amber-300"
-                        >
-                          Use this image
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-          {nanoBananaError ? (
-            <div className="space-y-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-xs text-rose-100">
-              <p className="font-semibold">{nanoBananaError}</p>
-              <ul className="list-disc space-y-1 pl-5 text-rose-200">
-                {GENERATIVE_IMAGE_TROUBLESHOOTING.map((tip) => (
-                  <li key={tip}>{tip}</li>
-                ))}
-              </ul>
-            </div>
-          ) : project.nanoBananaImage ? (
-            <figure className="overflow-hidden rounded-lg border border-amber-400/20 bg-slate-900/60">
-              <img
-                src={project.nanoBananaImage}
-                alt={`${project.title} Creative Atlas generative art preview`}
-                className="h-auto w-full object-cover"
-              />
-              <figcaption className="border-t border-slate-800/60 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
-                Updated automatically across shared links
-              </figcaption>
-            </figure>
-          ) : (
-            <div className="rounded-lg border border-dashed border-amber-400/40 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
-              Generate Creative Atlas generative art to preview how your project will look in the hero panel and on social cards.
-            </div>
-          )}
-        </div>
+        {shouldShowGenerativeArtInOverview ? renderGenerativeArtSection() : null}
 
         <div className="space-y-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
