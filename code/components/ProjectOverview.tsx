@@ -203,10 +203,10 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     }
 
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
+      const path = event.composedPath();
       if (
-        settingsPanelRef.current?.contains(target) ||
-        settingsButtonRef.current?.contains(target)
+        (settingsPanelRef.current && path.includes(settingsPanelRef.current)) ||
+        (settingsButtonRef.current && path.includes(settingsButtonRef.current))
       ) {
         return;
       }
