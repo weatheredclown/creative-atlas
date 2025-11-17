@@ -158,8 +158,10 @@ jobs:
         working-directory: server
       - name: Prune old App Engine versions
         run: |
-          gcloud app versions list --service="default" --sort-by="~VERSION.CREATE_TIME" --format="value(version.id,traffic_split)" \
-            | awk '$2 == "0" || $2 == "0.00"' \
+          # Keep the five newest zero-traffic versions and delete anything older.
+          gcloud app versions list --service="default" --format="value(version.id,version.createTime,traffic_split)" \
+            | sort -rk2 \
+            | awk '$3 == "0" || $3 == "0.00"' \
             | tail -n +6 \
             | cut -f1 \
             | xargs -r gcloud app versions delete --service="default" --quiet
