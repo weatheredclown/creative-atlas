@@ -818,6 +818,33 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                   Delete project
                 </button>
               </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleCreateArtifact}
+                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  New artifact
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCaptureQuickFact}
+                  className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                >
+                  <SparklesIcon className="h-4 w-4" />
+                  Capture fact
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePublishProject}
+                  id="publish-world-button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+                >
+                  <BuildingStorefrontIcon className="h-4 w-4" />
+                  Publish atlas
+                </button>
+              </div>
             </div>
             <div className="space-y-4 lg:w-[420px] xl:w-[480px]">
               {project.nanoBananaImage ? (
@@ -855,34 +882,6 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                 )}
               </div>
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleCreateArtifact}
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New artifact
-            </button>
-            <button
-              type="button"
-              onClick={handleCaptureQuickFact}
-              className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-            >
-              <SparklesIcon className="h-4 w-4" />
-              Capture fact
-            </button>
-            <button
-              type="button"
-              onClick={handlePublishProject}
-              id="publish-world-button"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-            >
-              <BuildingStorefrontIcon className="h-4 w-4" />
-              Publish atlas
-            </button>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
