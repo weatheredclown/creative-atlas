@@ -1,20 +1,19 @@
 # Simulated History Heatmap Overview
 
-The simulated history heatmap summarizes timeline documents that collaborators publish to the `timelineHeatmap` Firestore collection. Each snapshot groups multiple timelines from a world and includes their dated events. The backend aggregation utilities normalize those snapshots, convert event dates into centuries, and tally per-century counts so the UI can render heatmap cells.
+The simulated history heatmap summarizes the timeline artifacts already stored in the active project. Timeline events are parsed for numeric years, bucketed into centuries, and tallied so the UI can render a density table alongside the undated event count. Because the data is derived directly from the workspace, no Firestore snapshots, admin tooling, or additional API endpoints are required.
 
 ## Data Flow
 
-1. **Firestore snapshots** — Collaborators publish snapshot documents under `timelineHeatmap`. Each document stores the owner, world metadata, and one or more timelines with their events.
-2. **Aggregation utilities** — `server/src/utils/historyHeatmap.ts` parses the snapshot documents, normalizes event metadata, and converts event dates into 100-year buckets. Missing or malformed data is tolerated so legacy exports still participate in the visualization.
-3. **API endpoint** — `/api/history/heatmap` retrieves snapshots for the signed-in collaborator, optionally filters by world, and returns the aggregated heatmap payload.
-4. **Frontend visualization** — The React heatmap component (under `code/src/features/history/`) consumes the aggregated payload to render a world timeline heatmap with optional world/era filters.
+1. **Workspace artifacts** — The world simulation panel passes the current project’s timeline artifacts to the heatmap component.
+2. **Heatmap builder** — `buildSimulatedHistoryHeatmap` (in `code/utils/worldSimulation.ts`) parses each event, extracts numbers from the `date` string when possible, maps them into 100-year buckets, and tallies totals plus undated counts.
+3. **Frontend visualization** — `code/features/history/SimulatedHistoryHeatmap.tsx` renders the bucketed data, optional era filters, and helper text prompting creators to add explicit years when events cannot be parsed.
 
 ## Purpose of the Task
 
-Segment B of the automation roadmap tracks work that deepens Creative Atlas features. The simulated history heatmap task exists to:
+The history heatmap lives inside the World Simulation panel so creators can:
 
-- Give collaborators a quick overview of historical activity density across their worlds.
-- Highlight undated or sparsely dated events so teams can fill timeline gaps.
-- Provide a foundation for future analytics, such as comparing timelines or filtering by eras.
+- See which portions of their project’s history are densely recorded versus empty.
+- Spot undated or sparsely dated events that need additional chronology.
+- Filter down to specific centuries without juggling multiple timeline editors.
 
-Completing this task requires wiring the frontend visualization to the aggregation endpoint and ensuring the experience degrades gracefully when Firestore access is unavailable.
+Because it now reflects only the signed-in user’s project data, the experience is deterministic, easier to explain, and free of cross-project normalization issues.
