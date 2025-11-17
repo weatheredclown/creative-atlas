@@ -87,9 +87,8 @@ This document tracks the multi-session automation initiative to deliver the full
     - [x] Keep workspace context persistent by encoding the selected project in the workspace URL so reloads/bookmarks reopen the same context.
     - [ ] Surface confirmation toasts instead of full reloads.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
-    - [ ] Replicate the Arc Stage Spotlight guidance inside the Family Tree tools.
-- **Low-priority backlog (keep at the bottom):**
-  - [ ] Align artifact workspace header actions with the refreshed project overview layout.
+  - **Low-priority backlog (keep at the bottom):**
+    - [ ] Align artifact workspace header actions with the refreshed project overview layout.
 - _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
 - _(Low priority)_ Wire the simulated history heatmap in `code/features/history/SimulatedHistoryHeatmap.tsx` to Firestore timeline data and add filters for worlds/eras.
   - ✅ World filters now distinguish between local timelines and remote Firestore snapshots, exposing a dedicated "current project" option; next, surface per-world counts and persist filter choices between sessions.
