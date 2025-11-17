@@ -201,5 +201,7 @@ This document tracks the multi-session automation initiative to deliver the full
 s impacted.
 
 
+- 2025-11-20: Auto-load additional project pages when a deep link specifies a projectId, ensuring workspace URLs open the intended project; no roadmap bullets impacted.
+
 - 2025-11-17: Stabilized workspace project selection URL syncing to stop strobing between projects after creating a new project; no roadmap bullets impacted.
 - 2025-11-17: Removed an unused `Link` import in `code/App.tsx` so frontend linting passes; no roadmap bullets impacted.
