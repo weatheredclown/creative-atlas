@@ -205,3 +205,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Added a pending project selection guard so project switching no longer flashes between items while the URL updates; no roadmap bullets impacted.
 - 2025-11-17: Relocated the Creative Atlas generative art controls to project settings after applying an image and removed the share preview caption; no roadmap bullets impacted.
 - 2025-11-17: Tidied `code/App.tsx` React imports and reran lint; no roadmap bullets impacted.
+- 2025-11-23: Fixed the Project Settings dialog closing when switching generative art modes; no roadmap bullets impacted.
