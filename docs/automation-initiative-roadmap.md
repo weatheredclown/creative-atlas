@@ -80,7 +80,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - **Low-priority backlog (keep at the bottom):**
   - [ ] Expand export formats: Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
   - [ ] Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines.
-  - [ ] Cache nano banana share art by persisting generated PNGs to Cloud Storage (or another CDN bucket) and pointing `/share/:id/nano-banana.png` at the cached asset.
 
 ### Reporting & Project Insights (Understand & Explore Work)
 - **Simulated history heatmap.**
@@ -196,4 +195,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-02-17: Updated GitHub publish tests to reflect job metadata response shape; no roadmap items impacted.
 - 2025-11-16: Resolved Gemini safety typing regressions blocking the workspace route build; no roadmap bullets impacted.
 - 2025-11-16: Swapped Nano Banana art modes to retro/modern/futuristic names plus prompt descriptors; no roadmap bullets impacted.
+- 2025-11-17: Stored Nano Banana previews in Cloud Storage to replace oversized Firestore payloads and cleared the Nano Banana share caching backlog item.
 

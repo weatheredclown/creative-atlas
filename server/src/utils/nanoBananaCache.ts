@@ -10,23 +10,27 @@ if (bucketName) {
   storage = new Storage();
 }
 
-const sanitizeShareId = (shareId: string): string =>
-  shareId.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 128);
+const sanitizeIdentifier = (id: string): string => id.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 128);
 
-const buildObjectName = (shareId: string): string =>
-  `share/${sanitizeShareId(shareId)}/nano-banana.png`;
+const buildShareObjectName = (shareId: string): string =>
+  `share/${sanitizeIdentifier(shareId)}/nano-banana.png`;
+
+const buildProjectObjectName = (projectId: string): string =>
+  `project/${sanitizeIdentifier(projectId)}/nano-banana.png`;
 
 const buildPublicUrl = (objectName: string): string =>
   `https://storage.googleapis.com/${bucketName!}/${encodeURI(objectName)}`;
 
 export const isNanoBananaCacheEnabled = (): boolean => Boolean(bucketName && storage);
 
+export const isNanoBananaStorageEnabled = (): boolean => isNanoBananaCacheEnabled();
+
 export const getCachedNanoBananaUrl = async (shareId: string): Promise<string | null> => {
   if (!isNanoBananaCacheEnabled()) {
     return null;
   }
 
-  const objectName = buildObjectName(shareId);
+  const objectName = buildShareObjectName(shareId);
   const bucket = storage!.bucket(bucketName!);
   const file = bucket.file(objectName);
   const [exists] = await file.exists();
@@ -45,7 +49,7 @@ export const cacheNanoBananaImage = async (
     return null;
   }
 
-  const objectName = buildObjectName(shareId);
+  const objectName = buildShareObjectName(shareId);
   const bucket = storage!.bucket(bucketName!);
   const file = bucket.file(objectName);
 
@@ -65,8 +69,37 @@ export const deleteCachedNanoBananaImage = async (shareId: string): Promise<void
     return;
   }
 
-  const objectName = buildObjectName(shareId);
+  const objectName = buildShareObjectName(shareId);
   const bucket = storage!.bucket(bucketName!);
   const file = bucket.file(objectName);
   await file.delete({ ignoreNotFound: true });
+};
+
+export const persistNanoBananaImage = async (
+  projectId: string,
+  dataUrl: string,
+): Promise<string | null> => {
+  if (!isNanoBananaStorageEnabled()) {
+    return null;
+  }
+
+  const [, encoded] = dataUrl.split(',', 2);
+  if (!encoded) {
+    return null;
+  }
+
+  const buffer = Buffer.from(encoded, 'base64');
+  const objectName = buildProjectObjectName(projectId);
+  const bucket = storage!.bucket(bucketName!);
+  const file = bucket.file(objectName);
+
+  await file.save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType: 'image/png',
+      cacheControl: 'public, max-age=31536000, immutable',
+    },
+  });
+
+  return buildPublicUrl(objectName);
 };
