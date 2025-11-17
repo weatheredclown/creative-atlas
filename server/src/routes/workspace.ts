@@ -1235,7 +1235,7 @@ router.post('/projects/:id/nano-banana/generate', asyncHandler(async (req: Authe
   }
 
   try {
-    await enforceNanoBananaUsageLimits({ userId: uid, projectId: docRef.id });
+    await enforceNanoBananaUsageLimits({ userId: uid });
   } catch (error) {
     if (error instanceof NanoBananaLimitError) {
       res.status(429).json({

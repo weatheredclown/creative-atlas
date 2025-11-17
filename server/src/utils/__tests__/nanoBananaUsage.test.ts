@@ -62,34 +62,25 @@ describe('enforceNanoBananaUsageLimits', () => {
     vi.useRealTimers();
   });
 
-  it('increments usage counters for a user/project pair', async () => {
-    const result = await enforceNanoBananaUsageLimits({ userId: 'user-1', projectId: 'project-1' });
+  it('increments usage counters for a user', async () => {
+    const result = await enforceNanoBananaUsageLimits({ userId: 'user-1' });
     expect(result.userCount).toBe(1);
-    expect(result.projectCount).toBe(1);
     expect(mockTransaction.set).toHaveBeenCalledTimes(1);
     const stored = mockDocStore['user-1'];
-    expect(stored?.projects).toMatchObject({ 'project-1': { count: 1, date: '2025-02-20' } });
+    expect(stored?.userCount).toBe(1);
   });
 
   it('resets counters on the next day', async () => {
-    await enforceNanoBananaUsageLimits({ userId: 'user-2', projectId: 'project-2' });
+    await enforceNanoBananaUsageLimits({ userId: 'user-2' });
     vi.setSystemTime(new Date('2025-02-21T01:00:00Z'));
-    const result = await enforceNanoBananaUsageLimits({ userId: 'user-2', projectId: 'project-2' });
+    const result = await enforceNanoBananaUsageLimits({ userId: 'user-2' });
     expect(result.userCount).toBe(1);
-    expect(result.projectCount).toBe(1);
   });
 
   it('throws when exceeding the per-user limit', async () => {
-    await enforceNanoBananaUsageLimits({ userId: 'user-3', projectId: 'project-3', perUserLimit: 1 });
-    await expect(
-      enforceNanoBananaUsageLimits({ userId: 'user-3', projectId: 'project-3', perUserLimit: 1 }),
-    ).rejects.toBeInstanceOf(NanoBananaLimitError);
-  });
-
-  it('throws when exceeding the per-project limit', async () => {
-    await enforceNanoBananaUsageLimits({ userId: 'user-4', projectId: 'project-4', perProjectLimit: 1 });
-    await expect(
-      enforceNanoBananaUsageLimits({ userId: 'user-4', projectId: 'project-4', perProjectLimit: 1 }),
-    ).rejects.toBeInstanceOf(NanoBananaLimitError);
+    await enforceNanoBananaUsageLimits({ userId: 'user-3', perUserLimit: 1 });
+    await expect(enforceNanoBananaUsageLimits({ userId: 'user-3', perUserLimit: 1 })).rejects.toBeInstanceOf(
+      NanoBananaLimitError,
+    );
   });
 });

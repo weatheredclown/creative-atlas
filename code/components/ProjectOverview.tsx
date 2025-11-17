@@ -109,7 +109,7 @@ const statusOrder: ProjectStatus[] = [
 const GENERATIVE_IMAGE_TROUBLESHOOTING: readonly string[] = [
   'Sign in with a full Creative Atlas account—guest mode cannot call the Gemini thumbnail service.',
   'Gemini enforces community guidelines. Simplify the title, summary, or tags if the request is blocked for safety reasons.',
-  'You can request up to 9 previews per project/day and 20 per user/day. Wait until the limit resets before trying again.',
+  'You can request up to 50 previews per user/day. Wait until the limit resets before trying again.',
 ];
 
 const parseNanoBananaErrorMessage = (error: unknown): string => {
