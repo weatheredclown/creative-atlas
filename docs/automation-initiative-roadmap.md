@@ -197,12 +197,9 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Softened Nano Banana storage failures so project updates can proceed even when generative art persistence is unavailable; no roadmap bullets impacted.
 - 2025-11-18: Surfaced Nano Banana storage failures to clients instead of silently clearing thumbnails; no roadmap bullets impacted.
 - 2025-11-17: Updated App Engine version pruning to skip active versions after deployment; no roadmap bullets impacted.
-- 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullet
-s impacted.
-
-
+- 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullets impacted.
+- 2025-11-17: Tuned Nano Banana prompt guidance to favor simple, logo-ready compositions for small-screen thumbnails; no roadmap bullets impacted.
 - 2025-11-20: Auto-load additional project pages when a deep link specifies a projectId, ensuring workspace URLs open the intended project; no roadmap bullets impacted.
-
 - 2025-11-17: Stabilized workspace project selection URL syncing to stop strobing between projects after creating a new project; no roadmap bullets impacted.
 - 2025-11-17: Removed an unused `Link` import in `code/App.tsx` so frontend linting passes; no roadmap bullets impacted.
 - 2025-11-21: Prevented workspace selection fallback from overriding in-flight URL project IDs so new projects don't strobe between selections; no roadmap bullets impacted.
