@@ -90,7 +90,8 @@ This document tracks the multi-session automation initiative to deliver the full
 - **Workspace UX polish.**
   - _Context:_ Arc Stage Spotlight explainers now appear in the Graph view.
   - _Next actions:_
-    - [ ] Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
+    - [x] Keep workspace context persistent by encoding the selected project in the workspace URL so reloads/bookmarks reopen the same context.
+    - [ ] Surface confirmation toasts instead of full reloads.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
     - [ ] Replicate the Arc Stage Spotlight guidance inside the Family Tree tools.
 - **Low-priority backlog (keep at the bottom):**
