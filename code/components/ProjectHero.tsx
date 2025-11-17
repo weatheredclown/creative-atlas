@@ -212,9 +212,6 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                 alt={`${project.title} Creative Atlas generative art preview`}
                 className="h-auto w-full object-cover"
               />
-              <figcaption className="border-t border-slate-700/60 px-4 py-2 text-[11px] uppercase tracking-wide text-slate-400">
-                Creative Atlas Generative AI preview
-              </figcaption>
             </figure>
           ) : null}
           <div className="rounded-2xl border border-slate-600/60 bg-slate-900/70 p-5 shadow-lg">
