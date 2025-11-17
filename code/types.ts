@@ -16,6 +16,15 @@ export interface Project {
   nanoBananaImage?: string | null;
 }
 
+export type NanoBananaArtMode = 'retro' | 'modern' | 'futuristic';
+
+export interface NanoBananaGenerationResult {
+  image: string;
+  mimeType: string;
+  prompt: string;
+  mode: NanoBananaArtMode;
+}
+
 export interface ProjectShareStatus {
   enabled: boolean;
   shareId?: string;

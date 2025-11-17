@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Artifact,
   Project,
@@ -118,6 +119,8 @@ export default function App() {
   const { signOutUser, getIdToken, isGuestMode } = useAuth();
   const { showToast } = useToast();
   const ghostAgentRef = useRef<GhostAgentHandle>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectIdFromUrl = searchParams.get('projectId');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -309,10 +312,42 @@ export default function App() {
       setSelectedProjectId(null);
       return;
     }
-    if (!selectedProjectId || !projects.some((project) => project.id === selectedProjectId)) {
+
+    if (projectIdFromUrl && projects.some((project) => project.id === projectIdFromUrl)) {
+      if (projectIdFromUrl !== selectedProjectId) {
+        setSelectedProjectId(projectIdFromUrl);
+      }
+      return;
+    }
+
+    const hasSelectedProject = selectedProjectId && projects.some((project) => project.id === selectedProjectId);
+    if (!hasSelectedProject) {
       setSelectedProjectId(projects[0].id);
     }
-  }, [projects, selectedProjectId]);
+  }, [projectIdFromUrl, projects, selectedProjectId]);
+
+  useEffect(() => {
+    const currentProjectId = searchParams.get('projectId');
+
+    if (selectedProjectId) {
+      if (currentProjectId === selectedProjectId) {
+        return;
+      }
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('projectId', selectedProjectId);
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
+    if (!currentProjectId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('projectId');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, selectedProjectId, setSearchParams]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -433,6 +468,10 @@ export default function App() {
 
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('projectId', id);
+    setSearchParams(nextParams, { replace: true });
   };
 
   useEffect(() => {
@@ -462,6 +501,9 @@ export default function App() {
       void addXp(5);
       setIsCreateProjectModalOpen(false);
       setSelectedProjectId(created.id);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('projectId', created.id);
+      setSearchParams(nextParams, { replace: true });
       setProjectStatusFilter('ALL');
       setProjectSearchTerm('');
 
@@ -488,7 +530,7 @@ export default function App() {
         await createArtifactsBulk(created.id, drafts);
       }
     },
-    [profile, createProject, addXp, createArtifactsBulk],
+    [profile, createProject, addXp, createArtifactsBulk, searchParams, setSearchParams],
   );
 
   const handleDeleteProject = useCallback(

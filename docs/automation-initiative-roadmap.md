@@ -57,6 +57,10 @@ This document tracks the multi-session automation initiative to deliver the full
   - [ ] Implement canon enforcement NPC memory mode enhancements flagged above once higher-priority automation work is stable.
 
 ### Content Creation & Expansion (Build More, Faster)
+- **Gemini-driven Nano Banana prompts + endpoint.**
+  - _Context:_ `/api/projects/:id/nano-banana/generate` now builds Gemini image prompts from project metadata (title, summary, tags, art mode) so thumbnails reflect canon instead of raw user text, and server-side rate limits (50 per user/day) keep the flow from turning into a general-purpose image generator.
+  - _Next actions:_
+    - [ ] Cache Gemini-rendered thumbnails alongside the existing deterministic canvas fallback so social shares load instantly.
 - **Character arc tooling (family tree + graph).**
   - _Context:_ Family tree visualizations share stage overlays with the relationship graph, creation flows connect from sheets and the tree, and the Graph view now includes an Arc Stage Spotlight filter with summaries.
   - _Next actions:_
@@ -76,13 +80,13 @@ This document tracks the multi-session automation initiative to deliver the full
 - **Low-priority backlog (keep at the bottom):**
   - [ ] Expand export formats: Dustland ACK, D&D cards, visual novel scenes, scripts, and auto-generated character sheets/campaign packets.
   - [ ] Audit Atlas Intelligence blueprint outputs generated from lore briefs and extend scene/chapter templates with multi-beat outlines.
-  - [ ] Cache nano banana share art by persisting generated PNGs to Cloud Storage (or another CDN bucket) and pointing `/share/:id/nano-banana.png` at the cached asset.
 
 ### Reporting & Project Insights (Understand & Explore Work)
 - **Workspace UX polish.**
   - _Context:_ Arc Stage Spotlight explainers now appear in the Graph view.
   - _Next actions:_
-    - [ ] Keep workspace context persistent after saves and surface confirmation toasts instead of full reloads.
+    - [x] Keep workspace context persistent by encoding the selected project in the workspace URL so reloads/bookmarks reopen the same context.
+    - [ ] Surface confirmation toasts instead of full reloads.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
     - [ ] Replicate the Arc Stage Spotlight guidance inside the Family Tree tools.
 - **Low-priority backlog (keep at the bottom):**
@@ -154,6 +158,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Introduced a workspace content picker for Atlas Intelligence prompt slots so creators can insert project, artifact, and milestone IDs without leaving the flow.
 - ✅ Atlas Intelligence fallback responses now replace workspace IDs with human-readable artifact and project labels so offline drafts stay readable.
 - ✅ Removed Atlas Intelligence fallback prose so Gemini failures surface clear errors, making misconfigurations easier to diagnose.
+- ✅ Nano Banana previews are now resized client-side before saving so Firestore updates no longer fail when Gemini returns larger PNGs.
 
 ### Reporting & Project Insights (Understand & Explore Work)
 - ✅ Exposed an admin timeline snapshot publisher that seeds collaborator documents in the `timelineHeatmap` collection.
@@ -184,3 +189,16 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-02-14: Resolved standalone achievements bug (World Builder unlock condition) and added regression tests; no roadmap items impacted.
 - 2025-02-15: Documented deployment smoke test logging note in `README.md`; no roadmap items impacted.
 - 2025-02-16: Added Creative Atlas art mode selector and multi-variant hero previews inside `ProjectOverview`; no roadmap bullets impacted.
+- 2025-02-17: Updated GitHub publish tests to reflect job metadata response shape; no roadmap items impacted.
+- 2025-11-16: Resolved Gemini safety typing regressions blocking the workspace route build; no roadmap bullets impacted.
+- 2025-11-16: Swapped Nano Banana art modes to retro/modern/futuristic names plus prompt descriptors; no roadmap bullets impacted.
+- 2025-11-17: Stored Nano Banana previews in Cloud Storage to replace oversized Firestore payloads and cleared the Nano Banana share caching backlog item.
+- 2025-11-17: Added App Engine version pruning to the deploy workflow; no roadmap bullets impacted.
+- 2025-11-17: Softened Nano Banana storage failures so project updates can proceed even when generative art persistence is unavailable; no roadmap bullets impacted.
+- 2025-11-18: Surfaced Nano Banana storage failures to clients instead of silently clearing thumbnails; no roadmap bullets impacted.
+- 2025-11-17: Updated App Engine version pruning to skip active versions after deployment; no roadmap bullets impacted.
+- 2025-11-17: Clarified App Engine pruning to keep the five newest zero-traffic versions during deploy cleanup; no roadmap bullet
+s impacted.
+
+
+- 2025-11-17: Stabilized workspace project selection URL syncing to stop strobing between projects after creating a new project; no roadmap bullets impacted.
