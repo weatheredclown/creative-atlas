@@ -178,6 +178,22 @@ const normalizeNanoBananaImage = (value: unknown): string | null => {
   return isNanoBananaDataUrl(trimmed) || isNanoBananaImageUrl(trimmed) ? trimmed : null;
 };
 
+const persistNanoBananaToStorage = async (
+  projectId: string,
+  dataUrl: string,
+): Promise<string> => {
+  try {
+    const storedUrl = await persistNanoBananaImage(projectId, dataUrl);
+    if (!storedUrl) {
+      throw new Error('Nano Banana storage returned no URL.');
+    }
+    return storedUrl;
+  } catch (error) {
+    console.error('Failed to persist Nano Banana image to storage', error);
+    throw error;
+  }
+};
+
 const mapProject = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: string): Project => {
   const data = doc.data() ?? {};
   return {
@@ -1100,15 +1116,9 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
       return;
     }
     try {
-      const storedUrl = await persistNanoBananaImage(docRef.id, nanoBananaImage);
-      if (!storedUrl) {
-        res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
-        return;
-      }
-      nanoBananaImage = storedUrl;
-    } catch (error) {
-      console.error('Failed to persist Nano Banana image to storage', error);
-      res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+      nanoBananaImage = await persistNanoBananaToStorage(docRef.id, nanoBananaImage);
+    } catch {
+      res.status(503).json({ error: 'Creative Atlas generative art could not be saved. Please try again later.' });
       return;
     }
   }
@@ -1350,15 +1360,9 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
         return;
       }
       try {
-        const storedUrl = await persistNanoBananaImage(docRef.id, parsed.nanoBananaImage);
-        if (!storedUrl) {
-          res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
-          return;
-        }
-        update.nanoBananaImage = storedUrl;
-      } catch (error) {
-        console.error('Failed to persist Nano Banana image to storage', error);
-        res.status(503).json({ error: 'Failed to store Creative Atlas generative art.' });
+        update.nanoBananaImage = await persistNanoBananaToStorage(docRef.id, parsed.nanoBananaImage);
+      } catch {
+        res.status(503).json({ error: 'Creative Atlas generative art could not be saved. Please try again later.' });
         return;
       }
     } else {
