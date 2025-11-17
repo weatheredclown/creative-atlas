@@ -298,6 +298,7 @@ export default function App() {
   );
 
   const isAutoLoadingProjectsRef = useRef(false);
+  const pendingProjectSelectionRef = useRef<string | null>(null);
 
   const handleMemoryStatusChange = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -310,6 +311,14 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (pendingProjectSelectionRef.current && projectIdFromUrl !== pendingProjectSelectionRef.current) {
+      return;
+    }
+
+    if (pendingProjectSelectionRef.current === projectIdFromUrl) {
+      pendingProjectSelectionRef.current = null;
+    }
+
     if (!projects.length) {
       setSelectedProjectId(null);
       return;
@@ -497,6 +506,7 @@ export default function App() {
   }, [selectedProjectId]);
 
   const handleSelectProject = (id: string) => {
+    pendingProjectSelectionRef.current = id;
     setSelectedProjectId(id);
 
     const nextParams = new URLSearchParams(searchParams);
@@ -530,6 +540,7 @@ export default function App() {
       }
       void addXp(5);
       setIsCreateProjectModalOpen(false);
+      pendingProjectSelectionRef.current = created.id;
       setSelectedProjectId(created.id);
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set('projectId', created.id);
@@ -583,6 +594,7 @@ export default function App() {
         delete next[projectId];
         return next;
       });
+      pendingProjectSelectionRef.current = null;
       setSelectedProjectId((current) => (current === projectId ? null : current));
     },
     [deleteProject, showToast],
