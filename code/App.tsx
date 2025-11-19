@@ -313,6 +313,7 @@ export default function App() {
   const isAutoLoadingProjectsRef = useRef(false);
   const pendingProjectSelectionRef = useRef<string | null>(null);
   const shouldAutoSelectProjectRef = useRef(true);
+  const isClearingProjectSelectionRef = useRef(false);
 
   const handleMemoryStatusChange = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -342,17 +343,25 @@ export default function App() {
     }
 
     if (!projects.length) {
+      isClearingProjectSelectionRef.current = false;
       setSelectedProjectId(null);
       return;
     }
 
     if (projectIdFromUrl) {
+      if (isClearingProjectSelectionRef.current) {
+        return;
+      }
       if (projects.some((project) => project.id === projectIdFromUrl)) {
         if (projectIdFromUrl !== selectedProjectId) {
           setSelectedProjectId(projectIdFromUrl);
         }
       }
       return;
+    }
+
+    if (isClearingProjectSelectionRef.current) {
+      isClearingProjectSelectionRef.current = false;
     }
 
     const hasSelectedProject = selectedProjectId && projects.some((project) => project.id === selectedProjectId);
@@ -557,6 +566,7 @@ export default function App() {
 
   const handleReturnToAtlas = useCallback(() => {
     shouldAutoSelectProjectRef.current = false;
+    isClearingProjectSelectionRef.current = true;
     setSelectedProjectId(null);
     setArtifactNavigator(null);
     const nextParams = new URLSearchParams(searchParams);
