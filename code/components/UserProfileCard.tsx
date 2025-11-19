@@ -25,6 +25,16 @@ const initialsFromName = (name: string) => {
 const levelFromXp = (xp: number) => Math.floor(xp / 100) + 1;
 const progressFromXp = (xp: number) => xp % 100;
 
+const formatBytes = (bytes: number): string => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(1).replace(/\.0$/, '')} KB`;
+  }
+  return `${bytes} B`;
+};
+
 const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProfile }) => {
   const { updateDisplayName } = useAuth();
   const [displayName, setDisplayName] = useState(profile.displayName);
@@ -45,6 +55,19 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
       background: `conic-gradient(rgb(103 232 249) ${xpPercent * 3.6}deg, rgba(15, 23, 42, 0.8) ${xpPercent * 3.6}deg 360deg)`
     }),
     [xpPercent]
+  );
+
+  const storageUsagePercent = useMemo(() => {
+    if (profile.storageLimitBytes <= 0) {
+      return 0;
+    }
+    const percent = (profile.storageUsageBytes / profile.storageLimitBytes) * 100;
+    return Math.min(100, Math.round(percent));
+  }, [profile.storageLimitBytes, profile.storageUsageBytes]);
+
+  const storageUsageLabel = useMemo(
+    () => `${formatBytes(profile.storageUsageBytes)} of ${formatBytes(profile.storageLimitBytes)} used`,
+    [profile.storageLimitBytes, profile.storageUsageBytes],
   );
 
   useEffect(() => {
@@ -201,6 +224,26 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ profile, onUpdateProf
                 ></span>
               </button>
             </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Storage usage</p>
+            <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
+              <span className="text-sm font-semibold text-slate-200">{storageUsageLabel}</span>
+              <span>{storageUsagePercent}%</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-slate-800/80 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
+                style={{ width: `${storageUsagePercent}%` }}
+                aria-hidden="true"
+              ></div>
+            </div>
+            {storageUsagePercent >= 90 && (
+              <p className="mt-1 text-xs text-amber-300">
+                You&rsquo;re nearing the 50&nbsp;MB storage cap. Delete artifacts to free up space.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">

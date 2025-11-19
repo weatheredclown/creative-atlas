@@ -95,6 +95,8 @@ const defaultSettings: UserSettings = {
   aiTipsEnabled: true,
 };
 
+const DEFAULT_STORAGE_LIMIT_BYTES = 50 * 1024 * 1024;
+
 const createDefaultProfile = (
   uid: string,
   email: string | null,
@@ -118,6 +120,8 @@ const createDefaultProfile = (
     achievementsUnlocked: [],
     questlinesClaimed: [],
     settings: { ...defaultSettings },
+    storageUsageBytes: 0,
+    storageLimitBytes: DEFAULT_STORAGE_LIMIT_BYTES,
   };
 };
 
