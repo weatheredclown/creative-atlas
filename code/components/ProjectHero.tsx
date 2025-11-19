@@ -172,23 +172,6 @@ const parseNanoBananaErrorMessage = (error: unknown): string => {
   return 'Creative Atlas generative art request failed. Please try again in a few moments.';
 };
 
-const StatPill: React.FC<{ label: string; value: number; tone?: 'default' | 'accent' }> = ({
-  label,
-  value,
-  tone = 'default',
-}) => (
-  <div
-    className={`rounded-2xl border px-4 py-3 shadow-sm transition-transform hover:-translate-y-0.5 ${
-      tone === 'accent'
-        ? 'border-cyan-400/40 bg-cyan-500/10 text-cyan-100'
-        : 'border-slate-600/60 bg-slate-900/70 text-slate-200'
-    }`}
-  >
-    <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
-    <p className="text-2xl font-semibold text-white">{formatNumber(value)}</p>
-  </div>
-);
-
 const QuickFactCard: React.FC<{ fact: Artifact; onSelect: (id: string) => void; label: string }> = ({
   fact,
   onSelect,
@@ -247,6 +230,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [tagError, setTagError] = useState<string | null>(null);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [isQuickFactsOpen, setIsQuickFactsOpen] = useState(false);
   const [factSuggestion, setFactSuggestion] = useState<FactPrompt | null>(null);
   const [factFeedback, setFactFeedback] = useState<string | null>(null);
   const [lastFactId, setLastFactId] = useState<string | null>(null);
@@ -259,6 +243,8 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   const tagInputRef = useRef<HTMLInputElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const quickFactsPanelRef = useRef<HTMLDivElement | null>(null);
+  const quickFactsButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const copy = useMemo(
     () => ({
@@ -342,6 +328,34 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isSettingsOpen, project.summary, project.title]);
+
+  useEffect(() => {
+    if (!isQuickFactsOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (quickFactsPanelRef.current?.contains(target) || quickFactsButtonRef.current?.contains(target)) {
+        return;
+      }
+      setIsQuickFactsOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsQuickFactsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isQuickFactsOpen]);
 
   const tagCount = useMemo(() => project.tags.length, [project.tags]);
 
@@ -744,8 +758,6 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
     onPublishProject();
   }, [onPublishProject, project.id]);
 
-  const shouldShowGenerativeArtSection = !project.nanoBananaImage;
-
   return (
     <>
       <section
@@ -753,146 +765,90 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
         className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-8 text-slate-100 shadow-xl"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_55%)]" aria-hidden />
-        <div className="relative space-y-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(project.status)}`}>
-                  {statusLabel}
-                </span>
-                <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  Level {level} · {xpProgress} XP toward next
-                </span>
-                {project.tags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
-                    {project.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="rounded-full border border-slate-600/60 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-300">
-                        #{tag}
-                      </span>
-                    ))}
-                    {project.tags.length > 3 && (
-                      <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-400">
-                        +{project.tags.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{project.title}</h2>
-                {project.summary && (
-                  <p className="max-w-2xl text-sm text-slate-300 sm:text-base">{project.summary}</p>
-                )}
-                <p className="text-[11px] font-mono text-slate-500">ID: {project.id}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  Status
-                  <select
-                    value={project.status}
-                    onChange={handleStatusChange}
-                    className="ml-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-1.5 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    {statusOrder.map((status) => (
-                      <option key={status} value={status}>
-                        {formatStatusLabel(status)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  ref={settingsButtonRef}
-                  onClick={() => setIsSettingsOpen((current) => !current)}
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
-                  aria-expanded={isSettingsOpen}
-                  aria-haspopup="true"
+        <div className="relative space-y-6">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(project.status)}`}>
+                {statusLabel}
+              </span>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Status
+                <select
+                  value={project.status}
+                  onChange={handleStatusChange}
+                  className="ml-2 rounded-md border border-slate-700/70 bg-slate-900/70 px-3 py-1.5 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
-                  Project settings
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteConfirmVisible(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-rose-100 transition hover:border-rose-300/70 hover:bg-rose-500/20"
-                >
-                  Delete project
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleCreateArtifact}
-                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  New artifact
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCaptureQuickFact}
-                  className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                >
-                  <SparklesIcon className="h-4 w-4" />
-                  Capture fact
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePublishProject}
-                  id="publish-world-button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
-                >
-                  <BuildingStorefrontIcon className="h-4 w-4" />
-                  Publish atlas
-                </button>
-              </div>
+                  {statusOrder.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                ref={settingsButtonRef}
+                onClick={() => setIsSettingsOpen((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-600/60 bg-slate-800/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                aria-expanded={isSettingsOpen}
+                aria-haspopup="true"
+              >
+                Project settings
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmVisible(true)}
+                className="inline-flex items-center gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 transition hover:border-rose-300/70 hover:bg-rose-500/20"
+              >
+                Delete project
+              </button>
             </div>
-            <div className="space-y-4 lg:w-[420px] xl:w-[480px]">
-              {project.nanoBananaImage ? (
-                <figure className="overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-900/80">
-                  <img
-                    src={project.nanoBananaImage}
-                    alt={`${project.title} Creative Atlas generative art preview`}
-                    className="h-auto w-full object-cover"
-                  />
-                </figure>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{project.title}</h2>
+              {project.summary ? (
+                <p className="max-w-2xl text-sm text-slate-300 sm:text-base">{project.summary}</p>
               ) : null}
-              <div className="rounded-2xl border border-slate-600/60 bg-slate-900/70 p-5 shadow-lg">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{copy.quickFactsHeading}</h3>
-                <p className="mt-1 text-xs text-slate-500">{totalQuickFacts} {copy.savedSoFar}</p>
-                <div className="mt-4 grid gap-3">
-                  {hasQuickFacts ? (
-                    quickFacts.map((fact) => (
-                      <QuickFactCard key={fact.id} fact={fact} onSelect={onSelectQuickFact} label={copy.quickFactLabel} />
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-slate-600/60 bg-slate-900/80 p-4 text-xs text-slate-400">
-                      {copy.emptyMessage}
-                    </div>
-                  )}
-                </div>
-                {!hasQuickFacts && (
-                  <button
-                    type="button"
-                    onClick={handleCaptureQuickFact}
-                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-500/20"
-                  >
-                    <SparklesIcon className="h-3.5 w-3.5" />
-                    {copy.emptyCta}
-                  </button>
-                )}
-              </div>
+              <p className="text-sm text-slate-400">
+                {formatNumber(stats.totalArtifacts)} artifacts · {formatNumber(stats.wikiWordCount)} wiki words · Level {level} ({xpProgress} XP to next)
+              </p>
+              <p className="text-[11px] font-mono text-slate-500">ID: {project.id}</p>
             </div>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <StatPill label="Artifacts" value={stats.totalArtifacts} tone="accent" />
-            <StatPill label="Completed tasks" value={stats.completedTasks} />
-            <StatPill label="Relationships" value={stats.relationCount} />
-            <StatPill label="Distinct tags" value={stats.uniqueTagCount} />
-            <StatPill label="Narrative pieces" value={stats.narrativeCount} />
-            <StatPill label="Wiki words" value={stats.wikiWordCount} />
-            <StatPill label="Lexemes" value={stats.lexemeCount} />
-            <StatPill label="Quick facts" value={stats.quickFactCount} />
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleCreateArtifact}
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/70 hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+            >
+              <PlusIcon className="h-4 w-4" />
+              New artifact
+            </button>
+            <button
+              type="button"
+              onClick={handleCaptureQuickFact}
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              Capture fact
+            </button>
+            <button
+              type="button"
+              onClick={handlePublishProject}
+              id="publish-world-button"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition-all hover:-translate-y-0.5 hover:border-emerald-300/60 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
+            >
+              <BuildingStorefrontIcon className="h-4 w-4" />
+              Publish atlas
+            </button>
+            <button
+              type="button"
+              ref={quickFactsButtonRef}
+              onClick={() => setIsQuickFactsOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-600/60 bg-slate-900/60 px-4 py-2 text-sm font-semibold text-slate-100 transition-all hover:-translate-y-0.5 hover:border-cyan-300/60"
+              aria-expanded={isQuickFactsOpen}
+            >
+              Quick facts ({totalQuickFacts})
+            </button>
           </div>
         </div>
 
@@ -974,164 +930,233 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                   onReset={onResetVisibility}
                   className="border-slate-800/70 bg-slate-900/80"
                 />
-                {project.nanoBananaImage ? renderGenerativeArtSection() : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {isQuickFactsOpen ? (
+          <div className="fixed inset-0 z-30 flex items-center justify-center px-4 py-8 sm:px-6">
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
+            <div
+              ref={quickFactsPanelRef}
+              role="dialog"
+              aria-modal="true"
+              className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/95 shadow-2xl"
+            >
+              <div className="max-h-[75vh] space-y-4 overflow-y-auto p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{copy.quickFactsHeading}</p>
+                    <p className="text-xs text-slate-500">{totalQuickFacts} {copy.savedSoFar}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickFactsOpen(false)}
+                    className="text-xs font-semibold uppercase tracking-wide text-slate-300 hover:text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="grid gap-3">
+                  {hasQuickFacts ? (
+                    quickFacts.map((fact) => (
+                      <QuickFactCard
+                        key={fact.id}
+                        fact={fact}
+                        onSelect={(id) => {
+                          onSelectQuickFact(id);
+                          setIsQuickFactsOpen(false);
+                        }}
+                        label={copy.quickFactLabel}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-600/60 bg-slate-900/80 p-4 text-xs text-slate-400">
+                      {copy.emptyMessage}
+                    </div>
+                  )}
+                </div>
+                {!hasQuickFacts ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickFactsOpen(false);
+                      handleCaptureQuickFact();
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-500/20"
+                  >
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    {copy.emptyCta}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
         ) : null}
       </section>
 
-      {shouldShowGenerativeArtSection ? (
-        <div className="mt-6">{renderGenerativeArtSection()}</div>
-      ) : null}
-
-      <div className="mt-6 space-y-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="rounded-md bg-cyan-500/20 p-2 text-cyan-200">
-              <SparklesIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Need a starter fact?</p>
-              <h3 className="text-sm font-semibold text-slate-200">Shuffle a prompt to kickstart your next detail.</h3>
-              <p className="text-xs text-slate-400">
-                These hooks pair well with quick facts, wiki entries, or a fast project summary update.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleGenerateFact}
-            className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={FACT_PROMPTS.length === 0}
-          >
-            Shuffle prompt
-          </button>
+      <section className="mt-6 space-y-6 rounded-3xl border border-slate-800/70 bg-slate-950/50 p-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Dashboard / Overview</p>
+          <h3 className="text-xl font-semibold text-white">Keep your atlas aligned</h3>
+          <p className="text-sm text-slate-400">
+            Shuffle prompts, refresh Creative Atlas art, and organize tags without leaving the workspace.
+          </p>
         </div>
-        {factSuggestion ? (
-          <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">{factSuggestion.category}</p>
-                <p className="text-sm font-semibold text-slate-100">{factSuggestion.prompt}</p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
+            {renderGenerativeArtSection()}
+            <div className="space-y-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-md bg-cyan-500/20 p-2 text-cyan-200">
+                    <SparklesIcon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Need a starter fact?</p>
+                    <h3 className="text-sm font-semibold text-slate-200">Shuffle a prompt to kickstart your next detail.</h3>
+                    <p className="text-xs text-slate-400">
+                      These hooks pair well with quick facts, wiki entries, or a fast project summary update.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateFact}
+                  className="inline-flex items-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-950 transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={FACT_PROMPTS.length === 0}
+                >
+                  Shuffle prompt
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleDismissFact}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-200"
-              >
-                Dismiss
-              </button>
+              {factSuggestion ? (
+                <div className="space-y-3 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">{factSuggestion.category}</p>
+                      <p className="text-sm font-semibold text-slate-100">{factSuggestion.prompt}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDismissFact}
+                      className="text-xs font-semibold text-slate-400 hover:text-slate-200"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={handleInsertFact}
+                      className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white"
+                    >
+                      Drop into summary
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyFact}
+                      className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
+                    >
+                      Copy prompt
+                    </button>
+                  </div>
+                  {factFeedback ? <p className="text-xs font-semibold text-emerald-300">{factFeedback}</p> : null}
+                </div>
+              ) : (
+                <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
+                  Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without overthinking the full artifact form.
+                </p>
+              )}
             </div>
-            <p className="text-xs text-slate-400">Spark: {factSuggestion.spark}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleInsertFact}
-                className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white"
-              >
-                Drop into summary
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyFact}
-                className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-400 hover:text-white"
-              >
-                Copy prompt
-              </button>
-            </div>
-            {factFeedback && <p className="text-xs font-semibold text-emerald-300">{factFeedback}</p>}
           </div>
-        ) : (
-          <p className="rounded-lg border border-dashed border-cyan-500/20 bg-slate-900/40 px-4 py-6 text-xs text-slate-400">
-            Tap <span className="font-semibold text-cyan-200">Shuffle prompt</span> to reveal a lore beat you can capture without overthinking the full artifact form.
-          </p>
-        )}
-      </div>
-
-      <div className="mt-6 space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/70 p-5">
-        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-300">
-          <TagIcon className="w-4 h-4 text-cyan-300" />
-          Tags
-          <span className="text-xs font-normal text-slate-500">({tagCount})</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {project.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/60 px-3 py-1 text-xs font-medium text-slate-200"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => handleRemoveTag(tag)}
-                className="text-slate-400 hover:text-rose-300"
-                aria-label={`Remove ${tag}`}
-              >
-                <XMarkIcon className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-          {project.tags.length === 0 && !isAddingTag && (
-            <span className="text-xs text-slate-500">No tags yet. Add some to aid search and filtering.</span>
-          )}
-          {isAddingTag ? (
-            <div className="flex items-center gap-2">
-              <input
-                ref={tagInputRef}
-                type="text"
-                value={tagInput}
-                onChange={(event) => {
-                  setTagInput(event.target.value);
-                  if (tagError) {
-                    setTagError(null);
-                  }
-                }}
-                onKeyDown={handleTagKeyDown}
-                onBlur={() => {
-                  if (!tagInput.trim()) {
-                    handleCancelAddTag();
-                  }
-                }}
-                placeholder="Add a project tag and press Enter"
-                className="rounded-md border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
-                aria-label="Add tag"
-              >
-                <PlusIcon className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelAddTag}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/70 text-slate-300 transition-colors hover:bg-slate-700/70"
-                aria-label="Cancel adding tag"
-              >
-                <XMarkIcon className="w-4 h-4" />
-              </button>
+          <div className="space-y-6">
+            <div className="space-y-3 rounded-2xl border border-slate-700/60 bg-slate-900/70 p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-300">
+                <TagIcon className="w-4 h-4 text-cyan-300" />
+                Tags
+                <span className="text-xs font-normal text-slate-500">({tagCount})</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {project.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/60 px-3 py-1 text-xs font-medium text-slate-200"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="text-slate-400 hover:text-rose-300"
+                      aria-label={`Remove ${tag}`}
+                    >
+                      <XMarkIcon className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {project.tags.length === 0 && !isAddingTag ? (
+                  <span className="text-xs text-slate-500">No tags yet. Add some to aid search and filtering.</span>
+                ) : null}
+                {isAddingTag ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={tagInputRef}
+                      type="text"
+                      value={tagInput}
+                      onChange={(event) => {
+                        setTagInput(event.target.value);
+                        if (tagError) {
+                          setTagError(null);
+                        }
+                      }}
+                      onKeyDown={handleTagKeyDown}
+                      onBlur={() => {
+                        if (!tagInput.trim()) {
+                          handleCancelAddTag();
+                        }
+                      }}
+                      placeholder="Add a project tag and press Enter"
+                      className="rounded-md border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTag}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
+                      aria-label="Add tag"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelAddTag}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/70 text-slate-300 transition-colors hover:bg-slate-700/70"
+                      aria-label="Cancel adding tag"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartAddingTag}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
+                    aria-label="Add a new tag"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {tagError ? (
+                <p className="text-xs text-rose-300">{tagError}</p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new project tag.'}
+                </p>
+              )}
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStartAddingTag}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
-              aria-label="Add a new tag"
-            >
-              <PlusIcon className="w-4 h-4" />
-            </button>
-          )}
+          </div>
         </div>
-        {tagError ? (
-          <p className="text-xs text-rose-300">{tagError}</p>
-        ) : (
-          <p className="text-xs text-slate-500">
-            {isAddingTag ? 'Press Enter to add a tag or Esc to cancel.' : 'Click the + button to add a new project tag.'}
-          </p>
-        )}
-      </div>
+      </section>
 
       <ConfirmationModal
         isOpen={isDeleteConfirmVisible}
