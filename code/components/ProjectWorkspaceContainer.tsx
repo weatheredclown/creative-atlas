@@ -34,10 +34,11 @@ import {
 import { ProjectPublishRecord } from '../utils/publishHistory';
 import { useArtifactFilters } from '../hooks/useArtifactFilters';
 import BackToTopButton from './BackToTopButton';
-import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
-import WorkspaceSectionIndex from './workspace/WorkspaceSectionIndex';
+import WorkspaceBoardView from './workspace/views/WorkspaceBoardView';
+import WorkspaceLaboratoryView from './workspace/views/WorkspaceLaboratoryView';
+import WorkspaceStudioView from './workspace/views/WorkspaceStudioView';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
-import type { QuickFactModalOptions } from './workspace/types';
+import type { QuickFactModalOptions, WorkspaceView } from './workspace/types';
 import { logAnalyticsEvent } from '../services/analytics';
 import { buildCharacterArcEvaluationMap } from '../utils/characterProgression';
 
@@ -46,6 +47,7 @@ interface ProjectWorkspaceContainerProps {
   project: Project;
   projectArtifacts: Artifact[];
   allArtifacts: Artifact[];
+  currentView: WorkspaceView;
   level: number;
   xpProgress: number;
   selectedArtifactId: string | null;
@@ -94,6 +96,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   project,
   projectArtifacts,
   allArtifacts,
+  currentView,
   level,
   xpProgress,
   selectedArtifactId,
@@ -267,130 +270,126 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   );
 
   const summaryFeatureGroup = PROJECT_FEATURE_GROUPS.summary;
+  const analyticsFeatureGroup = PROJECT_FEATURE_GROUPS.analytics;
+  const trackingFeatureGroup = PROJECT_FEATURE_GROUPS.tracking;
+  const distributionFeatureGroup = PROJECT_FEATURE_GROUPS.distribution;
 
-  const shouldShowTrackingSection =
-    visibilitySettings.memorySync ||
-    visibilitySettings.openTasks ||
-    visibilitySettings.narrativePipeline ||
-    visibilitySettings.familyTreeTools ||
-    visibilitySettings.characterArcTracker ||
-    visibilitySettings.milestoneTracker;
-
-  const shouldShowTemplatesSection = visibilitySettings.templates;
-
-  const shouldShowPublishingSection =
-    visibilitySettings.releaseWorkflows || visibilitySettings.githubImport;
-
-  const sectionLinks = useMemo(() => {
-    const links: Array<{ id: string; label: string }> = [
-      { id: 'workspace-hero', label: 'Hero' },
-    ];
-
-    if (shouldShowTrackingSection) {
-      links.push({ id: 'workspace-tracking', label: 'Tracking' });
-    }
-
-    if (shouldShowTemplatesSection) {
-      links.push({ id: 'workspace-templates', label: 'Templates' });
-    }
-
-    if (shouldShowPublishingSection) {
-      links.push({ id: 'workspace-publishing', label: 'Publishing' });
-    }
-
-    return links;
-  }, [shouldShowTrackingSection, shouldShowTemplatesSection, shouldShowPublishingSection]);
+  const isCodexView = currentView === 'codex';
+  const isBoardView = currentView === 'board';
+  const isLaboratoryView = currentView === 'laboratory';
+  const isStudioView = currentView === 'studio';
 
   return (
     <>
-      <WorkspaceSectionIndex sections={sectionLinks} />
-      <div className="space-y-12">
-        <WorkspaceSummarySection
-          featureGroup={summaryFeatureGroup}
-          heroSectionProps={{
-            project,
-            projectHeroStats,
-            quickFactPreview,
-            totalQuickFacts: quickFacts.length,
-            level,
-            xpProgress,
-            statusLabel: formatStatusLabel(project.status),
-            showProjectHero: visibilitySettings.projectHero,
-            showQuickFactsPanel: visibilitySettings.quickFactsPanel,
-            visibilitySettings,
-            onOpenCreateArtifactModal: () => onOpenCreateArtifactModal(),
-            onOpenQuickFactModal,
-            onPublishProject,
-            onSelectArtifact,
-            onUpdateProject,
-            onDeleteProject,
-            onToggleVisibility,
-            onResetVisibility,
-          }}
-          artifactPanelProps={{
-            isVisible: visibilitySettings.artifactExplorer,
-            project,
-            allArtifacts,
-            projectArtifacts,
-            characterProgressionMap,
-            filteredArtifacts,
-            quickFactPreview,
-            totalQuickFacts: quickFacts.length,
-            viewMode,
-            setViewMode,
-            artifactTypeFilter,
-            setArtifactTypeFilter,
-            statusFilter,
-            setStatusFilter,
-            availableStatuses,
-            availableTagFilters,
-            activeTagFilters,
-            hasActiveFilters,
-            onResetFilters: handleResetFilters,
-            onToggleTagFilter: handleToggleTagFilter,
-            searchTerm,
-            setSearchTerm,
-            selectedArtifact,
-            selectedArtifactId,
-            isSelectedArtifactHidden: isSelectedArtifactHidden(selectedArtifactId),
-            onSelectArtifact,
-            onOpenQuickFactModal,
-            onOpenCreateArtifactModal,
-            onUpdateArtifact,
-            onUpdateArtifactData,
-            onDuplicateArtifact,
-            onDeleteArtifact,
-            onAddRelation,
-            onRemoveRelation,
-            onImportArtifacts,
-            onExportArtifacts,
-            onChapterBibleExport,
-            onLoreJsonExport,
-            canUseDataApi,
-            detailSectionRef,
-            addXp,
-            onWorkspaceError,
-          }}
-        />
+      {isCodexView ? (
+        <div className="space-y-12">
+          <WorkspaceSummarySection
+            featureGroup={summaryFeatureGroup}
+            heroSectionProps={{
+              project,
+              projectHeroStats,
+              quickFactPreview,
+              totalQuickFacts: quickFacts.length,
+              level,
+              xpProgress,
+              statusLabel: formatStatusLabel(project.status),
+              showProjectHero: visibilitySettings.projectHero,
+              showQuickFactsPanel: visibilitySettings.quickFactsPanel,
+              visibilitySettings,
+              onOpenCreateArtifactModal: () => onOpenCreateArtifactModal(),
+              onOpenQuickFactModal,
+              onPublishProject,
+              onSelectArtifact,
+              onUpdateProject,
+              onDeleteProject,
+              onToggleVisibility,
+              onResetVisibility,
+            }}
+            artifactPanelProps={{
+              isVisible: visibilitySettings.artifactExplorer,
+              project,
+              allArtifacts,
+              projectArtifacts,
+              characterProgressionMap,
+              filteredArtifacts,
+              quickFactPreview,
+              totalQuickFacts: quickFacts.length,
+              viewMode,
+              setViewMode,
+              artifactTypeFilter,
+              setArtifactTypeFilter,
+              statusFilter,
+              setStatusFilter,
+              availableStatuses,
+              availableTagFilters,
+              activeTagFilters,
+              hasActiveFilters,
+              onResetFilters: handleResetFilters,
+              onToggleTagFilter: handleToggleTagFilter,
+              searchTerm,
+              setSearchTerm,
+              selectedArtifact,
+              selectedArtifactId,
+              isSelectedArtifactHidden: isSelectedArtifactHidden(selectedArtifactId),
+              onSelectArtifact,
+              onOpenQuickFactModal,
+              onOpenCreateArtifactModal,
+              onUpdateArtifact,
+              onUpdateArtifactData,
+              onDuplicateArtifact,
+              onDeleteArtifact,
+              onAddRelation,
+              onRemoveRelation,
+              onImportArtifacts,
+              onExportArtifacts,
+              onChapterBibleExport,
+              onLoreJsonExport,
+              canUseDataApi,
+              detailSectionRef,
+              addXp,
+              onWorkspaceError,
+            }}
+          />
+        </div>
+      ) : null}
 
-        <WorkspaceActivityPanel
-          analyticsGroup={PROJECT_FEATURE_GROUPS.analytics}
-          trackingGroup={PROJECT_FEATURE_GROUPS.tracking}
-          distributionGroup={PROJECT_FEATURE_GROUPS.distribution}
+      {isLaboratoryView ? (
+        <WorkspaceLaboratoryView
+          featureGroup={analyticsFeatureGroup}
+          visibilitySettings={visibilitySettings}
+          project={project}
+          projectArtifacts={projectArtifacts}
+          allArtifacts={allArtifacts}
+          projectNpcRuns={projectNpcRuns}
+          onSelectArtifact={onSelectArtifact}
+          onCaptureInspirationCard={onCaptureInspirationCard}
+        />
+      ) : null}
+
+      {isBoardView ? (
+        <WorkspaceBoardView
+          featureGroup={trackingFeatureGroup}
+          visibilitySettings={visibilitySettings}
+          project={project}
+          projectArtifacts={projectArtifacts}
+          projectConversations={projectConversations}
+          projectNpcRuns={projectNpcRuns}
+          onMemoryStatusChange={onMemoryStatusChange}
+          onSelectArtifact={onSelectArtifact}
+          onOpenCreateArtifactModal={onOpenCreateArtifactModal}
+          milestoneProgress={milestoneProgress}
+          upcomingMilestoneOverview={upcomingMilestoneOverview}
+          characterProgressionMap={characterProgressionMap}
+        />
+      ) : null}
+
+      {isStudioView ? (
+        <WorkspaceStudioView
+          featureGroup={distributionFeatureGroup}
           visibilitySettings={visibilitySettings}
           project={project}
           profile={profile}
           projectArtifacts={projectArtifacts}
-          allArtifacts={allArtifacts}
-          projectConversations={projectConversations}
-          projectNpcRuns={projectNpcRuns}
-          onMemoryStatusChange={onMemoryStatusChange}
-          onCaptureInspirationCard={onCaptureInspirationCard}
-          onSelectArtifact={onSelectArtifact}
-          onOpenCreateArtifactModal={onOpenCreateArtifactModal}
-          markProjectActivity={markProjectActivity}
-          milestoneProgress={milestoneProgress}
-          upcomingMilestoneOverview={upcomingMilestoneOverview}
           addXp={addXp}
           publishHistoryRecord={publishHistoryRecord}
           lastPublishedAtLabel={lastPublishedAtLabel}
@@ -400,9 +399,9 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
           onGitHubArtifactsImported={onGitHubArtifactsImported}
           onApplyProjectTemplate={onApplyProjectTemplate}
           onSelectTemplate={onSelectTemplate}
-          characterProgressionMap={characterProgressionMap}
+          markProjectActivity={markProjectActivity}
         />
-      </div>
+      ) : null}
 
       <BackToTopButton />
     </>
