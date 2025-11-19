@@ -46,6 +46,8 @@ import { useGitHubPublish } from './hooks/useGitHubPublish';
 import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } from './utils/tutorialStorage';
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
+import ProfileDrawer from './components/ProfileDrawer';
+import type { ArtifactNavigationController } from './components/workspace/types';
 
 const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.Idea]: 'Idea',
@@ -139,6 +141,8 @@ export default function App() {
     const progress = loadTutorialProgress();
     return !progress.hasCompleted && !progress.wasDismissed;
   });
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [artifactNavigator, setArtifactNavigator] = useState<ArtifactNavigationController | null>(null);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -287,6 +291,14 @@ export default function App() {
 
   const handleToggleGhostAgent = useCallback(() => {
     ghostAgentRef.current?.toggle();
+  }, []);
+
+  const handleOpenProfileDrawer = useCallback(() => {
+    setIsProfileDrawerOpen(true);
+  }, []);
+
+  const handleCloseProfileDrawer = useCallback(() => {
+    setIsProfileDrawerOpen(false);
   }, []);
 
   const projectConversations = useMemo(
@@ -515,6 +527,14 @@ export default function App() {
     nextParams.set('projectId', id);
     setSearchParams(nextParams, { replace: true });
   };
+
+  const handleReturnToAtlas = useCallback(() => {
+    setSelectedProjectId(null);
+    setArtifactNavigator(null);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('projectId');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -794,6 +814,7 @@ export default function App() {
         level={level}
         onSignOut={signOutUser}
         onStartTutorial={handleStartTutorial}
+        onOpenProfileDrawer={handleOpenProfileDrawer}
         adminAction={
           <div className="flex items-center gap-2">
             <button
@@ -814,10 +835,6 @@ export default function App() {
       )}
       <main id="main-content" className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
         <WorkspaceSidebar
-          profile={profile}
-          level={level}
-          isViewingOwnWorkspace={isViewingOwnWorkspace}
-          onUpdateProfile={handleProfileUpdate}
           onOpenCreateProjectModal={handleOpenCreateProjectModal}
           projectSearchTerm={projectSearchTerm}
           onProjectSearchTermChange={handleProjectSearchTermChange}
@@ -828,17 +845,15 @@ export default function App() {
           visibleProjects={visibleProjects}
           allProjects={projects}
           selectedProjectId={selectedProjectId}
+          selectedProject={selectedProject}
           onSelectProject={handleSelectProject}
+          onExitProject={handleReturnToAtlas}
           selectedProjectHiddenByFilters={selectedProjectHiddenBySidebarFilters}
           canLoadMoreProjects={canLoadMoreProjects}
           isLoadingMoreProjects={isLoadingMoreProjects}
           onLoadMoreProjects={handleLoadMoreProjects}
-          quests={todaysDailyQuests}
-          questlines={questlines}
-          claimedQuestlines={profile.questlinesClaimed}
-          onClaimQuestline={handleQuestlineClaim}
-          achievements={achievements}
-          artifacts={artifacts}
+          projectArtifacts={projectArtifacts}
+          artifactNavigator={artifactNavigator}
         />
 
         <section className="lg:col-span-9 space-y-10">
@@ -875,6 +890,7 @@ export default function App() {
               canUseDataApi={canUseDataApi}
               canPublishToGitHub={canPublishToGitHub}
               onStartGitHubPublish={startGitHubAuthorization}
+              onRegisterArtifactNavigator={setArtifactNavigator}
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
@@ -903,6 +919,21 @@ export default function App() {
         onResetStatus={resetPublishStatus}
         authStatus={githubAuthStatus}
         statusMessage={githubAuthMessage}
+      />
+      <ProfileDrawer
+        isOpen={isProfileDrawerOpen}
+        onClose={handleCloseProfileDrawer}
+        profile={profile}
+        level={level}
+        quests={todaysDailyQuests}
+        questlines={questlines}
+        claimedQuestlines={profile.questlinesClaimed}
+        onClaimQuestline={handleQuestlineClaim}
+        achievements={achievements}
+        projects={projects}
+        artifacts={artifacts}
+        isViewingOwnWorkspace={isViewingOwnWorkspace}
+        onUpdateProfile={handleProfileUpdate}
       />
       <GhostAgent
         ref={ghostAgentRef}

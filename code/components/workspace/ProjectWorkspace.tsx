@@ -2,7 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ProjectWorkspaceContainer from '../ProjectWorkspaceContainer';
 import WorkspaceModals from './WorkspaceModals';
-import { CreateArtifactInput, InfoModalState, QuickFactInput, QuickFactModalOptions } from './types';
+import {
+  ArtifactNavigationController,
+  CreateArtifactInput,
+  InfoModalState,
+  QuickFactInput,
+  QuickFactModalOptions,
+} from './types';
 import { XMarkIcon } from '../Icons';
 
 import {
@@ -80,6 +86,7 @@ interface ProjectWorkspaceProps {
   canUseDataApi: boolean;
   canPublishToGitHub: boolean;
   onStartGitHubPublish: () => Promise<void>;
+  onRegisterArtifactNavigator?: (navigator: ArtifactNavigationController | null) => void;
 }
 
 const DEFAULT_ARTIFACT_STATUS = 'idea';
@@ -116,6 +123,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   canUseDataApi,
   canPublishToGitHub,
   onStartGitHubPublish,
+  onRegisterArtifactNavigator,
 }) => {
   const { showToast } = useToast();
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
@@ -794,15 +802,16 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         publishHistoryRecord={publishHistoryRecord}
         lastPublishedAtLabel={lastPublishedAtLabel}
         addXp={addXp}
-          projectConversations={projectConversations}
-          projectNpcRuns={projectNpcRuns}
-          onMemoryStatusChange={onMemoryStatusChange}
+        projectConversations={projectConversations}
+        projectNpcRuns={projectNpcRuns}
+        onMemoryStatusChange={onMemoryStatusChange}
         markProjectActivity={markProjectActivity}
         milestoneProgress={milestoneProgress}
         upcomingMilestoneOverview={upcomingMilestoneOverview}
         canUseDataApi={canUseDataApi}
         canPublishToGitHub={canPublishToGitHub}
         onWorkspaceError={handleWorkspaceError}
+        onRegisterArtifactNavigator={onRegisterArtifactNavigator}
       />
 
       <WorkspaceModals
