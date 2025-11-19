@@ -143,6 +143,7 @@ export default function App() {
   });
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [artifactNavigator, setArtifactNavigator] = useState<ArtifactNavigationController | null>(null);
+  const [isZenMode, setIsZenMode] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -782,6 +783,10 @@ export default function App() {
     setIsTutorialVisible(true);
   }, []);
 
+  const handleToggleZenMode = useCallback(() => {
+    setIsZenMode((previous) => !previous);
+  }, []);
+
   if (!profile) {
     return <DashboardShellPlaceholder loading={loading} />;
   }
@@ -815,6 +820,8 @@ export default function App() {
         onSignOut={signOutUser}
         onStartTutorial={handleStartTutorial}
         onOpenProfileDrawer={handleOpenProfileDrawer}
+        isZenMode={isZenMode}
+        onToggleZenMode={handleToggleZenMode}
         adminAction={
           <div className="flex items-center gap-2">
             <button
@@ -833,30 +840,35 @@ export default function App() {
           <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
-      <main id="main-content" className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
-        <WorkspaceSidebar
-          onOpenCreateProjectModal={handleOpenCreateProjectModal}
-          projectSearchTerm={projectSearchTerm}
-          onProjectSearchTermChange={handleProjectSearchTermChange}
-          projectStatusFilter={projectStatusFilter}
-          onProjectStatusFilterChange={handleProjectStatusFilterChange}
-          hasProjectFilters={hasProjectFilters}
-          onResetProjectFilters={handleResetProjectFilters}
-          visibleProjects={visibleProjects}
-          allProjects={projects}
-          selectedProjectId={selectedProjectId}
-          selectedProject={selectedProject}
-          onSelectProject={handleSelectProject}
-          onExitProject={handleReturnToAtlas}
-          selectedProjectHiddenByFilters={selectedProjectHiddenBySidebarFilters}
-          canLoadMoreProjects={canLoadMoreProjects}
-          isLoadingMoreProjects={isLoadingMoreProjects}
-          onLoadMoreProjects={handleLoadMoreProjects}
-          projectArtifacts={projectArtifacts}
-          artifactNavigator={artifactNavigator}
-        />
+      <main
+        id="main-content"
+        className={`flex-grow grid grid-cols-1 gap-8 p-4 sm:p-8 ${isZenMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}
+      >
+        {!isZenMode ? (
+          <WorkspaceSidebar
+            onOpenCreateProjectModal={handleOpenCreateProjectModal}
+            projectSearchTerm={projectSearchTerm}
+            onProjectSearchTermChange={handleProjectSearchTermChange}
+            projectStatusFilter={projectStatusFilter}
+            onProjectStatusFilterChange={handleProjectStatusFilterChange}
+            hasProjectFilters={hasProjectFilters}
+            onResetProjectFilters={handleResetProjectFilters}
+            visibleProjects={visibleProjects}
+            allProjects={projects}
+            selectedProjectId={selectedProjectId}
+            selectedProject={selectedProject}
+            onSelectProject={handleSelectProject}
+            onExitProject={handleReturnToAtlas}
+            selectedProjectHiddenByFilters={selectedProjectHiddenBySidebarFilters}
+            canLoadMoreProjects={canLoadMoreProjects}
+            isLoadingMoreProjects={isLoadingMoreProjects}
+            onLoadMoreProjects={handleLoadMoreProjects}
+            projectArtifacts={projectArtifacts}
+            artifactNavigator={artifactNavigator}
+          />
+        ) : null}
 
-        <section className="lg:col-span-9 space-y-10">
+        <section className={`${isZenMode ? 'lg:col-span-1' : 'lg:col-span-9'} space-y-10`}>
           {selectedProject ? (
             <ProjectWorkspace
               profile={profile}
@@ -866,6 +878,7 @@ export default function App() {
               allArtifacts={artifacts}
               level={level}
               xpProgress={xpProgress}
+              isZenMode={isZenMode}
               projectConversations={projectConversations}
               projectNpcRuns={projectNpcRuns}
               onMemoryStatusChange={handleMemoryStatusChange}

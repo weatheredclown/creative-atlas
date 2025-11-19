@@ -31,3 +31,5 @@ export interface ArtifactNavigationController {
   clearFilters: () => void;
   openArtifact: (artifactId: string) => void;
 }
+
+export type WorkspaceView = 'codex' | 'board' | 'laboratory' | 'studio';
