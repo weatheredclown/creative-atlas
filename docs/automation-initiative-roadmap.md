@@ -218,3 +218,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-28: Clamped Dialogue Forge Gemini output tokens server-side so prompt budgets auto-scale with context length, advancing the "Dialogue Forge prompt budget + template rendering" workstream.
 - 2025-11-29: Added cache-busting to Nano Banana storage URLs so refreshed Creative Atlas generative art replaces the previous image immediately, supporting the "Gemini-driven Nano Banana prompts + endpoint" roadmap item.
 - 2025-11-19: Hardened the "Back to Atlas" transition so clearing a project selection stops re-applying the previous projectId query parameter, reinforcing the "Workspace UX polish" roadmap goal.
+- 2025-11-30: Restored location creation by seeding default location data and sanitizing the editor; no roadmap bullets impacted.
