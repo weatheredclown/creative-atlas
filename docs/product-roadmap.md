@@ -46,8 +46,8 @@ The “Organize My Worlds Without Pain” release.
 Stories become game worlds, and game worlds fuel story arcs.
 - [x] Scene board for novels and narrative arcs.
 - [x] Quest board for game modules.
-- [ ] Character arcs tooling with progression states.
-- [ ] Procedural encounter generator blending Dustland and PIT lore.
+- [x] Character arcs tooling with progression states.
+- [x] Procedural encounter generator blending Dustland and PIT lore.
 - [ ] Story → module export supporting Dustland ACK, D&D cards, visual novel scenes, and script formats.
 - [ ] Automated exports for character sheets, campaign packets, AI asset prompts, and lore codexes.
 
