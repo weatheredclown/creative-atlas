@@ -56,6 +56,8 @@ export interface UserProfile {
   achievementsUnlocked: string[];
   questlinesClaimed: string[];
   settings: UserSettings;
+  storageUsageBytes: number;
+  storageLimitBytes: number;
   createdAt?: string;
   updatedAt?: string;
 }

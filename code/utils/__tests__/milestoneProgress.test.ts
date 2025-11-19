@@ -29,12 +29,19 @@ describe('evaluateMilestoneProgress', () => {
     uid: 'user-1',
     email: 'user@example.com',
     displayName: 'Astra Creator',
+    photoURL: undefined,
     xp: 120,
+    streakCount: 3,
+    bestStreak: 5,
+    lastActiveDate: '2024-05-10',
     achievementsUnlocked: ['ach-1'],
+    questlinesClaimed: [],
     settings: {
       theme: 'dark',
       aiTipsEnabled: true,
     },
+    storageUsageBytes: 0,
+    storageLimitBytes: 50 * 1024 * 1024,
   };
 
   const artifacts: Artifact[] = [

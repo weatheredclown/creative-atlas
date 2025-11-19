@@ -36,6 +36,8 @@ const profile: UserProfile = {
   achievementsUnlocked: [],
   questlinesClaimed: [],
   settings: { theme: 'system', aiTipsEnabled: true },
+  storageUsageBytes: 0,
+  storageLimitBytes: 50 * 1024 * 1024,
 };
 
 const completedArtifact = {

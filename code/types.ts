@@ -446,6 +446,8 @@ export interface UserProfile {
     achievementsUnlocked: string[];
     questlinesClaimed: string[];
     settings: UserSettings;
+    storageUsageBytes: number;
+    storageLimitBytes: number;
 }
 
 export const PROJECT_COMPONENT_KEYS = [

@@ -62,6 +62,43 @@ import {
 
 const router = Router();
 
+const DEFAULT_STORAGE_LIMIT_BYTES = 50 * 1024 * 1024;
+
+class StorageLimitError extends Error {
+  limitBytes: number;
+  currentUsageBytes: number;
+  attemptedUsageBytes: number;
+
+  constructor(limitBytes: number, currentUsageBytes: number, attemptedUsageBytes: number) {
+    super('User storage limit exceeded.');
+    this.name = 'StorageLimitError';
+    this.limitBytes = limitBytes;
+    this.currentUsageBytes = currentUsageBytes;
+    this.attemptedUsageBytes = attemptedUsageBytes;
+  }
+}
+
+const respondWithStorageLimitError = (res: Response, error: unknown): error is StorageLimitError => {
+  if (error instanceof StorageLimitError) {
+    res.status(403).json({
+      error: 'Storage limit exceeded. Delete existing content to free up space.',
+      code: 'storage-limit-exceeded',
+      limitBytes: error.limitBytes,
+      usageBytes: error.currentUsageBytes,
+      attemptedUsageBytes: error.attemptedUsageBytes,
+    });
+    return true;
+  }
+  return false;
+};
+
+const ERROR_PROJECT_NOT_FOUND = 'PROJECT_NOT_FOUND';
+const ERROR_ARTIFACT_NOT_FOUND = 'ARTIFACT_NOT_FOUND';
+const ERROR_FORBIDDEN_PROJECT_ACCESS = 'FORBIDDEN_PROJECT_ACCESS';
+const ERROR_FORBIDDEN_ARTIFACT_ACCESS = 'FORBIDDEN_ARTIFACT_ACCESS';
+const ERROR_PROJECT_ALREADY_EXISTS = 'PROJECT_ALREADY_EXISTS';
+const ERROR_ARTIFACT_ALREADY_EXISTS = 'ARTIFACT_ALREADY_EXISTS';
+
 const NANO_BANANA_IMAGE_MODEL = 'gemini-2.5-flash-image-preview';
 
 const NANO_BANANA_IMAGE_SAFETY_SETTINGS: SafetySetting[] = [
@@ -226,6 +263,105 @@ const mapArtifact = (doc: QueryDocumentSnapshot | DocumentSnapshot, ownerId: str
     updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
 };
+
+type ProjectStoragePayload = {
+  ownerId: string;
+  projectId: string;
+  title: string;
+  summary: string;
+  status: string;
+  tags: string[];
+  nanoBananaImage: string | null;
+};
+
+type ArtifactStoragePayload = {
+  ownerId: string;
+  projectId: string;
+  artifactId: string;
+  type: string;
+  title: string;
+  summary: string;
+  status: string;
+  tags: string[];
+  relations: Artifact['relations'];
+  data: unknown;
+};
+
+const calculateSerializedBytes = (value: unknown): number => {
+  try {
+    return Buffer.byteLength(JSON.stringify(value ?? {}), 'utf8');
+  } catch {
+    return Buffer.byteLength(String(value ?? ''), 'utf8');
+  }
+};
+
+const buildProjectStoragePayload = (payload: ProjectStoragePayload): ProjectStoragePayload => ({
+  ...payload,
+  tags: [...payload.tags],
+  nanoBananaImage: payload.nanoBananaImage ?? null,
+});
+
+const buildArtifactStoragePayload = (payload: ArtifactStoragePayload): ArtifactStoragePayload => ({
+  ...payload,
+  tags: [...payload.tags],
+  relations: [...payload.relations],
+  data: payload.data ?? {},
+});
+
+const calculateProjectStorageBytes = (payload: ProjectStoragePayload): number =>
+  calculateSerializedBytes(payload);
+
+const calculateArtifactStorageBytes = (payload: ArtifactStoragePayload): number =>
+  calculateSerializedBytes(payload);
+
+const snapshotToProjectStoragePayload = (
+  snapshot: DocumentSnapshot,
+  ownerId: string,
+): ProjectStoragePayload => {
+  const mapped = mapProject(snapshot, ownerId);
+  return buildProjectStoragePayload({
+    ownerId: mapped.ownerId,
+    projectId: mapped.id,
+    title: mapped.title,
+    summary: mapped.summary,
+    status: mapped.status,
+    tags: mapped.tags,
+    nanoBananaImage: mapped.nanoBananaImage ?? null,
+  });
+};
+
+const snapshotToArtifactStoragePayload = (
+  snapshot: DocumentSnapshot,
+  ownerId: string,
+): ArtifactStoragePayload => {
+  const mapped = mapArtifact(snapshot, ownerId);
+  return buildArtifactStoragePayload({
+    ownerId: mapped.ownerId,
+    projectId: mapped.projectId,
+    artifactId: mapped.id,
+    type: mapped.type,
+    title: mapped.title,
+    summary: mapped.summary,
+    status: mapped.status,
+    tags: mapped.tags,
+    relations: mapped.relations,
+    data: mapped.data,
+  });
+};
+
+const artifactToStoragePayload = (artifact: Artifact): ArtifactStoragePayload =>
+  buildArtifactStoragePayload({
+    ownerId: artifact.ownerId,
+    projectId: artifact.projectId,
+    artifactId: artifact.id,
+    type: artifact.type,
+    title: artifact.title,
+    summary: artifact.summary,
+    status: artifact.status,
+    tags: artifact.tags,
+    relations: artifact.relations,
+    data: artifact.data,
+  });
 
 const toIsoString = (value: unknown): string | undefined => {
   if (typeof value === 'string') {
@@ -778,6 +914,8 @@ const createDefaultProfile = (
     achievementsUnlocked: [],
     questlinesClaimed: [],
     settings: { ...defaultSettings },
+    storageUsageBytes: 0,
+    storageLimitBytes: DEFAULT_STORAGE_LIMIT_BYTES,
   };
 };
 
@@ -797,6 +935,17 @@ const mapProfileFromSnapshot = (doc: DocumentSnapshot | null, defaults: UserProf
     settingsValue && typeof settingsValue === 'object'
       ? { ...defaultSettings, ...(settingsValue as Record<string, unknown>) }
       : { ...defaultSettings };
+
+  const storageUsageValue = (data as { storageUsageBytes?: unknown }).storageUsageBytes;
+  const storageLimitValue = (data as { storageLimitBytes?: unknown }).storageLimitBytes;
+  const storageUsageBytes =
+    typeof storageUsageValue === 'number' && Number.isFinite(storageUsageValue)
+      ? Math.max(0, Number(storageUsageValue))
+      : defaults.storageUsageBytes;
+  const storageLimitBytes =
+    typeof storageLimitValue === 'number' && Number.isFinite(storageLimitValue)
+      ? Math.max(1, Number(storageLimitValue))
+      : defaults.storageLimitBytes;
 
   return {
     ...defaults,
@@ -825,9 +974,72 @@ const mapProfileFromSnapshot = (doc: DocumentSnapshot | null, defaults: UserProf
     achievementsUnlocked: achievements,
     questlinesClaimed: questlines,
     settings: mappedSettings,
+    storageUsageBytes,
+    storageLimitBytes,
     createdAt: timestampToIso((data as { createdAt?: Timestamp }).createdAt),
     updatedAt: timestampToIso((data as { updatedAt?: Timestamp }).updatedAt),
   };
+};
+
+const applyStorageDelta = async (
+  transaction: FirebaseFirestore.Transaction,
+  userRef: FirebaseFirestore.DocumentReference,
+  defaults: UserProfile,
+  delta: number,
+): Promise<void> => {
+  if (delta === 0) {
+    return;
+  }
+
+  const snapshot = await transaction.get(userRef);
+  if (!snapshot.exists && delta <= 0) {
+    return;
+  }
+
+  let profile = snapshot.exists ? mapProfileFromSnapshot(snapshot, defaults) : defaults;
+
+  if (!snapshot.exists && delta > 0) {
+    transaction.set(
+      userRef,
+      {
+        uid: profile.uid,
+        email: profile.email,
+        displayName: profile.displayName,
+        photoURL: profile.photoURL ?? null,
+        xp: profile.xp,
+        streakCount: profile.streakCount,
+        bestStreak: profile.bestStreak,
+        lastActiveDate: profile.lastActiveDate ?? null,
+        achievementsUnlocked: profile.achievementsUnlocked,
+        questlinesClaimed: profile.questlinesClaimed,
+        settings: profile.settings,
+        storageUsageBytes: profile.storageUsageBytes,
+        storageLimitBytes: profile.storageLimitBytes,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: false },
+    );
+    profile = defaults;
+  }
+
+  const currentUsage = profile.storageUsageBytes;
+  const limit = profile.storageLimitBytes > 0 ? profile.storageLimitBytes : DEFAULT_STORAGE_LIMIT_BYTES;
+  const nextUsage = Math.max(0, currentUsage + delta);
+
+  if (nextUsage > limit) {
+    throw new StorageLimitError(limit, currentUsage, nextUsage);
+  }
+
+  transaction.set(
+    userRef,
+    {
+      storageUsageBytes: nextUsage,
+      storageLimitBytes: limit,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
 };
 
 const relationSchema = z.object({
@@ -886,6 +1098,8 @@ router.get('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => {
         achievementsUnlocked: defaults.achievementsUnlocked,
         questlinesClaimed: defaults.questlinesClaimed,
         settings: defaults.settings,
+        storageUsageBytes: defaults.storageUsageBytes,
+        storageLimitBytes: defaults.storageLimitBytes,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -924,6 +1138,8 @@ router.patch('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => 
           achievementsUnlocked: defaults.achievementsUnlocked,
           questlinesClaimed: defaults.questlinesClaimed,
           settings: defaults.settings,
+          storageUsageBytes: defaults.storageUsageBytes,
+          storageLimitBytes: defaults.storageLimitBytes,
           createdAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -1010,6 +1226,8 @@ router.post('/profile/xp', asyncHandler(async (req: AuthenticatedRequest, res) =
           achievementsUnlocked: defaults.achievementsUnlocked,
           questlinesClaimed: defaults.questlinesClaimed,
           settings: defaults.settings,
+          storageUsageBytes: defaults.storageUsageBytes,
+          storageLimitBytes: defaults.storageLimitBytes,
           createdAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -1080,7 +1298,7 @@ router.get('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => {
 }));
 
 router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const parsed = projectSchema.parse(req.body);
   const docRef = parsed.id
     ? firestore.collection('projects').doc(parsed.id)
@@ -1097,16 +1315,6 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
       return;
     }
     throw error;
-  }
-
-  if (parsed.id) {
-    const existing = await docRef.get();
-    if (existing.exists) {
-      if (existing.get('ownerId') !== uid) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
-      return res.status(409).json({ error: 'Project already exists' });
-    }
   }
 
   let nanoBananaImage = parsed.nanoBananaImage;
@@ -1134,7 +1342,57 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
     updatedAt: FieldValue.serverTimestamp(),
   };
 
-  await docRef.set(payload, { merge: false });
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      if (parsed.id) {
+        const existing = await transaction.get(docRef);
+        if (existing.exists) {
+          if (existing.get('ownerId') !== uid) {
+            throw new Error(ERROR_FORBIDDEN_PROJECT_ACCESS);
+          }
+          throw new Error(ERROR_PROJECT_ALREADY_EXISTS);
+        }
+      }
+
+      const storagePayload = buildProjectStoragePayload({
+        ownerId: uid,
+        projectId: docRef.id,
+        title: payload.title,
+        summary: payload.summary,
+        status: payload.status,
+        tags: payload.tags,
+        nanoBananaImage: payload.nanoBananaImage,
+      });
+
+      await applyStorageDelta(
+        transaction,
+        userRef,
+        defaults,
+        calculateProjectStorageBytes(storagePayload),
+      );
+
+      transaction.set(docRef, payload, { merge: false });
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === ERROR_FORBIDDEN_PROJECT_ACCESS) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      if (error.message === ERROR_PROJECT_ALREADY_EXISTS) {
+        res.status(409).json({ error: 'Project already exists' });
+        return;
+      }
+    }
+    if (respondWithStorageLimitError(res, error)) {
+      return;
+    }
+    throw error;
+  }
+
   const snapshot = await docRef.get();
   res.status(201).json(mapProject(snapshot, uid));
 }));
@@ -1334,79 +1592,150 @@ router.post('/projects/:id/nano-banana/generate', asyncHandler(async (req: Authe
 }));
 
 router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const parsed = projectUpdateSchema.parse(req.body);
   const docRef = firestore.collection('projects').doc(req.params.id);
-  const snapshot = await docRef.get();
-  if (!snapshot.exists) {
-    return res.status(404).json({ error: 'Project not found' });
-  }
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
-  if (snapshot.get('ownerId') !== uid) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
-  if (parsed.title !== undefined) update.title = parsed.title;
-  if (parsed.summary !== undefined) update.summary = parsed.summary;
-  if (parsed.status !== undefined) update.status = parsed.status;
-  if (parsed.tags !== undefined) update.tags = parsed.tags;
-  if (parsed.nanoBananaImage !== undefined) {
-    if (parsed.nanoBananaImage === null) {
-      update.nanoBananaImage = null;
-    } else if (isNanoBananaDataUrl(parsed.nanoBananaImage)) {
+  let preparedNanoBanana = parsed.nanoBananaImage;
+  if (preparedNanoBanana !== undefined) {
+    if (preparedNanoBanana === null) {
+      preparedNanoBanana = null;
+    } else if (isNanoBananaDataUrl(preparedNanoBanana)) {
       if (!isNanoBananaStorageEnabled()) {
         res.status(503).json({ error: 'Creative Atlas generative art storage is not configured.' });
         return;
       }
       try {
-        update.nanoBananaImage = await persistNanoBananaToStorage(docRef.id, parsed.nanoBananaImage);
+        preparedNanoBanana = await persistNanoBananaToStorage(docRef.id, preparedNanoBanana);
       } catch {
         res.status(503).json({ error: 'Creative Atlas generative art could not be saved. Please try again later.' });
         return;
       }
-    } else {
-      update.nanoBananaImage = parsed.nanoBananaImage;
     }
   }
 
   try {
-    assertProjectContentCompliance(
-      {
-        title: update.title ?? snapshot.get('title'),
-        summary: update.summary ?? snapshot.get('summary'),
-        tags: update.tags ?? snapshot.get('tags'),
-      },
-      {
-        actorId: uid,
-        projectId: docRef.id,
-        action: 'update-project',
-      },
-    );
+    await firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        throw new Error(ERROR_PROJECT_NOT_FOUND);
+      }
+      if (snapshot.get('ownerId') !== uid) {
+        throw new Error(ERROR_FORBIDDEN_PROJECT_ACCESS);
+      }
+
+      const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
+      if (parsed.title !== undefined) update.title = parsed.title;
+      if (parsed.summary !== undefined) update.summary = parsed.summary;
+      if (parsed.status !== undefined) update.status = parsed.status;
+      if (parsed.tags !== undefined) update.tags = parsed.tags;
+      if (preparedNanoBanana !== undefined) {
+        update.nanoBananaImage = preparedNanoBanana;
+      }
+
+      const existingStoragePayload = snapshotToProjectStoragePayload(snapshot, uid);
+      const nextStoragePayload = buildProjectStoragePayload({
+        ...existingStoragePayload,
+        title: update.title !== undefined ? (update.title as string) : existingStoragePayload.title,
+        summary: update.summary !== undefined ? (update.summary as string) : existingStoragePayload.summary,
+        status: update.status !== undefined ? (update.status as string) : existingStoragePayload.status,
+        tags: update.tags !== undefined ? (update.tags as string[]) : existingStoragePayload.tags,
+        nanoBananaImage:
+          update.nanoBananaImage !== undefined
+            ? (update.nanoBananaImage as string | null)
+            : existingStoragePayload.nanoBananaImage,
+      });
+
+      try {
+        assertProjectContentCompliance(
+          {
+            title: nextStoragePayload.title,
+            summary: nextStoragePayload.summary,
+            tags: nextStoragePayload.tags,
+          },
+          {
+            actorId: uid,
+            projectId: docRef.id,
+            action: 'update-project',
+          },
+        );
+      } catch (error) {
+        throw error;
+      }
+
+      const delta =
+        calculateProjectStorageBytes(nextStoragePayload) -
+        calculateProjectStorageBytes(existingStoragePayload);
+
+      await applyStorageDelta(transaction, userRef, defaults, delta);
+      transaction.set(docRef, update, { merge: true });
+    });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === ERROR_PROJECT_NOT_FOUND) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+      if (error.message === ERROR_FORBIDDEN_PROJECT_ACCESS) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+    }
     if (respondWithComplianceError(res, error)) {
+      return;
+    }
+    if (respondWithStorageLimitError(res, error)) {
       return;
     }
     throw error;
   }
 
-  await docRef.set(update, { merge: true });
   const updated = await docRef.get();
   res.json(mapProject(updated, uid));
 }));
 
 router.delete('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const docRef = firestore.collection('projects').doc(req.params.id);
-  const snapshot = await docRef.get();
-  if (!snapshot.exists) {
-    return res.status(404).json({ error: 'Project not found' });
-  }
-  if (snapshot.get('ownerId') !== uid) {
-    return res.status(403).json({ error: 'Forbidden' });
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        throw new Error(ERROR_PROJECT_NOT_FOUND);
+      }
+      if (snapshot.get('ownerId') !== uid) {
+        throw new Error(ERROR_FORBIDDEN_PROJECT_ACCESS);
+      }
+
+      const storagePayload = snapshotToProjectStoragePayload(snapshot, uid);
+      await applyStorageDelta(
+        transaction,
+        userRef,
+        defaults,
+        -calculateProjectStorageBytes(storagePayload),
+      );
+
+      transaction.delete(docRef);
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === ERROR_PROJECT_NOT_FOUND) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+      if (error.message === ERROR_FORBIDDEN_PROJECT_ACCESS) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+    }
+    throw error;
   }
 
-  await docRef.delete();
   res.status(204).send();
 }));
 
@@ -1440,7 +1769,7 @@ router.get('/projects/:projectId/artifacts', asyncHandler(async (req: Authentica
 }));
 
 router.post('/projects/:projectId/artifacts', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const { projectId } = req.params;
   const bodySchema = z.object({ artifacts: z.array(artifactSchema) });
   const parsed = bodySchema.parse(req.body);
@@ -1453,12 +1782,24 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const artifactEntries = parsed.artifacts.map((artifactInput) => ({
-    input: artifactInput,
-    ref: artifactInput.id
+  const artifactEntries = parsed.artifacts.map((artifactInput) => {
+    const ref = artifactInput.id
       ? firestore.collection('artifacts').doc(artifactInput.id)
-      : firestore.collection('artifacts').doc(),
-  }));
+      : firestore.collection('artifacts').doc();
+    const artifact: Artifact = {
+      id: ref.id,
+      ownerId: uid,
+      projectId,
+      type: artifactInput.type,
+      title: artifactInput.title,
+      summary: artifactInput.summary ?? '',
+      status: artifactInput.status ?? 'idea',
+      tags: artifactInput.tags ?? [],
+      relations: artifactInput.relations ?? [],
+      data: artifactInput.data ?? {},
+    };
+    return { input: artifactInput, ref, artifact };
+  });
 
   const seenIds = new Set<string>();
   for (const entry of artifactEntries) {
@@ -1479,7 +1820,7 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
     }
 
     try {
-      assertArtifactContentCompliance(entry.input, {
+      assertArtifactContentCompliance(entry.artifact, {
         actorId: uid,
         projectId,
         artifactId,
@@ -1495,107 +1836,169 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
 
   const created: Artifact[] = [];
 
-  await firestore.runTransaction(async (transaction) => {
-    for (const { input: artifactInput, ref: docRef } of artifactEntries) {
-      const artifact: Artifact = {
-        id: docRef.id,
-        ownerId: uid,
-        projectId,
-        type: artifactInput.type,
-        title: artifactInput.title,
-        summary: artifactInput.summary ?? '',
-        status: artifactInput.status ?? 'idea',
-        tags: artifactInput.tags ?? [],
-        relations: artifactInput.relations ?? [],
-        data: artifactInput.data ?? {},
-      };
-
-      transaction.set(docRef, {
-        ownerId: uid,
-        projectId,
-        type: artifact.type,
-        title: artifact.title,
-        summary: artifact.summary,
-        status: artifact.status,
-        tags: artifact.tags,
-        relations: artifact.relations,
-        data: artifact.data,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      created.push({ ...artifact });
-    }
-  });
-
-  res.status(201).json({ artifacts: created });
-}));
-
-router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
-  const parsed = artifactUpdateSchema.parse(req.body);
-  const docRef = firestore.collection('artifacts').doc(req.params.artifactId);
-  const snapshot = await docRef.get();
-  if (!snapshot.exists) {
-    return res.status(404).json({ error: 'Artifact not found' });
-  }
-  if (snapshot.get('ownerId') !== uid) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
-  if (parsed.title !== undefined) update.title = parsed.title;
-  if (parsed.summary !== undefined) update.summary = parsed.summary;
-  if (parsed.status !== undefined) update.status = parsed.status;
-  if (parsed.tags !== undefined) update.tags = parsed.tags;
-  if (parsed.relations !== undefined) update.relations = parsed.relations;
-  if (parsed.data !== undefined) update.data = parsed.data;
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+  const totalStorageDelta = artifactEntries.reduce(
+    (sum, entry) => sum + calculateArtifactStorageBytes(artifactToStoragePayload(entry.artifact)),
+    0,
+  );
 
   try {
-    const existing = snapshot.data() as Partial<Artifact> | undefined;
-    assertArtifactContentCompliance(
-      {
-        title: update.title ?? existing?.title,
-        summary: update.summary ?? existing?.summary,
-        tags: update.tags ?? existing?.tags,
-        type: parsed.type ?? existing?.type,
-      },
-      {
-        actorId: uid,
-        projectId: snapshot.get('projectId'),
-        artifactId: docRef.id,
-        action: 'update-artifact',
-      },
-    );
+    await firestore.runTransaction(async (transaction) => {
+      await applyStorageDelta(transaction, userRef, defaults, totalStorageDelta);
+
+      for (const { artifact, ref: docRef } of artifactEntries) {
+        transaction.set(docRef, {
+          ownerId: artifact.ownerId,
+          projectId: artifact.projectId,
+          type: artifact.type,
+          title: artifact.title,
+          summary: artifact.summary,
+          status: artifact.status,
+          tags: artifact.tags,
+          relations: artifact.relations,
+          data: artifact.data,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        created.push({ ...artifact });
+      }
+    });
   } catch (error) {
-    if (respondWithComplianceError(res, error)) {
+    if (respondWithStorageLimitError(res, error)) {
       return;
     }
     throw error;
   }
 
-  await docRef.set(update, { merge: true });
+  res.status(201).json({ artifacts: created });
+}));
+
+router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { uid, email, displayName, photoURL } = req.user!;
+  const parsed = artifactUpdateSchema.parse(req.body);
+  const docRef = firestore.collection('artifacts').doc(req.params.artifactId);
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        throw new Error(ERROR_ARTIFACT_NOT_FOUND);
+      }
+      if (snapshot.get('ownerId') !== uid) {
+        throw new Error(ERROR_FORBIDDEN_ARTIFACT_ACCESS);
+      }
+
+      const existingArtifact = mapArtifact(snapshot, uid);
+      const nextArtifact: Artifact = {
+        ...existingArtifact,
+        type: parsed.type ?? existingArtifact.type,
+        title: parsed.title ?? existingArtifact.title,
+        summary: parsed.summary ?? existingArtifact.summary,
+        status: parsed.status ?? existingArtifact.status,
+        tags: parsed.tags ?? existingArtifact.tags,
+        relations: parsed.relations ?? existingArtifact.relations,
+        data: parsed.data ?? existingArtifact.data,
+      };
+
+      const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
+      if (parsed.title !== undefined) update.title = parsed.title;
+      if (parsed.summary !== undefined) update.summary = parsed.summary;
+      if (parsed.status !== undefined) update.status = parsed.status;
+      if (parsed.tags !== undefined) update.tags = parsed.tags;
+      if (parsed.relations !== undefined) update.relations = parsed.relations;
+      if (parsed.data !== undefined) update.data = parsed.data;
+
+      try {
+        assertArtifactContentCompliance(nextArtifact, {
+          actorId: uid,
+          projectId: existingArtifact.projectId,
+          artifactId: docRef.id,
+          action: 'update-artifact',
+        });
+      } catch (error) {
+        throw error;
+      }
+
+      const delta =
+        calculateArtifactStorageBytes(artifactToStoragePayload(nextArtifact)) -
+        calculateArtifactStorageBytes(artifactToStoragePayload(existingArtifact));
+
+      await applyStorageDelta(transaction, userRef, defaults, delta);
+      transaction.set(docRef, update, { merge: true });
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === ERROR_ARTIFACT_NOT_FOUND) {
+        res.status(404).json({ error: 'Artifact not found' });
+        return;
+      }
+      if (error.message === ERROR_FORBIDDEN_ARTIFACT_ACCESS) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+    }
+    if (respondWithComplianceError(res, error)) {
+      return;
+    }
+    if (respondWithStorageLimitError(res, error)) {
+      return;
+    }
+    throw error;
+  }
+
   const updated = await docRef.get();
   res.json(mapArtifact(updated, uid));
 }));
 
 router.delete('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const docRef = firestore.collection('artifacts').doc(req.params.artifactId);
-  const snapshot = await docRef.get();
-  if (!snapshot.exists) {
-    return res.status(404).json({ error: 'Artifact not found' });
-  }
-  if (snapshot.get('ownerId') !== uid) {
-    return res.status(403).json({ error: 'Forbidden' });
+  const userRef = firestore.collection('users').doc(uid);
+  const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        throw new Error(ERROR_ARTIFACT_NOT_FOUND);
+      }
+      if (snapshot.get('ownerId') !== uid) {
+        throw new Error(ERROR_FORBIDDEN_ARTIFACT_ACCESS);
+      }
+
+      const storagePayload = snapshotToArtifactStoragePayload(snapshot, uid);
+      await applyStorageDelta(
+        transaction,
+        userRef,
+        defaults,
+        -calculateArtifactStorageBytes(storagePayload),
+      );
+
+      transaction.delete(docRef);
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === ERROR_ARTIFACT_NOT_FOUND) {
+        res.status(404).json({ error: 'Artifact not found' });
+        return;
+      }
+      if (error.message === ERROR_FORBIDDEN_ARTIFACT_ACCESS) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+    }
+    throw error;
   }
 
-  await docRef.delete();
   res.status(204).send();
 }));
 
 router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const { uid } = req.user!;
+  const { uid, email, displayName, photoURL } = req.user!;
   const { projectId } = req.params;
   const bodySchema = z.object({ content: z.string().min(1) });
   const { content } = bodySchema.parse(req.body);
@@ -1643,25 +2046,41 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
     }
   }
 
-    await firestore.runTransaction(async (transaction) => {
-      artifacts.forEach((artifact) => {
-        const docRef = firestore.collection('artifacts').doc(artifact.id);
-        transaction.set(docRef, {
-          ownerId: uid,
-          projectId: artifact.projectId,
-          type: artifact.type,
-          title: artifact.title,
-          summary: artifact.summary,
-          status: artifact.status,
-          tags: artifact.tags,
-          relations: artifact.relations,
-          data: artifact.data,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
+    const userRef = firestore.collection('users').doc(uid);
+    const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
+    const storageDelta = artifacts.reduce(
+      (sum, artifact) => sum + calculateArtifactStorageBytes(artifactToStoragePayload(artifact)),
+      0,
+    );
+
+    try {
+      await firestore.runTransaction(async (transaction) => {
+        await applyStorageDelta(transaction, userRef, defaults, storageDelta);
+
+        artifacts.forEach((artifact) => {
+          const docRef = firestore.collection('artifacts').doc(artifact.id);
+          transaction.set(docRef, {
+            ownerId: uid,
+            projectId: artifact.projectId,
+            type: artifact.type,
+            title: artifact.title,
+            summary: artifact.summary,
+            status: artifact.status,
+            tags: artifact.tags,
+            relations: artifact.relations,
+            data: artifact.data,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          persisted.push({ ...artifact });
         });
-        persisted.push({ ...artifact });
       });
-    });
+    } catch (storageError) {
+      if (respondWithStorageLimitError(res, storageError)) {
+        return;
+      }
+      throw storageError;
+    }
 
     res.json({ artifacts: persisted });
   } catch (e) {
