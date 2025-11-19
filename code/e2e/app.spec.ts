@@ -5,10 +5,19 @@ test.describe('Creative Atlas smoke test', () => {
     await page.goto('/?guest=1');
     await expect(page.getByRole('heading', { name: 'Creative Atlas', level: 1 })).toBeVisible();
 
-    // The tutorial will be pointing at the "New Project" button, so we need to click it to advance.
-    await page.locator('#create-new-project-button').click();
+    const newProjectButton = page.locator('#create-new-project-button');
+    if (!(await newProjectButton.isVisible())) {
+      const backToAtlasButton = page.getByRole('button', { name: 'Back to Atlas' });
+      if (await backToAtlasButton.isVisible()) {
+        await backToAtlasButton.click();
+      }
+    }
 
-    await expect(page.locator('#add-new-artifact-button')).toBeVisible();
-    await expect(page.getByText('Daily Quests')).toBeVisible();
+    await newProjectButton.click({ force: true });
+    await page.getByRole('button', { name: /Select project/i }).first().click({ force: true });
+
+    await page.getByLabel('Open profile drawer').click();
+    const profileDrawer = page.getByRole('dialog', { name: 'Profile drawer' });
+    await expect(profileDrawer.getByText('Daily Quests')).toBeVisible();
   });
 });

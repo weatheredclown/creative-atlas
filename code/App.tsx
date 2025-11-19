@@ -325,6 +325,14 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (isGuestMode) {
+      if (selectedProjectId !== null) {
+        setSelectedProjectId(null);
+      }
+      shouldAutoSelectProjectRef.current = true;
+      return;
+    }
+
     if (pendingProjectSelectionRef.current && projectIdFromUrl !== pendingProjectSelectionRef.current) {
       return;
     }
@@ -356,7 +364,7 @@ export default function App() {
     }
 
     shouldAutoSelectProjectRef.current = true;
-  }, [projectIdFromUrl, projects, selectedProjectId]);
+  }, [projectIdFromUrl, projects, selectedProjectId, isGuestMode]);
 
   useEffect(() => {
     if (!projectIdFromUrl) {

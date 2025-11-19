@@ -213,3 +213,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-25: Rebuilt the ProjectHero layout with the Dashboard/Overview surface and quick-fact modal; no roadmap bullets impacted.
 - 2025-11-25: Added a workspace Zen Mode toggle and limited FamilyTreeTools to character-focused contexts, touching the "Character arc tooling (family tree + graph)" roadmap item.
 - 2025-11-26: Fixed the merged workspace view regressions (ProjectHero duplication, WorkspaceContainer state wiring) and ensured FamilyTreeTools gating + artifact navigator registration so the "Project workspace refactor follow-ups" workstream stays unblocked.
+- 2025-11-27: Backported guest-mode onboarding/test fixes from PR #453 (project auto-select guard, Playwright onboarding stabilizers, preview env defaults); no roadmap bullets impacted.
