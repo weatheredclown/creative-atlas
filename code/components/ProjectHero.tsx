@@ -48,6 +48,7 @@ interface ProjectHeroProps {
   onSelectQuickFact: (id: string) => void;
   level: number;
   xpProgress: number;
+  isZenMode?: boolean;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
   visibilitySettings: ProjectVisibilitySettings;
@@ -212,6 +213,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   onSelectQuickFact,
   level,
   xpProgress,
+  isZenMode = false,
   onUpdateProject,
   onDeleteProject,
   visibilitySettings,
@@ -771,6 +773,25 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
               <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(project.status)}`}>
                 {statusLabel}
               </span>
+              {!isZenMode ? (
+                <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                  Level {level} · {xpProgress} XP toward next
+                </span>
+              ) : null}
+              {project.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
+                  {project.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="rounded-full border border-slate-600/60 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-300">
+                      #{tag}
+                    </span>
+                  ))}
+                  {project.tags.length > 3 && (
+                    <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-slate-400">
+                      +{project.tags.length - 3} more
+                    </span>
+                  )}
+                </div>
+              )}
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Status
                 <select
@@ -808,9 +829,11 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
               {project.summary ? (
                 <p className="max-w-2xl text-sm text-slate-300 sm:text-base">{project.summary}</p>
               ) : null}
-              <p className="text-sm text-slate-400">
-                {formatNumber(stats.totalArtifacts)} artifacts · {formatNumber(stats.wikiWordCount)} wiki words · Level {level} ({xpProgress} XP to next)
-              </p>
+              {!isZenMode ? (
+                <p className="text-sm text-slate-400">
+                  {formatNumber(stats.totalArtifacts)} artifacts · {formatNumber(stats.wikiWordCount)} wiki words · Level {level} ({xpProgress} XP to next)
+                </p>
+              ) : null}
               <p className="text-[11px] font-mono text-slate-500">ID: {project.id}</p>
             </div>
           </div>
