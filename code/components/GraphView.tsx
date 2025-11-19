@@ -74,6 +74,8 @@ const NODE_HEIGHT = 96;
 type StoredNodePositions = Record<string, { x: number; y: number }>;
 
 const STORAGE_PREFIX = 'creative-atlas:graph-layout:';
+const STAGE_FILTER_STORAGE_PREFIX = 'creative-atlas:arc-stage-filter:';
+const VALID_STAGE_IDS = new Set<ArcStageId>(ARC_STAGE_CONFIG.map((stage) => stage.id));
 
 const loadStoredPositions = (storageKey: string): StoredNodePositions => {
   if (typeof window === 'undefined') {
@@ -103,6 +105,35 @@ const loadStoredPositions = (storageKey: string): StoredNodePositions => {
   } catch (error) {
     console.warn('Failed to load persisted graph layout positions.', error);
     return {};
+  }
+};
+
+const loadStageFilter = (storageKey: string): 'all' | ArcStageId => {
+  if (typeof window === 'undefined') {
+    return 'all';
+  }
+
+  try {
+    const persistedValue = window.localStorage.getItem(storageKey);
+    if (persistedValue && VALID_STAGE_IDS.has(persistedValue as ArcStageId)) {
+      return persistedValue as ArcStageId;
+    }
+  } catch (error) {
+    console.warn('Failed to load persisted arc stage filter selection.', error);
+  }
+
+  return 'all';
+};
+
+const persistStageFilter = (storageKey: string, stageFilter: 'all' | ArcStageId) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, stageFilter);
+  } catch (error) {
+    console.warn('Failed to persist arc stage filter selection.', error);
   }
 };
 
@@ -245,6 +276,10 @@ const GraphView: React.FC<GraphViewProps> = ({
   }, [artifacts, characterProgressionMap]);
 
   const storageKey = useMemo(() => `${STORAGE_PREFIX}${projectId}`, [projectId]);
+  const stageFilterStorageKey = useMemo(() => `${STAGE_FILTER_STORAGE_PREFIX}${projectId}`, [projectId]);
+  const [stageFilter, setStageFilter] = useState<'all' | ArcStageId>(() =>
+    loadStageFilter(stageFilterStorageKey),
+  );
   const totalTrackedStages = useMemo(
     () => stageCounts.reduce((accumulator, summary) => accumulator + summary.count, 0),
     [stageCounts],
@@ -258,7 +293,14 @@ const GraphView: React.FC<GraphViewProps> = ({
   const [storedPositions, setStoredPositions] = useState<StoredNodePositions>(() => loadStoredPositions(storageKey));
   const [nodes, setNodes, onNodesStateChange] = useNodesState(layoutNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
-  const [stageFilter, setStageFilter] = useState<'all' | ArcStageId>('all');
+
+  useEffect(() => {
+    setStageFilter(loadStageFilter(stageFilterStorageKey));
+  }, [stageFilterStorageKey]);
+
+  useEffect(() => {
+    persistStageFilter(stageFilterStorageKey, stageFilter);
+  }, [stageFilter, stageFilterStorageKey]);
 
   useEffect(() => {
     setStoredPositions(loadStoredPositions(storageKey));
