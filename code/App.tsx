@@ -348,9 +348,14 @@ export default function App() {
 
     const hasSelectedProject = selectedProjectId && projects.some((project) => project.id === selectedProjectId);
     if (!hasSelectedProject) {
+      if (isGuestMode) {
+        setSelectedProjectId(null);
+        return;
+      }
+
       setSelectedProjectId(projects[0].id);
     }
-  }, [projectIdFromUrl, projects, selectedProjectId]);
+  }, [isGuestMode, projectIdFromUrl, projects, selectedProjectId]);
 
   useEffect(() => {
     if (!projectIdFromUrl) {
