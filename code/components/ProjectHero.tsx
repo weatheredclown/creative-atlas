@@ -768,6 +768,23 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_55%)]" aria-hidden />
         <div className="relative space-y-6">
+          {project.nanoBananaImage ? (
+            <div className="relative overflow-hidden rounded-2xl border border-amber-400/20 bg-slate-900/70">
+              <img
+                src={project.nanoBananaImage}
+                alt={`${project.title} Creative Atlas generative art preview`}
+                className="h-48 w-full object-cover sm:h-60"
+              />
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"
+                aria-hidden="true"
+              />
+              <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
+                <SparklesIcon className="h-3.5 w-3.5 text-amber-300" />
+                Creative Atlas generative art
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(project.status)}`}>
