@@ -402,6 +402,17 @@ export default function App() {
         return;
       }
 
+      // When the user taps "Back to Atlas" we clear the selection and the URL param in
+      // quick succession. React Router can update the search params before React applies
+      // the pending `setSelectedProjectId(null)` state, which would otherwise cause this
+      // effect to re-write the stale project ID back into the URL and immediately
+      // re-select the project. Respect the `shouldAutoSelectProjectRef` flag so we skip
+      // syncing stale selections during that transition and only resume URL syncing once
+      // the user explicitly selects another project.
+      if (!shouldAutoSelectProjectRef.current) {
+        return;
+      }
+
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set('projectId', selectedProjectId);
       setSearchParams(nextParams, { replace: true });
