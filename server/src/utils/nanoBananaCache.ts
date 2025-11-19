@@ -21,6 +21,11 @@ const buildProjectObjectName = (projectId: string): string =>
 const buildPublicUrl = (objectName: string): string =>
   `https://storage.googleapis.com/${bucketName!}/${encodeURI(objectName)}`;
 
+const appendCacheBustParam = (url: string): string => {
+  const version = Date.now().toString(36);
+  return `${url}?v=${version}`;
+};
+
 export const isNanoBananaCacheEnabled = (): boolean => Boolean(bucketName && storage);
 
 export const isNanoBananaStorageEnabled = (): boolean => isNanoBananaCacheEnabled();
@@ -61,7 +66,7 @@ export const cacheNanoBananaImage = async (
     },
   });
 
-  return buildPublicUrl(objectName);
+  return appendCacheBustParam(buildPublicUrl(objectName));
 };
 
 export const deleteCachedNanoBananaImage = async (shareId: string): Promise<void> => {
@@ -101,5 +106,5 @@ export const persistNanoBananaImage = async (
     },
   });
 
-  return buildPublicUrl(objectName);
+  return appendCacheBustParam(buildPublicUrl(objectName));
 };
