@@ -55,6 +55,7 @@ import {
 } from '../utils/nanoBananaCache.js';
 import { getGeminiClient } from '../utils/geminiClient.js';
 import { buildNanoBananaPrompt, NANO_BANANA_ART_MODE_VALUES } from '../utils/nanoBananaPrompt.js';
+import { runTransactionWithRetry } from '../utils/firestore.js';
 import {
   enforceNanoBananaUsageLimits,
   NanoBananaLimitError,
@@ -1117,7 +1118,7 @@ router.patch('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => 
   const docRef = firestore.collection('users').doc(uid);
   const parsed = profileUpdateSchema.parse(req.body);
 
-  await firestore.runTransaction(async (transaction) => {
+  await runTransactionWithRetry(firestore, async (transaction) => {
     const snapshot = await transaction.get(docRef);
     const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
@@ -1205,7 +1206,7 @@ router.post('/profile/xp', asyncHandler(async (req: AuthenticatedRequest, res) =
   const { amount } = xpUpdateSchema.parse(req.body);
   const docRef = firestore.collection('users').doc(uid);
 
-  await firestore.runTransaction(async (transaction) => {
+  await runTransactionWithRetry(firestore, async (transaction) => {
     const snapshot = await transaction.get(docRef);
     const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
     let currentProfile: UserProfile;
@@ -1346,7 +1347,7 @@ router.post('/projects', asyncHandler(async (req: AuthenticatedRequest, res) => 
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       if (parsed.id) {
         const existing = await transaction.get(docRef);
         if (existing.exists) {
@@ -1617,7 +1618,7 @@ router.patch('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       const snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
         throw new Error(ERROR_PROJECT_NOT_FOUND);
@@ -1703,7 +1704,7 @@ router.delete('/projects/:id', asyncHandler(async (req: AuthenticatedRequest, re
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       const snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
         throw new Error(ERROR_PROJECT_NOT_FOUND);
@@ -1844,7 +1845,7 @@ router.post('/projects/:projectId/artifacts', asyncHandler(async (req: Authentic
   );
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       await applyStorageDelta(transaction, userRef, defaults, totalStorageDelta);
 
       for (const { artifact, ref: docRef } of artifactEntries) {
@@ -1883,7 +1884,7 @@ router.patch('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedReq
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       const snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
         throw new Error(ERROR_ARTIFACT_NOT_FOUND);
@@ -1961,7 +1962,7 @@ router.delete('/artifacts/:artifactId', asyncHandler(async (req: AuthenticatedRe
   const defaults = createDefaultProfile(uid, email, displayName, photoURL, 0);
 
   try {
-    await firestore.runTransaction(async (transaction) => {
+    await runTransactionWithRetry(firestore, async (transaction) => {
       const snapshot = await transaction.get(docRef);
       if (!snapshot.exists) {
         throw new Error(ERROR_ARTIFACT_NOT_FOUND);
@@ -2054,7 +2055,7 @@ router.post('/projects/:projectId/import-artifacts', asyncHandler(async (req: Au
     );
 
     try {
-      await firestore.runTransaction(async (transaction) => {
+      await runTransactionWithRetry(firestore, async (transaction) => {
         await applyStorageDelta(transaction, userRef, defaults, storageDelta);
 
         artifacts.forEach((artifact) => {

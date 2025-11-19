@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { firestore } from '../firebaseAdmin.js';
+import { runTransactionWithRetry } from './firestore.js';
 
 const NANO_BANANA_USAGE_COLLECTION = 'nanoBananaUsage';
 
@@ -41,7 +42,7 @@ export const enforceNanoBananaUsageLimits = async (
   const today = toDailyKey();
   const docRef = firestore.collection(NANO_BANANA_USAGE_COLLECTION).doc(userId);
 
-  return firestore.runTransaction(async (transaction) => {
+  return runTransactionWithRetry(firestore, async (transaction) => {
     const snapshot = await transaction.get(docRef);
     const data = (snapshot.exists ? snapshot.data() : {}) as NanoBananaUsageDoc;
 
