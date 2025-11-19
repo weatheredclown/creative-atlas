@@ -123,7 +123,6 @@ export default function App() {
   const ghostAgentRef = useRef<GhostAgentHandle>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdFromUrl = searchParams.get('projectId');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
@@ -146,9 +145,10 @@ export default function App() {
   const [isZenMode, setIsZenMode] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId],
+    () => (projectIdFromUrl ? projects.find((project) => project.id === projectIdFromUrl) ?? null : null),
+    [projects, projectIdFromUrl],
   );
+  const selectedProjectId = selectedProject?.id ?? null;
 
   useEffect(() => {
     if (!profile) {
@@ -311,9 +311,6 @@ export default function App() {
   );
 
   const isAutoLoadingProjectsRef = useRef(false);
-  const pendingProjectSelectionRef = useRef<string | null>(null);
-  const shouldAutoSelectProjectRef = useRef(true);
-  const isClearingProjectSelectionRef = useRef(false);
 
   const handleMemoryStatusChange = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -326,54 +323,14 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (isGuestMode) {
-      if (selectedProjectId !== null) {
-        setSelectedProjectId(null);
-      }
-      shouldAutoSelectProjectRef.current = true;
+    if (!isGuestMode || !projectIdFromUrl) {
       return;
     }
 
-    if (pendingProjectSelectionRef.current && projectIdFromUrl !== pendingProjectSelectionRef.current) {
-      return;
-    }
-
-    if (pendingProjectSelectionRef.current === projectIdFromUrl) {
-      pendingProjectSelectionRef.current = null;
-    }
-
-    if (!projects.length) {
-      isClearingProjectSelectionRef.current = false;
-      setSelectedProjectId(null);
-      return;
-    }
-
-    if (projectIdFromUrl) {
-      if (isClearingProjectSelectionRef.current) {
-        return;
-      }
-      if (projects.some((project) => project.id === projectIdFromUrl)) {
-        if (projectIdFromUrl !== selectedProjectId) {
-          setSelectedProjectId(projectIdFromUrl);
-        }
-      }
-      return;
-    }
-
-    if (isClearingProjectSelectionRef.current) {
-      isClearingProjectSelectionRef.current = false;
-    }
-
-    const hasSelectedProject = selectedProjectId && projects.some((project) => project.id === selectedProjectId);
-    if (!hasSelectedProject) {
-      if (shouldAutoSelectProjectRef.current) {
-        setSelectedProjectId(projects[0].id);
-      }
-      return;
-    }
-
-    shouldAutoSelectProjectRef.current = true;
-  }, [projectIdFromUrl, projects, selectedProjectId, isGuestMode]);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('projectId');
+    setSearchParams(nextParams, { replace: true });
+  }, [isGuestMode, projectIdFromUrl, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!projectIdFromUrl) {
@@ -404,38 +361,22 @@ export default function App() {
   }, [canLoadMoreProjects, loadMoreProjects, projectIdFromUrl, projects]);
 
   useEffect(() => {
-    const currentProjectId = searchParams.get('projectId');
-
-    if (selectedProjectId) {
-      if (currentProjectId === selectedProjectId) {
-        return;
-      }
-
-      // When the user taps "Back to Atlas" we clear the selection and the URL param in
-      // quick succession. React Router can update the search params before React applies
-      // the pending `setSelectedProjectId(null)` state, which would otherwise cause this
-      // effect to re-write the stale project ID back into the URL and immediately
-      // re-select the project. Respect the `shouldAutoSelectProjectRef` flag so we skip
-      // syncing stale selections during that transition and only resume URL syncing once
-      // the user explicitly selects another project.
-      if (!shouldAutoSelectProjectRef.current) {
-        return;
-      }
-
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.set('projectId', selectedProjectId);
-      setSearchParams(nextParams, { replace: true });
+    if (!projectIdFromUrl) {
       return;
     }
 
-    if (!currentProjectId) {
+    if (projects.some((project) => project.id === projectIdFromUrl)) {
+      return;
+    }
+
+    if (isLoadingMoreProjects || canLoadMoreProjects) {
       return;
     }
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
     setSearchParams(nextParams, { replace: true });
-  }, [searchParams, selectedProjectId, setSearchParams]);
+  }, [canLoadMoreProjects, isLoadingMoreProjects, projectIdFromUrl, projects, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -452,6 +393,7 @@ export default function App() {
       };
     });
   }, [selectedProjectId]);
+  
 
   const updateProjectActivity = useCallback((projectId: string, updates: Partial<ProjectActivity>) => {
     setProjectActivityLog((prev) => {
@@ -554,20 +496,16 @@ export default function App() {
     }));
   }, [selectedProjectId]);
 
-  const handleSelectProject = (id: string) => {
-    pendingProjectSelectionRef.current = id;
-    shouldAutoSelectProjectRef.current = true;
-    setSelectedProjectId(id);
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('projectId', id);
-    setSearchParams(nextParams, { replace: true });
-  };
+  const handleSelectProject = useCallback(
+    (id: string) => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('projectId', id);
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const handleReturnToAtlas = useCallback(() => {
-    shouldAutoSelectProjectRef.current = false;
-    isClearingProjectSelectionRef.current = true;
-    setSelectedProjectId(null);
     setArtifactNavigator(null);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
@@ -600,8 +538,6 @@ export default function App() {
       }
       void addXp(5);
       setIsCreateProjectModalOpen(false);
-      pendingProjectSelectionRef.current = created.id;
-      setSelectedProjectId(created.id);
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set('projectId', created.id);
       setSearchParams(nextParams, { replace: true });
@@ -654,10 +590,13 @@ export default function App() {
         delete next[projectId];
         return next;
       });
-      pendingProjectSelectionRef.current = null;
-      setSelectedProjectId((current) => (current === projectId ? null : current));
+      if (projectIdFromUrl === projectId) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('projectId');
+        setSearchParams(nextParams, { replace: true });
+      }
     },
-    [deleteProject, showToast],
+    [deleteProject, projectIdFromUrl, searchParams, setSearchParams, showToast],
   );
 
   const handleGitHubArtifactsImported = useCallback(
@@ -666,7 +605,7 @@ export default function App() {
         return;
       }
 
-      const projectId = newArtifacts[0]?.projectId ?? selectedProjectId;
+      const projectId = newArtifacts[0]?.projectId ?? selectedProjectId ?? projectIdFromUrl;
       if (!projectId) {
         return;
       }
@@ -687,7 +626,7 @@ export default function App() {
 
       updateProjectActivity(projectId, { githubImported: true });
     },
-    [createArtifactsBulk, selectedProjectId, updateProjectActivity],
+    [createArtifactsBulk, projectIdFromUrl, selectedProjectId, updateProjectActivity],
   );
 
   const handleResetProjectFilters = useCallback(() => {
