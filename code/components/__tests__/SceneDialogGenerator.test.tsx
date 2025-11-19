@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 
 import SceneDialogGenerator from '../SceneDialogGenerator';
 import { ArtifactType, ProjectStatus, type Artifact, type SceneArtifactData } from '../../types';
-import { generateSceneDialogue } from '../../services/geminiService';
+import { generateText } from '../../services/aiService';
 
-vi.mock('../../services/geminiService', () => ({
-  generateSceneDialogue: vi.fn(),
+vi.mock('../../services/aiService', () => ({
+  generateText: vi.fn(),
 }));
 
-const mockGenerateSceneDialogue = generateSceneDialogue as unknown as Mock;
+const mockGenerateText = generateText as unknown as Mock;
 
 const createCharacterArtifact = (id: string, title: string, summary: string): Artifact => ({
   id,
@@ -74,14 +74,20 @@ describe('SceneDialogGenerator', () => {
   });
 
   it('calls Atlas Intelligence and persists generated dialogue', async () => {
-    mockGenerateSceneDialogue.mockResolvedValue({
-      synopsis: 'The rivals settle on a fragile truce.',
-      beats: ['Set the terms', 'Reveal the hidden blade'],
-      dialogue: [
-        { speaker: 'Avery', line: 'We dance on these rooftops out of necessity.', direction: 'smirks' },
-        { speaker: 'Jules', line: 'Then let us finish the waltz without blood.' },
-      ],
-    });
+    mockGenerateText.mockResolvedValue(
+      JSON.stringify({
+        synopsis: 'The rivals settle on a fragile truce.',
+        beats: ['Set the terms', 'Reveal the hidden blade'],
+        dialogue: [
+          {
+            speaker: 'Avery',
+            line: 'We dance on these rooftops out of necessity.',
+            direction: 'smirks',
+          },
+          { speaker: 'Jules', line: 'Then let us finish the waltz without blood.' },
+        ],
+      }),
+    );
 
     const onUpdateArtifactData = vi.fn();
     const addXp = vi.fn();
@@ -106,16 +112,13 @@ describe('SceneDialogGenerator', () => {
     fireEvent.click(screen.getByRole('button', { name: /forge dialogue/i }));
 
     await waitFor(() => {
-      expect(generateSceneDialogue).toHaveBeenCalled();
+      expect(generateText).toHaveBeenCalled();
     });
 
-    expect(generateSceneDialogue).toHaveBeenCalledWith(
+    expect(generateText).toHaveBeenCalledWith(
+      expect.stringContaining('Avery corners Jules on the glassy roofline.'),
       expect.objectContaining({
-        scenePrompt: 'Avery corners Jules on the glassy roofline.',
-        characters: expect.arrayContaining([
-          expect.objectContaining({ id: 'char-avery', name: 'Avery' }),
-          expect.objectContaining({ id: 'char-jules', name: 'Jules' }),
-        ]),
+        responseMimeType: 'application/json',
       }),
     );
 
