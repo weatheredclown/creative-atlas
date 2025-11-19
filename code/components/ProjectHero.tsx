@@ -48,6 +48,7 @@ interface ProjectHeroProps {
   onSelectQuickFact: (id: string) => void;
   level: number;
   xpProgress: number;
+  isZenMode?: boolean;
   onUpdateProject: (projectId: string, updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => Promise<void> | void;
   visibilitySettings: ProjectVisibilitySettings;
@@ -229,6 +230,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
   onSelectQuickFact,
   level,
   xpProgress,
+  isZenMode = false,
   onUpdateProject,
   onDeleteProject,
   visibilitySettings,
@@ -760,9 +762,11 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(project.status)}`}>
                   {statusLabel}
                 </span>
-                <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  Level {level} · {xpProgress} XP toward next
-                </span>
+                {!isZenMode ? (
+                  <span className="rounded-full border border-slate-600/60 bg-slate-900/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    Level {level} · {xpProgress} XP toward next
+                  </span>
+                ) : null}
                 {project.tags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     {project.tags.slice(0, 3).map((tag) => (
@@ -884,16 +888,18 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <StatPill label="Artifacts" value={stats.totalArtifacts} tone="accent" />
-            <StatPill label="Completed tasks" value={stats.completedTasks} />
-            <StatPill label="Relationships" value={stats.relationCount} />
-            <StatPill label="Distinct tags" value={stats.uniqueTagCount} />
-            <StatPill label="Narrative pieces" value={stats.narrativeCount} />
-            <StatPill label="Wiki words" value={stats.wikiWordCount} />
-            <StatPill label="Lexemes" value={stats.lexemeCount} />
-            <StatPill label="Quick facts" value={stats.quickFactCount} />
-          </div>
+          {!isZenMode ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <StatPill label="Artifacts" value={stats.totalArtifacts} tone="accent" />
+              <StatPill label="Completed tasks" value={stats.completedTasks} />
+              <StatPill label="Relationships" value={stats.relationCount} />
+              <StatPill label="Distinct tags" value={stats.uniqueTagCount} />
+              <StatPill label="Narrative pieces" value={stats.narrativeCount} />
+              <StatPill label="Wiki words" value={stats.wikiWordCount} />
+              <StatPill label="Lexemes" value={stats.lexemeCount} />
+              <StatPill label="Quick facts" value={stats.quickFactCount} />
+            </div>
+          ) : null}
         </div>
 
         {isSettingsOpen ? (

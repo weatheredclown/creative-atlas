@@ -44,6 +44,7 @@ interface WorkspaceActivityPanelProps {
   trackingGroup: WorkspaceFeatureGroup;
   distributionGroup: WorkspaceFeatureGroup;
   visibilitySettings: ProjectVisibilitySettings;
+  showFamilyTreeTools: boolean;
   project: Project;
   profile: UserProfile;
   projectArtifacts: Artifact[];
@@ -82,6 +83,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
   trackingGroup,
   distributionGroup,
   visibilitySettings,
+  showFamilyTreeTools,
   project,
   profile,
   projectArtifacts,
@@ -261,7 +263,7 @@ const WorkspaceActivityPanel: React.FC<WorkspaceActivityPanelProps> = ({
           />
         ) : null}
         {visibilitySettings.narrativePipeline ? <NarrativePipelineBoard artifacts={projectArtifacts} /> : null}
-        {visibilitySettings.familyTreeTools ? (
+        {visibilitySettings.familyTreeTools && showFamilyTreeTools ? (
           <FamilyTreeTools
             artifacts={projectArtifacts}
             onSelectCharacter={onSelectArtifact}

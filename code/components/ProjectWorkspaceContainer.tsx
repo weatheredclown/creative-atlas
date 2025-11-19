@@ -48,6 +48,7 @@ interface ProjectWorkspaceContainerProps {
   allArtifacts: Artifact[];
   level: number;
   xpProgress: number;
+  isZenMode: boolean;
   selectedArtifactId: string | null;
   onSelectArtifact: (artifactId: string | null) => void;
   onOpenCreateArtifactModal: (options?: { defaultType?: ArtifactType | null; sourceId?: string | null }) => void;
@@ -96,6 +97,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   allArtifacts,
   level,
   xpProgress,
+  isZenMode,
   selectedArtifactId,
   onSelectArtifact,
   onOpenCreateArtifactModal,
@@ -255,6 +257,9 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     [projectArtifacts, selectedArtifactId],
   );
 
+  const canShowFamilyTreeTools =
+    artifactTypeFilter === ArtifactType.Character || selectedArtifact?.type === ArtifactType.Character;
+
   const handleResetFilters = useCallback(() => {
     resetFilters();
   }, [resetFilters]);
@@ -314,6 +319,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
             totalQuickFacts: quickFacts.length,
             level,
             xpProgress,
+            isZenMode,
             statusLabel: formatStatusLabel(project.status),
             showProjectHero: visibilitySettings.projectHero,
             showQuickFactsPanel: visibilitySettings.quickFactsPanel,
@@ -378,6 +384,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
           trackingGroup={PROJECT_FEATURE_GROUPS.tracking}
           distributionGroup={PROJECT_FEATURE_GROUPS.distribution}
           visibilitySettings={visibilitySettings}
+          showFamilyTreeTools={canShowFamilyTreeTools}
           project={project}
           profile={profile}
           projectArtifacts={projectArtifacts}

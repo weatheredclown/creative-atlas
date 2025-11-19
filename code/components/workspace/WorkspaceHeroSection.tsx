@@ -18,6 +18,7 @@ interface WorkspaceHeroSectionProps {
   totalQuickFacts: number;
   level: number;
   xpProgress: number;
+  isZenMode?: boolean;
   statusLabel: string;
   showProjectHero: boolean;
   showQuickFactsPanel: boolean;
@@ -39,6 +40,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
   totalQuickFacts,
   level,
   xpProgress,
+  isZenMode = false,
   statusLabel,
   showProjectHero,
   showQuickFactsPanel,
@@ -66,6 +68,7 @@ const WorkspaceHeroSection: React.FC<WorkspaceHeroSectionProps> = ({
         onSelectQuickFact={(artifactId) => onSelectArtifact(artifactId)}
         level={level}
         xpProgress={xpProgress}
+        isZenMode={isZenMode}
         onUpdateProject={onUpdateProject}
         onDeleteProject={onDeleteProject}
         visibilitySettings={visibilitySettings}

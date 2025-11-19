@@ -56,6 +56,7 @@ interface ProjectWorkspaceProps {
   allArtifacts: Artifact[];
   level: number;
   xpProgress: number;
+  isZenMode: boolean;
   projectConversations: MemorySyncConversation[];
   projectNpcRuns: NpcMemoryRun[];
   onMemoryStatusChange: (conversationId: string, suggestionId: string, status: MemorySyncStatus) => void;
@@ -92,6 +93,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   allArtifacts,
   level,
   xpProgress,
+  isZenMode,
   projectConversations,
   projectNpcRuns,
   onMemoryStatusChange,
@@ -766,6 +768,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         allArtifacts={allArtifacts}
         level={level}
         xpProgress={xpProgress}
+        isZenMode={isZenMode}
         selectedArtifactId={selectedArtifactId}
         onSelectArtifact={setSelectedArtifactId}
         onOpenCreateArtifactModal={openCreateArtifactModal}

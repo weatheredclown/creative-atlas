@@ -209,3 +209,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-17: Merged the project overview controls into the workspace hero, refreshed visibility descriptions, and kept roadmap bullets unchanged.
 - 2025-11-17: Reduced spacing between workspace hero action rows in `ProjectHero.tsx`; no roadmap bullets impacted.
 - 2025-11-24: Seeded a Tamenzut guest thumbnail so ?guest=1 screenshots better reflect a typical project; no roadmap bullets impacted.
+- 2025-11-25: Added a workspace Zen Mode toggle and limited FamilyTreeTools to character-focused contexts, touching the "Character arc tooling (family tree + graph)" roadmap item.

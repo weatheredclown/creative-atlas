@@ -139,6 +139,7 @@ export default function App() {
     const progress = loadTutorialProgress();
     return !progress.hasCompleted && !progress.wasDismissed;
   });
+  const [isZenMode, setIsZenMode] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -762,6 +763,10 @@ export default function App() {
     setIsTutorialVisible(true);
   }, []);
 
+  const handleToggleZenMode = useCallback(() => {
+    setIsZenMode((previous) => !previous);
+  }, []);
+
   if (!profile) {
     return <DashboardShellPlaceholder loading={loading} />;
   }
@@ -794,6 +799,8 @@ export default function App() {
         level={level}
         onSignOut={signOutUser}
         onStartTutorial={handleStartTutorial}
+        isZenMode={isZenMode}
+        onToggleZenMode={handleToggleZenMode}
         adminAction={
           <div className="flex items-center gap-2">
             <button
@@ -812,36 +819,41 @@ export default function App() {
           <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
-      <main id="main-content" className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 sm:p-8">
-        <WorkspaceSidebar
-          profile={profile}
-          level={level}
-          isViewingOwnWorkspace={isViewingOwnWorkspace}
-          onUpdateProfile={handleProfileUpdate}
-          onOpenCreateProjectModal={handleOpenCreateProjectModal}
-          projectSearchTerm={projectSearchTerm}
-          onProjectSearchTermChange={handleProjectSearchTermChange}
-          projectStatusFilter={projectStatusFilter}
-          onProjectStatusFilterChange={handleProjectStatusFilterChange}
-          hasProjectFilters={hasProjectFilters}
-          onResetProjectFilters={handleResetProjectFilters}
-          visibleProjects={visibleProjects}
-          allProjects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelectProject={handleSelectProject}
-          selectedProjectHiddenByFilters={selectedProjectHiddenBySidebarFilters}
-          canLoadMoreProjects={canLoadMoreProjects}
-          isLoadingMoreProjects={isLoadingMoreProjects}
-          onLoadMoreProjects={handleLoadMoreProjects}
-          quests={todaysDailyQuests}
-          questlines={questlines}
-          claimedQuestlines={profile.questlinesClaimed}
-          onClaimQuestline={handleQuestlineClaim}
-          achievements={achievements}
-          artifacts={artifacts}
-        />
+      <main
+        id="main-content"
+        className={`flex-grow grid grid-cols-1 gap-8 p-4 sm:p-8 ${isZenMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}
+      >
+        {!isZenMode ? (
+          <WorkspaceSidebar
+            profile={profile}
+            level={level}
+            isViewingOwnWorkspace={isViewingOwnWorkspace}
+            onUpdateProfile={handleProfileUpdate}
+            onOpenCreateProjectModal={handleOpenCreateProjectModal}
+            projectSearchTerm={projectSearchTerm}
+            onProjectSearchTermChange={handleProjectSearchTermChange}
+            projectStatusFilter={projectStatusFilter}
+            onProjectStatusFilterChange={handleProjectStatusFilterChange}
+            hasProjectFilters={hasProjectFilters}
+            onResetProjectFilters={handleResetProjectFilters}
+            visibleProjects={visibleProjects}
+            allProjects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={handleSelectProject}
+            selectedProjectHiddenByFilters={selectedProjectHiddenBySidebarFilters}
+            canLoadMoreProjects={canLoadMoreProjects}
+            isLoadingMoreProjects={isLoadingMoreProjects}
+            onLoadMoreProjects={handleLoadMoreProjects}
+            quests={todaysDailyQuests}
+            questlines={questlines}
+            claimedQuestlines={profile.questlinesClaimed}
+            onClaimQuestline={handleQuestlineClaim}
+            achievements={achievements}
+            artifacts={artifacts}
+          />
+        ) : null}
 
-        <section className="lg:col-span-9 space-y-10">
+        <section className={`${isZenMode ? 'lg:col-span-1' : 'lg:col-span-9'} space-y-10`}>
           {selectedProject ? (
             <ProjectWorkspace
               profile={profile}
@@ -851,6 +863,7 @@ export default function App() {
               allArtifacts={artifacts}
               level={level}
               xpProgress={xpProgress}
+              isZenMode={isZenMode}
               projectConversations={projectConversations}
               projectNpcRuns={projectNpcRuns}
               onMemoryStatusChange={handleMemoryStatusChange}
