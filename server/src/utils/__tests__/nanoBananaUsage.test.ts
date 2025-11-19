@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enforceNanoBananaUsageLimits, NanoBananaLimitError } from '../nanoBananaUsage.js';
 
-const { mockDocStore, mockTransaction, mockCollection, runTransaction } = vi.hoisted(() => {
+const { mockDocStore, mockTransaction, mockCollection, runTransaction, mockRunTransactionWithRetry } = vi.hoisted(() => {
   const store: Record<string, Record<string, unknown>> = {};
   const transaction = {
     get: vi.fn(async (docRef: { id: string }) => {
@@ -32,11 +32,19 @@ const { mockDocStore, mockTransaction, mockCollection, runTransaction } = vi.hoi
 
   const run = vi.fn(async (handler: (tx: typeof transaction) => Promise<unknown>) => handler(transaction));
 
+  const runWithRetry = vi.fn(
+    async (
+      _firestore: unknown,
+      handler: (tx: typeof transaction) => Promise<unknown>,
+    ) => handler(transaction),
+  );
+
   return {
     mockDocStore: store,
     mockTransaction: transaction,
     mockCollection: collection,
     runTransaction: run,
+    mockRunTransactionWithRetry: runWithRetry,
   };
 });
 
@@ -45,6 +53,10 @@ vi.mock('../../firebaseAdmin.js', () => ({
     collection: mockCollection,
     runTransaction,
   },
+}));
+
+vi.mock('../firestore.js', () => ({
+  runTransactionWithRetry: mockRunTransactionWithRetry,
 }));
 
 describe('enforceNanoBananaUsageLimits', () => {
@@ -56,6 +68,7 @@ describe('enforceNanoBananaUsageLimits', () => {
     mockTransaction.set.mockClear();
     mockCollection.mockClear();
     runTransaction.mockClear();
+    mockRunTransactionWithRetry.mockClear();
   });
 
   afterEach(() => {
