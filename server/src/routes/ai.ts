@@ -74,6 +74,9 @@ const generateRequestSchema = z.object({
   config: generationConfigSchema.optional(),
 });
 
+const MODEL_TOKEN_LIMIT = 8192;
+const AVERAGE_CHARS_PER_TOKEN = 4;
+const DEFAULT_SCENE_DIALOGUE_MAX_OUTPUT_TOKENS = 1536;
 const MAX_SCENE_PROMPT_LENGTH = 2600;
 const MAX_SCENE_SUMMARY_LENGTH = 2000;
 const MAX_BEAT_COUNT = 10;
@@ -117,6 +120,36 @@ const sceneDialogueRequestSchema = z
       .optional(),
   })
   .strict();
+
+const estimatePromptTokens = (prompt: string): number => {
+  if (!prompt) {
+    return 0;
+  }
+
+  const compact = prompt.replace(/\s+/g, ' ').trim();
+  if (!compact) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(compact.length / AVERAGE_CHARS_PER_TOKEN));
+};
+
+const clampSceneDialogueOutputTokens = (
+  prompt: string,
+  requestedMax: number,
+): { promptTokens: number; maxOutputTokens: number } => {
+  const promptTokens = estimatePromptTokens(prompt);
+  const available = MODEL_TOKEN_LIMIT - promptTokens;
+
+  if (available <= 0) {
+    return { promptTokens, maxOutputTokens: 0 };
+  }
+
+  return {
+    promptTokens,
+    maxOutputTokens: Math.max(1, Math.min(requestedMax, available)),
+  };
+};
 
 const sceneDialogueSchema = {
   type: 'object',
@@ -660,12 +693,28 @@ router.post(
       },
     ];
 
+    const { maxOutputTokens, promptTokens } = clampSceneDialogueOutputTokens(
+      prompt,
+      DEFAULT_SCENE_DIALOGUE_MAX_OUTPUT_TOKENS,
+    );
+
+    if (maxOutputTokens <= 0) {
+      res.status(400).json({
+        error: 'Gemini request is too large to process. Remove some context or shorten the prompt, then try again.',
+        details: {
+          promptTokens,
+          tokenLimit: MODEL_TOKEN_LIMIT,
+        },
+      });
+      return;
+    }
+
     const generationConfig: GenerateContentConfig = {
       safetySettings: DEFAULT_SAFETY_SETTINGS,
       responseMimeType: 'application/json',
       responseSchema: sceneDialogueSchema as GenerateContentConfig['responseSchema'],
       temperature: 0.7,
-      maxOutputTokens: 1536,
+      maxOutputTokens,
     };
 
     try {
