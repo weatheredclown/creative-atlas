@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Artifact, ArtifactType, LocationData, LocationFeature, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, MapPinIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
@@ -13,6 +13,42 @@ const LOCATION_APPEARANCE_TYPES: ArtifactType[] = [
 ];
 const LOCATION_SYSTEM_TYPES: ArtifactType[] = [ArtifactType.MagicSystem, ArtifactType.Conlang, ArtifactType.Wiki];
 const LOCATION_ORIGIN_TYPES: ArtifactType[] = [ArtifactType.Location, ArtifactType.Wiki];
+
+const emptyLocationData = (): LocationData => ({ description: '', features: [] });
+
+const sanitizeLocationData = (rawData: Artifact['data']): LocationData => {
+  if (!rawData || typeof rawData !== 'object') {
+    return emptyLocationData();
+  }
+
+  const source = rawData as Partial<LocationData> & Record<string, unknown>;
+  const description = typeof source.description === 'string' ? source.description : '';
+  const featuresSource = Array.isArray(source.features) ? source.features : [];
+
+  const features = featuresSource
+    .map((feature, index) => {
+      if (!feature || typeof feature !== 'object') {
+        return null;
+      }
+
+      const rawFeature = feature as Partial<LocationFeature> & Record<string, unknown>;
+      const id =
+        typeof rawFeature.id === 'string' && rawFeature.id.trim().length > 0
+          ? rawFeature.id
+          : `feature-${index}`;
+      const name = typeof rawFeature.name === 'string' ? rawFeature.name : '';
+      const detail = typeof rawFeature.description === 'string' ? rawFeature.description : '';
+
+      return {
+        id,
+        name,
+        description: detail,
+      } satisfies LocationFeature;
+    })
+    .filter((feature): feature is LocationFeature => feature !== null);
+
+  return { description, features } satisfies LocationData;
+};
 
 interface LocationEditorProps {
   artifact: Artifact;
@@ -29,15 +65,24 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
   onAddRelation,
   onRemoveRelation,
 }) => {
-  const data = (artifact.data as LocationData) || { description: '', features: [] };
-  const [description, setDescription] = useState(data.description);
-  const [features, setFeatures] = useState<LocationFeature[]>(data.features);
+  const locationData = useMemo(() => sanitizeLocationData(artifact.data), [artifact.data]);
+  const [description, setDescription] = useState(locationData.description);
+  const [features, setFeatures] = useState<LocationFeature[]>(locationData.features);
   const [newFeatureName, setNewFeatureName] = useState('');
   const [newFeatureDesc, setNewFeatureDesc] = useState('');
   const { showDetailedFields } = useDepthPreferences();
 
+  useEffect(() => {
+    setDescription(locationData.description);
+    setFeatures(locationData.features);
+  }, [locationData.description, locationData.features]);
+
   const handleUpdate = (updatedData: Partial<LocationData>) => {
-    onUpdateArtifactData(artifact.id, { ...data, ...updatedData });
+    onUpdateArtifactData(artifact.id, {
+      description,
+      features,
+      ...updatedData,
+    });
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
