@@ -64,9 +64,6 @@ This document tracks the multi-session automation initiative to deliver the full
   - _Context:_ Family tree visualizations share stage overlays with the relationship graph, creation flows connect from sheets and the tree, and the Graph view now includes an Arc Stage Spotlight filter with summaries.
   - _Next actions:_
     - [ ] Expose the same guidance inside the Family Tree tools.
-- **Character arc progression state surfacing.**
-  - _Context:_ Quick fact capture improvements and shared progression calculations are live.
-  - _Next action:_ Introduce additional stage filters so editors can spotlight characters in a specific arc phase and reflect the progression state everywhere the family tree graph renders.
 - **Project workspace refactor follow-ups.**
   - _Context:_ Artifact workflows now live inside the `ProjectWorkspace` component with hero, artifact, activity, and modal subcomponents relocated under `code/components/workspace/`.
   - _Next actions:_
