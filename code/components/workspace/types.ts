@@ -25,3 +25,9 @@ export interface WorkspaceFeatureGroup {
   title: string;
   description: string;
 }
+
+export interface ArtifactNavigationController {
+  focusType: (type: ArtifactType) => void;
+  clearFilters: () => void;
+  openArtifact: (artifactId: string) => void;
+}

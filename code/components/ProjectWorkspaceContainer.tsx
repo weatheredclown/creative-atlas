@@ -37,7 +37,7 @@ import BackToTopButton from './BackToTopButton';
 import WorkspaceActivityPanel from './workspace/WorkspaceActivityPanel';
 import WorkspaceSectionIndex from './workspace/WorkspaceSectionIndex';
 import WorkspaceSummarySection from './workspace/WorkspaceSummarySection';
-import type { QuickFactModalOptions } from './workspace/types';
+import type { ArtifactNavigationController, QuickFactModalOptions } from './workspace/types';
 import { logAnalyticsEvent } from '../services/analytics';
 import { buildCharacterArcEvaluationMap } from '../utils/characterProgression';
 
@@ -85,6 +85,7 @@ interface ProjectWorkspaceContainerProps {
   canUseDataApi: boolean;
   canPublishToGitHub: boolean;
   onWorkspaceError: (message: string) => void;
+  onRegisterArtifactNavigator?: (navigator: ArtifactNavigationController | null) => void;
 }
 
 type ProjectWorkspaceContainerComponent = React.FC<ProjectWorkspaceContainerProps>;
@@ -133,6 +134,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   canUseDataApi,
   canPublishToGitHub,
   onWorkspaceError,
+  onRegisterArtifactNavigator,
 }) => {
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
   const previousSelectedArtifactIdRef = useRef<string | null>(null);
@@ -222,6 +224,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     statusFilter,
     setStatusFilter,
     activeTagFilters,
+    setActiveTagFilters,
     searchTerm,
     setSearchTerm,
     filteredArtifacts,
@@ -300,6 +303,43 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
 
     return links;
   }, [shouldShowTrackingSection, shouldShowTemplatesSection, shouldShowPublishingSection]);
+
+  useEffect(() => {
+    if (!onRegisterArtifactNavigator) {
+      return;
+    }
+
+    const navigator: ArtifactNavigationController = {
+      focusType: (type) => {
+        setStatusFilter('ALL');
+        setActiveTagFilters([]);
+        setSearchTerm('');
+        setArtifactTypeFilter(type);
+        detailSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      clearFilters: () => {
+        resetFilters();
+        detailSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      openArtifact: (artifactId) => {
+        onSelectArtifact(artifactId);
+      },
+    };
+
+    onRegisterArtifactNavigator(navigator);
+
+    return () => {
+      onRegisterArtifactNavigator(null);
+    };
+  }, [
+    onRegisterArtifactNavigator,
+    onSelectArtifact,
+    resetFilters,
+    setActiveTagFilters,
+    setArtifactTypeFilter,
+    setSearchTerm,
+    setStatusFilter,
+  ]);
 
   return (
     <>
