@@ -15,8 +15,8 @@ const sanitizeIdentifier = (id: string): string => id.replace(/[^a-zA-Z0-9_-]/g,
 const buildShareObjectName = (shareId: string): string =>
   `share/${sanitizeIdentifier(shareId)}/nano-banana.png`;
 
-const buildProjectObjectName = (projectId: string): string =>
-  `project/${sanitizeIdentifier(projectId)}/nano-banana.png`;
+const buildProjectObjectName = (projectId: string, version: string): string =>
+  `project/${sanitizeIdentifier(projectId)}/nano-banana-${sanitizeIdentifier(version)}.png`;
 
 const buildPublicUrl = (objectName: string): string =>
   `https://storage.googleapis.com/${bucketName!}/${encodeURI(objectName)}`;
@@ -94,7 +94,8 @@ export const persistNanoBananaImage = async (
   }
 
   const buffer = Buffer.from(encoded, 'base64');
-  const objectName = buildProjectObjectName(projectId);
+  const version = Date.now().toString(36);
+  const objectName = buildProjectObjectName(projectId, version);
   const bucket = storage!.bucket(bucketName!);
   const file = bucket.file(objectName);
 
@@ -106,5 +107,5 @@ export const persistNanoBananaImage = async (
     },
   });
 
-  return appendCacheBustParam(buildPublicUrl(objectName));
+  return buildPublicUrl(objectName);
 };

@@ -1,4 +1,4 @@
-import { ArtifactType, TASK_STATE, type Artifact } from '../types';
+import { ArtifactType, TASK_STATE, type Artifact, type LocationData } from '../types';
 import { createEmptySceneArtifactData } from './sceneArtifacts';
 
 export const getDefaultDataForType = (type: ArtifactType, title: string): Artifact['data'] => {
@@ -19,6 +19,8 @@ export const getDefaultDataForType = (type: ArtifactType, title: string): Artifa
       return [];
     case ArtifactType.Character:
       return { traits: [] };
+    case ArtifactType.Location:
+      return { description: '', features: [] } satisfies LocationData;
     case ArtifactType.Scene:
       return createEmptySceneArtifactData();
     case ArtifactType.MagicSystem:
