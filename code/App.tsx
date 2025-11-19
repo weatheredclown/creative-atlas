@@ -312,6 +312,7 @@ export default function App() {
 
   const isAutoLoadingProjectsRef = useRef(false);
   const pendingProjectSelectionRef = useRef<string | null>(null);
+  const shouldAutoSelectProjectRef = useRef(true);
 
   const handleMemoryStatusChange = useCallback(
     (conversationId: string, suggestionId: string, status: MemorySyncStatus) => {
@@ -348,8 +349,13 @@ export default function App() {
 
     const hasSelectedProject = selectedProjectId && projects.some((project) => project.id === selectedProjectId);
     if (!hasSelectedProject) {
-      setSelectedProjectId(projects[0].id);
+      if (shouldAutoSelectProjectRef.current) {
+        setSelectedProjectId(projects[0].id);
+      }
+      return;
     }
+
+    shouldAutoSelectProjectRef.current = true;
   }, [projectIdFromUrl, projects, selectedProjectId]);
 
   useEffect(() => {
@@ -522,6 +528,7 @@ export default function App() {
 
   const handleSelectProject = (id: string) => {
     pendingProjectSelectionRef.current = id;
+    shouldAutoSelectProjectRef.current = true;
     setSelectedProjectId(id);
 
     const nextParams = new URLSearchParams(searchParams);
@@ -530,6 +537,7 @@ export default function App() {
   };
 
   const handleReturnToAtlas = useCallback(() => {
+    shouldAutoSelectProjectRef.current = false;
     setSelectedProjectId(null);
     setArtifactNavigator(null);
     const nextParams = new URLSearchParams(searchParams);
