@@ -25,3 +25,5 @@ export interface WorkspaceFeatureGroup {
   title: string;
   description: string;
 }
+
+export type WorkspaceView = 'codex' | 'board' | 'laboratory' | 'studio';
