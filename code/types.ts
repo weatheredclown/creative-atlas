@@ -62,6 +62,7 @@ export enum ArtifactType {
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
+  Product = 'Product',
 }
 
 export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [
@@ -272,6 +273,25 @@ export interface ReleaseData {
     prerelease: boolean;
 }
 
+export type ProductAvailability = 'in-stock' | 'preorder' | 'backorder' | 'sold-out' | 'discontinued';
+
+export interface ProductVariant {
+    id: string;
+    name: string;
+    price?: string;
+    sku?: string;
+    url?: string;
+    availability?: ProductAvailability;
+    notes?: string;
+}
+
+export interface ProductData {
+    description: string;
+    vendor?: string;
+    fulfillmentNotes?: string;
+    variants: ProductVariant[];
+}
+
 export interface Artifact {
   id: string;
   ownerId: string;
@@ -294,6 +314,7 @@ export interface Artifact {
     | RepositoryData
     | IssueData
     | ReleaseData
+    | ProductData
     | TimelineData
     | MagicSystemData
     | Record<string, unknown>;

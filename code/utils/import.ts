@@ -13,9 +13,11 @@ import {
     RepositoryData,
     IssueData,
     ReleaseData,
+    ProductData,
     isNarrativeArtifactType,
 } from '../types';
 import { createEmptySceneArtifactData, sanitizeSceneArtifactData } from './sceneArtifacts';
+import { createDefaultProductData, sanitizeProductData } from './product';
 
 const TAB_DELIMITER = '\t';
 
@@ -61,13 +63,22 @@ const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
                 draft: false,
                 prerelease: false,
             };
+        case ArtifactType.Product:
+            return createDefaultProductData();
         default:
             return isNarrativeArtifactType(type) ? [] : {};
     }
 };
 
-const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data'] => {
+const parseArtifactData = (
+    type: ArtifactType,
+    rawData?: string,
+    artifactTitle?: string,
+): Artifact['data'] => {
     if (!rawData) {
+        if (type === ArtifactType.Product) {
+            return createDefaultProductData(artifactTitle);
+        }
         return getDefaultDataForType(type);
     }
 
@@ -148,6 +159,9 @@ const parseArtifactData = (type: ArtifactType, rawData?: string): Artifact['data
                     };
                 }
                 return getDefaultDataForType(type);
+            }
+            case ArtifactType.Product: {
+                return sanitizeProductData(parsed as ProductData, artifactTitle);
             }
             case ArtifactType.Scene:
                 if (parsed && typeof parsed === 'object') {
@@ -244,7 +258,7 @@ export const importArtifactsFromCSV = (csvString: string, currentProjectId: stri
                 status: rowData.status || 'idea',
                 tags: (rowData.tags || '').split(';').filter(t => t),
                 relations: relations,
-                data: parseArtifactData(artifactType, rowData.data),
+                data: parseArtifactData(artifactType, rowData.data, rowData.title),
             };
 
             // Basic validation
