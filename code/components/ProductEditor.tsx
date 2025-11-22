@@ -60,17 +60,16 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ artifact, onUpdateArtifac
         return variant;
       }
 
-      const nextValue = typeof value === 'string' ? value.trim() : value;
-
       if (key === 'price' || key === 'sku' || key === 'url' || key === 'notes' || key === 'name') {
-        const normalized = typeof nextValue === 'string' ? nextValue : '';
+        const normalized = typeof value === 'string' ? value : '';
+        const hasContent = typeof value === 'string' ? value.trim().length > 0 : true;
         return {
           ...variant,
-          [key]: normalized.length > 0 ? normalized : undefined,
+          [key]: hasContent ? normalized : undefined,
         } satisfies ProductVariant;
       }
 
-      return { ...variant, [key]: nextValue } satisfies ProductVariant;
+      return { ...variant, [key]: value } satisfies ProductVariant;
     });
 
     persistData({ ...productData, variants });
