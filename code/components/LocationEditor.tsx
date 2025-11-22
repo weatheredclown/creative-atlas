@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Artifact, ArtifactType, LocationData, LocationFeature, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon, MapPinIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
@@ -66,6 +66,7 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
   onRemoveRelation,
 }) => {
   const locationData = useMemo(() => sanitizeLocationData(artifact.data), [artifact.data]);
+  const lastArtifactIdRef = useRef<string>(artifact.id);
   const [description, setDescription] = useState(locationData.description);
   const [features, setFeatures] = useState<LocationFeature[]>(locationData.features);
   const [newFeatureName, setNewFeatureName] = useState('');
@@ -73,9 +74,18 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
   const { showDetailedFields } = useDepthPreferences();
 
   useEffect(() => {
+    const isSameArtifact = artifact.id === lastArtifactIdRef.current;
+    const descriptionMatches = description === locationData.description;
+    const featuresMatch = JSON.stringify(features) === JSON.stringify(locationData.features);
+
+    if (isSameArtifact && descriptionMatches && featuresMatch) {
+      return;
+    }
+
+    lastArtifactIdRef.current = artifact.id;
     setDescription(locationData.description);
     setFeatures(locationData.features);
-  }, [locationData.description, locationData.features]);
+  }, [artifact.id, description, features, locationData.description, locationData.features]);
 
   const handleUpdate = (updatedData: Partial<LocationData>) => {
     onUpdateArtifactData(artifact.id, {

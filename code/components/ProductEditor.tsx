@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { type Artifact, type ProductData, type ProductVariant, ArtifactType } from '../types';
 import {
@@ -29,7 +29,14 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ artifact, onUpdateArtifac
     sanitizeProductData(artifact.data, artifact.title),
   );
 
+  const lastArtifactIdRef = useRef<string>(artifact.id);
+
   useEffect(() => {
+    if (artifact.id === lastArtifactIdRef.current) {
+      return;
+    }
+
+    lastArtifactIdRef.current = artifact.id;
     setProductData(sanitizeProductData(artifact.data, artifact.title));
   }, [artifact.data, artifact.id, artifact.title]);
 
