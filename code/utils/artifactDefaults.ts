@@ -1,5 +1,6 @@
 import { ArtifactType, TASK_STATE, type Artifact, type LocationData } from '../types';
 import { createEmptySceneArtifactData } from './sceneArtifacts';
+import { createDefaultProductData } from './product';
 
 export const getDefaultDataForType = (type: ArtifactType, title: string): Artifact['data'] => {
   switch (type) {
@@ -25,6 +26,8 @@ export const getDefaultDataForType = (type: ArtifactType, title: string): Artifa
       return createEmptySceneArtifactData();
     case ArtifactType.MagicSystem:
       return { rules: [] };
+    case ArtifactType.Product:
+      return createDefaultProductData(title);
     default:
       return undefined;
   }

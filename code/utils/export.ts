@@ -13,6 +13,7 @@ import {
     RepositoryData,
     IssueData,
     ReleaseData,
+    ProductData,
     TimelineData,
     isNarrativeArtifactType,
     StaticSiteFile,
@@ -20,6 +21,7 @@ import {
 import JSZip from 'jszip';
 import { simpleMarkdownToHtml, escapeMarkdownCell } from './markdown';
 import { emitToast } from '../contexts/ToastContext';
+import { formatProductAvailability, sanitizeProductData } from './product';
 
 interface ResolvedRelation {
     kind: string;
@@ -1163,6 +1165,22 @@ const generateArtifactMarkdownBody = (artifact: Artifact): string => {
             body += `- Pre-release: ${release?.prerelease ? 'Yes' : 'No'}\n\n`;
             break;
         }
+        case ArtifactType.Product: {
+            const product = sanitizeProductData(artifact.data as ProductData, artifact.title);
+            body += '## Merchandise Overview\n';
+            body += `${product.description}\n\n`;
+            body += `- Vendor: ${product.vendor && product.vendor.length > 0 ? product.vendor : 'Unspecified'}\n`;
+            body += `- Fulfillment: ${product.fulfillmentNotes && product.fulfillmentNotes.length > 0 ? product.fulfillmentNotes : 'Unspecified'}\n\n`;
+
+            if (product.variants.length > 0) {
+                body += '## Items\n\n| Name | Price | SKU | Availability | Link | Notes |\n| --- | --- | --- | --- | --- | --- |\n';
+                product.variants.forEach((variant) => {
+                    body += `| ${escapeMarkdownCell(variant.name)} | ${escapeMarkdownCell(variant.price ?? '')} | ${escapeMarkdownCell(variant.sku ?? '')} | ${escapeMarkdownCell(formatProductAvailability(variant.availability))} | ${escapeMarkdownCell(variant.url ?? '')} | ${escapeMarkdownCell(variant.notes ?? '')} |\n`;
+                });
+                body += '\n';
+            }
+            break;
+        }
         default: {
             if (artifact.data && typeof artifact.data === 'object' && Object.keys(artifact.data).length > 0) {
                 body += '```json\n';
@@ -1348,6 +1366,32 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         content += `<p><span class='text-slate-400'>Pre-release:</span> ${release.prerelease ? 'Yes' : 'No'}</p>`;
         content += `<a href='${release.url}' class='text-cyan-400 hover:underline'>View on GitHub</a>`;
         content += '</div>';
+    } else if (artifact.type === ArtifactType.Product) {
+        const product = sanitizeProductData(artifact.data as ProductData, artifact.title);
+        content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Merchandise overview</h2>";
+        content += `<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 text-slate-200 leading-relaxed'>${product.description.replace(/\n/g, '<br>')}</div>`;
+
+        content += "<div class='grid grid-cols-1 md:grid-cols-2 gap-4 mt-6'>";
+        content += `<div class='bg-slate-900/60 border border-slate-700 rounded-lg p-4 text-sm text-slate-200'><div class='text-xs uppercase tracking-wide text-slate-400 mb-1'>Vendor</div>${product.vendor && product.vendor.length > 0 ? product.vendor : 'Unspecified'}</div>`;
+        content += `<div class='bg-slate-900/60 border border-slate-700 rounded-lg p-4 text-sm text-slate-200'><div class='text-xs uppercase tracking-wide text-slate-400 mb-1'>Fulfillment</div>${product.fulfillmentNotes && product.fulfillmentNotes.length > 0 ? product.fulfillmentNotes : 'Unspecified'}</div>`;
+        content += '</div>';
+
+        if (product.variants.length > 0) {
+            content += "<h3 class='text-xl font-bold text-white mt-8 mb-3'>Items</h3>";
+            content += "<div class='overflow-x-auto'><table class='min-w-full text-left border-collapse'>";
+            content += "<thead class='bg-slate-800/80'><tr><th class='px-4 py-2 text-sm text-slate-300'>Name</th><th class='px-4 py-2 text-sm text-slate-300'>Price</th><th class='px-4 py-2 text-sm text-slate-300'>SKU</th><th class='px-4 py-2 text-sm text-slate-300'>Availability</th><th class='px-4 py-2 text-sm text-slate-300'>Link</th><th class='px-4 py-2 text-sm text-slate-300'>Notes</th></tr></thead><tbody>";
+            product.variants.forEach(variant => {
+                content += "<tr class='border-b border-slate-700'>";
+                content += `<td class='px-4 py-2 text-slate-200 font-semibold'>${variant.name}</td>`;
+                content += `<td class='px-4 py-2 text-slate-300'>${variant.price ?? ''}</td>`;
+                content += `<td class='px-4 py-2 text-slate-300'>${variant.sku ?? ''}</td>`;
+                content += `<td class='px-4 py-2 text-slate-300'>${formatProductAvailability(variant.availability)}</td>`;
+                content += `<td class='px-4 py-2 text-slate-300'>${variant.url ? `<a href='${variant.url}' class='text-cyan-400 hover:underline'>${variant.url}</a>` : ''}</td>`;
+                content += `<td class='px-4 py-2 text-slate-300'>${variant.notes ?? ''}</td>`;
+                content += '</tr>';
+            });
+            content += '</tbody></table></div>';
+        }
     }
     // Add more specific renderers here for other types...
 

@@ -9,6 +9,7 @@ import GraphView from '../GraphView';
 import KanbanBoard from '../KanbanBoard';
 import LocationEditor from '../LocationEditor';
 import MagicSystemBuilder from '../MagicSystemBuilder';
+import ProductEditor from '../ProductEditor';
 import RevealDepthToggle from '../RevealDepthToggle';
 import StoryEditor from '../StoryEditor';
 import SceneDialogGenerator from '../SceneDialogGenerator';
@@ -23,10 +24,11 @@ import {
   TableCellsIcon,
   ViewColumnsIcon,
 } from '../Icons';
-import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
+import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type ProductData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
+import { sanitizeProductData } from '../../utils/product';
 import { sanitizeSceneArtifactData } from '../../utils/sceneArtifacts';
 import type { QuickFactModalOptions, WorkspaceFeatureGroup } from './types';
 import type { CharacterArcEvaluation } from '../../utils/characterProgression';
@@ -85,6 +87,7 @@ const RECOVERABLE_TYPES = new Set<ArtifactType>([
   ArtifactType.Timeline,
   ArtifactType.MagicSystem,
   ArtifactType.Scene,
+  ArtifactType.Product,
 ]);
 
 const VALID_TASK_STATES = new Set<string>(Object.values(TASK_STATE));
@@ -346,6 +349,8 @@ const recoverArtifactData = (artifact: Artifact, timestamp: number): Artifact['d
         return normalizeMagicSystemData(artifact.data as Partial<MagicSystemData> | undefined, artifact.title);
       case ArtifactType.Scene:
         return sanitizeSceneArtifactData(artifact.data, timestamp);
+      case ArtifactType.Product:
+        return sanitizeProductData(artifact.data as Partial<ProductData>, artifact.title);
       default:
         return null;
     }
@@ -852,6 +857,12 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
               ) : null}
               {selectedArtifact.type === ArtifactType.MagicSystem ? (
                 <MagicSystemBuilder
+                  artifact={selectedArtifact}
+                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                />
+              ) : null}
+              {selectedArtifact.type === ArtifactType.Product ? (
+                <ProductEditor
                   artifact={selectedArtifact}
                   onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
                 />
