@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Artifact,
   type EncounterGeneratorConfig,
@@ -27,25 +27,51 @@ interface TaskEditorProps {
 }
 
 const TaskEditor: React.FC<TaskEditorProps> = ({ artifact, onUpdateArtifactData }) => {
-  const initialData = (artifact.data as TaskData) ?? { state: TASK_STATE.Todo };
-  const [taskState, setTaskState] = useState<TaskState>(initialData.state ?? TASK_STATE.Todo);
-  const [assignee, setAssignee] = useState<string>(initialData.assignee ?? '');
-  const [due, setDue] = useState<string>(initialData.due ?? '');
-  const [encounterConfig, setEncounterConfig] = useState<EncounterGeneratorConfig>(() =>
-    sanitizeEncounterConfig(initialData.encounterConfig),
+  const lastArtifactIdRef = useRef<string>(artifact.id);
+  const sanitizedTaskData = useMemo(() => {
+    const currentData = (artifact.data as TaskData) ?? { state: TASK_STATE.Todo };
+
+    return {
+      state: currentData.state ?? TASK_STATE.Todo,
+      assignee: currentData.assignee ?? '',
+      due: currentData.due ?? '',
+      encounterConfig: sanitizeEncounterConfig(currentData.encounterConfig),
+      encounterResult: sanitizeGeneratedEncounter(currentData.generatedEncounter),
+    } satisfies TaskData;
+  }, [artifact.data]);
+
+  const [taskState, setTaskState] = useState<TaskState>(sanitizedTaskData.state);
+  const [assignee, setAssignee] = useState<string>(sanitizedTaskData.assignee ?? '');
+  const [due, setDue] = useState<string>(sanitizedTaskData.due ?? '');
+  const [encounterConfig, setEncounterConfig] = useState<EncounterGeneratorConfig>(
+    sanitizedTaskData.encounterConfig,
   );
-  const [encounterResult, setEncounterResult] = useState<GeneratedEncounter | undefined>(() =>
-    sanitizeGeneratedEncounter(initialData.generatedEncounter),
+  const [encounterResult, setEncounterResult] = useState<GeneratedEncounter | undefined>(
+    sanitizedTaskData.generatedEncounter,
   );
 
   useEffect(() => {
-    const currentData = (artifact.data as TaskData) ?? { state: TASK_STATE.Todo };
-    setTaskState(currentData.state ?? TASK_STATE.Todo);
-    setAssignee(currentData.assignee ?? '');
-    setDue(currentData.due ?? '');
-    setEncounterConfig(sanitizeEncounterConfig(currentData.encounterConfig));
-    setEncounterResult(sanitizeGeneratedEncounter(currentData.generatedEncounter));
-  }, [artifact.id, artifact.data]);
+    const isSameArtifact = artifact.id === lastArtifactIdRef.current;
+    const configMatches = JSON.stringify(encounterConfig) === JSON.stringify(sanitizedTaskData.encounterConfig);
+    const encounterMatches = JSON.stringify(encounterResult) === JSON.stringify(sanitizedTaskData.generatedEncounter);
+    const fieldsMatch =
+      taskState === sanitizedTaskData.state &&
+      assignee === sanitizedTaskData.assignee &&
+      due === sanitizedTaskData.due &&
+      configMatches &&
+      encounterMatches;
+
+    if (isSameArtifact && fieldsMatch) {
+      return;
+    }
+
+    lastArtifactIdRef.current = artifact.id;
+    setTaskState(sanitizedTaskData.state ?? TASK_STATE.Todo);
+    setAssignee(sanitizedTaskData.assignee ?? '');
+    setDue(sanitizedTaskData.due ?? '');
+    setEncounterConfig(sanitizedTaskData.encounterConfig);
+    setEncounterResult(sanitizedTaskData.generatedEncounter);
+  }, [artifact.id, assignee, due, encounterConfig, encounterResult, sanitizedTaskData, taskState]);
 
   const updateTaskData = (updates: Partial<TaskData>) => {
     const nextState = updates.state ?? taskState ?? TASK_STATE.Todo;
