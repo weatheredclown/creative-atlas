@@ -323,16 +323,6 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!isGuestMode || !projectIdFromUrl) {
-      return;
-    }
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('projectId');
-    setSearchParams(nextParams, { replace: true });
-  }, [isGuestMode, projectIdFromUrl, searchParams, setSearchParams]);
-
-  useEffect(() => {
     if (!projectIdFromUrl) {
       return;
     }
