@@ -220,3 +220,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-19: Simplified workspace project selection by treating the URL as the single source of truth in `code/App.tsx`, continuing the "Workspace UX polish" workstream.
 - 2025-11-30: Versioned Nano Banana storage filenames so refreshed project thumbnails bypass cached immutable URLs, advancing the "Gemini-driven Nano Banana prompts + endpoint" roadmap item.
 - 2025-11-19: Persisted the Arc Stage Spotlight selection per project and added coverage for node dimming to advance the "Character arc tooling (family tree + graph)" roadmap item.
+- 2025-11-22: Allowed guest-mode project selections to persist in the URL so sample projects no longer strobe when opened; no roadmap bullets impacted.
