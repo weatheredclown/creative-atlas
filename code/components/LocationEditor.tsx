@@ -1,6 +1,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Artifact, ArtifactType, LocationData, LocationFeature, NARRATIVE_ARTIFACT_TYPES } from '../types';
+import {
+  type AddRelationHandler,
+  Artifact,
+  ArtifactType,
+  LocationData,
+  LocationFeature,
+  NARRATIVE_ARTIFACT_TYPES,
+} from '../types';
 import { PlusIcon, XMarkIcon, MapPinIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
@@ -54,7 +61,7 @@ interface LocationEditorProps {
   artifact: Artifact;
   onUpdateArtifactData: (artifactId: string, data: LocationData) => void;
   projectArtifacts: Artifact[];
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
 }
 

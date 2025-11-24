@@ -24,6 +24,7 @@ import {
   type ProjectComponentKey,
   type ProjectTemplate,
   type ProjectVisibilitySettings,
+  type AddRelationHandler,
   type Relation,
   type TemplateEntry,
   type UserProfile,
@@ -299,8 +300,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     [updateArtifact],
   );
 
-  const handleAddRelation = useCallback(
-    (fromId: string, toId: string, kind: string) => {
+  const handleAddRelation = useCallback<AddRelationHandler>(
+    (fromId, toId, kind, options) => {
       const source = allArtifacts.find((artifact) => artifact.id === fromId);
       const target = allArtifacts.find((artifact) => artifact.id === toId);
       if (!source || !target) {
@@ -310,23 +311,35 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
       const normalizedKind = sanitizeRelationKind(kind);
       const reciprocalKind = getReciprocalRelationKind(normalizedKind);
 
-      const newRelation: Relation = { toId, kind: normalizedKind };
+      const newRelation: Relation = {
+        toId,
+        kind: normalizedKind,
+        variantId: options?.variantId,
+      };
       const reciprocalRelation: Relation = { toId: fromId, kind: reciprocalKind };
 
-      const sourceHasRelation = source.relations.some((relation) => relation.toId === toId);
+      const matchesSourceRelation = (relation: Relation) =>
+        relation.toId === toId && relation.variantId === options?.variantId;
+
+      const sourceHasRelation = source.relations.some(matchesSourceRelation);
       const nextSourceRelations = sourceHasRelation
-        ? source.relations.map((relation) => (relation.toId === toId ? newRelation : relation))
+        ? source.relations.map((relation) => (matchesSourceRelation(relation) ? newRelation : relation))
         : [...source.relations, newRelation];
 
       const shouldUpdateSource = sourceHasRelation
-        ? source.relations.some((relation) => relation.toId === toId && relation.kind !== normalizedKind)
+        ? source.relations.some(
+            (relation) =>
+              matchesSourceRelation(relation) && relation.kind !== normalizedKind,
+          )
         : true;
 
       if (shouldUpdateSource) {
         void updateArtifact(fromId, { relations: nextSourceRelations });
       }
 
-      const reciprocalExists = target.relations.some((relation) => relation.toId === fromId);
+      const reciprocalExists = target.relations.some(
+        (relation) => relation.toId === fromId && !relation.variantId,
+      );
       const nextTargetRelations = reciprocalExists
         ? target.relations.map((relation) => (relation.toId === fromId ? reciprocalRelation : relation))
         : [...target.relations, reciprocalRelation];

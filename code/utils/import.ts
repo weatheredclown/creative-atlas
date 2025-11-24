@@ -63,7 +63,7 @@ const getDefaultDataForType = (type: ArtifactType): Artifact['data'] => {
                 draft: false,
                 prerelease: false,
             };
-        case ArtifactType.Product:
+        case ArtifactType.ProductCatalog:
             return createDefaultProductData();
         default:
             return isNarrativeArtifactType(type) ? [] : {};
@@ -76,7 +76,7 @@ const parseArtifactData = (
     artifactTitle?: string,
 ): Artifact['data'] => {
     if (!rawData) {
-        if (type === ArtifactType.Product) {
+        if (type === ArtifactType.ProductCatalog) {
             return createDefaultProductData(artifactTitle);
         }
         return getDefaultDataForType(type);
@@ -160,7 +160,7 @@ const parseArtifactData = (
                 }
                 return getDefaultDataForType(type);
             }
-            case ArtifactType.Product: {
+            case ArtifactType.ProductCatalog: {
                 return sanitizeProductData(parsed as ProductData, artifactTitle);
             }
             case ArtifactType.Scene:

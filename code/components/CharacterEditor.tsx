@@ -1,6 +1,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Artifact, ArtifactType, CharacterData, CharacterTrait, NARRATIVE_ARTIFACT_TYPES } from '../types';
+import {
+  type AddRelationHandler,
+  Artifact,
+  ArtifactType,
+  CharacterData,
+  CharacterTrait,
+  NARRATIVE_ARTIFACT_TYPES,
+} from '../types';
 import { PlusIcon, XMarkIcon, UserCircleIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
@@ -21,7 +28,7 @@ interface CharacterEditorProps {
   artifact: Artifact;
   onUpdateArtifactData: (artifactId: string, data: CharacterData) => void;
   projectArtifacts: Artifact[];
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
 }
 

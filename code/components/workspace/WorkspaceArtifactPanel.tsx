@@ -25,6 +25,7 @@ import {
   ViewColumnsIcon,
 } from '../Icons';
 import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type ProductData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
+import type { AddRelationHandler } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
 import { normalizeMagicSystemData } from '../../utils/magicSystem';
@@ -66,7 +67,7 @@ interface WorkspaceArtifactPanelProps {
   onUpdateArtifactData: (artifactId: string, data: Artifact['data']) => void;
   onDuplicateArtifact: (artifactId: string) => Promise<void> | void;
   onDeleteArtifact: (artifactId: string) => Promise<void> | void;
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   addXp: (xp: number) => Promise<void> | void;
   onImportArtifacts: (file: File) => Promise<void>;
@@ -87,7 +88,7 @@ const RECOVERABLE_TYPES = new Set<ArtifactType>([
   ArtifactType.Timeline,
   ArtifactType.MagicSystem,
   ArtifactType.Scene,
-  ArtifactType.Product,
+  ArtifactType.ProductCatalog,
 ]);
 
 const VALID_TASK_STATES = new Set<string>(Object.values(TASK_STATE));
@@ -349,7 +350,7 @@ const recoverArtifactData = (artifact: Artifact, timestamp: number): Artifact['d
         return normalizeMagicSystemData(artifact.data as Partial<MagicSystemData> | undefined, artifact.title);
       case ArtifactType.Scene:
         return sanitizeSceneArtifactData(artifact.data, timestamp);
-      case ArtifactType.Product:
+      case ArtifactType.ProductCatalog:
         return sanitizeProductData(artifact.data as Partial<ProductData>, artifact.title);
       default:
         return null;
@@ -861,10 +862,13 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                   onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
                 />
               ) : null}
-              {selectedArtifact.type === ArtifactType.Product ? (
+              {selectedArtifact.type === ArtifactType.ProductCatalog ? (
                 <ProductEditor
                   artifact={selectedArtifact}
+                  projectArtifacts={projectArtifacts}
                   onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  onAddRelation={onAddRelation}
+                  onRemoveRelation={onRemoveRelation}
                 />
               ) : null}
               {selectedArtifact.type === ArtifactType.Task ? (

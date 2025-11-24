@@ -26,7 +26,7 @@ export const getDefaultDataForType = (type: ArtifactType, title: string): Artifa
       return createEmptySceneArtifactData();
     case ArtifactType.MagicSystem:
       return { rules: [] };
-    case ArtifactType.Product:
+    case ArtifactType.ProductCatalog:
       return createDefaultProductData(title);
     default:
       return undefined;

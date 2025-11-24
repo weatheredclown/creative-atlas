@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Artifact } from '../types';
+import { type AddRelationHandler, Artifact } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import { LinkIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon } from './Icons';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
@@ -17,7 +17,7 @@ interface EditorRelationSidebarProps {
   artifact: Artifact;
   projectArtifacts: Artifact[];
   relationOptions: RelationOption[];
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
 }
 

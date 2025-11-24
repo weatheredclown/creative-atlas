@@ -10,6 +10,7 @@ import {
   Project,
   ProjectComponentKey,
   ProjectTemplate,
+  type AddRelationHandler,
   TemplateEntry,
   UserProfile,
   type ProjectVisibilitySettings,
@@ -66,7 +67,7 @@ interface ProjectWorkspaceContainerProps {
   onResetVisibility: () => void;
   onUpdateArtifact: (artifactId: string, updates: Partial<Artifact>) => void;
   onUpdateArtifactData: (artifactId: string, data: Artifact['data']) => void;
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   onDeleteArtifact: (artifactId: string) => Promise<void> | void;
   onDuplicateArtifact: (artifactId: string) => Promise<void> | void;

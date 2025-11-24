@@ -12,7 +12,7 @@ describe('getDefaultDataForType', () => {
   });
 
   it('returns a product catalog scaffold', () => {
-    expect(getDefaultDataForType(ArtifactType.Product, 'Starfall Merch')).toEqual({
+    expect(getDefaultDataForType(ArtifactType.ProductCatalog, 'Starfall Merch')).toEqual({
       description: 'Merchandise lineup for Starfall Merch.',
       vendor: '',
       fulfillmentNotes: '',
