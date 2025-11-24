@@ -146,7 +146,10 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({
   return (
     <>
       <Stepper steps={steps.map(step => step.title)} currentStep={currentStep} />
-      <TutorialPopover referenceElement={referenceElement}>
+      <TutorialPopover
+        referenceElement={referenceElement}
+        fixedPosition={currentTutorialStep.fixedPosition}
+      >
         <div
           ref={contentRef}
           tabIndex={-1}

@@ -7,9 +7,15 @@ interface TutorialPopoverProps {
   referenceElement: HTMLElement | null;
   children: React.ReactNode;
   nextButton?: React.ReactNode;
+  fixedPosition?: 'bottom' | 'top';
 }
 
-const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, children, nextButton }) => {
+const TutorialPopover: React.FC<TutorialPopoverProps> = ({
+  referenceElement,
+  children,
+  nextButton,
+  fixedPosition,
+}) => {
   const arrowRef = useRef(null);
   const { x, y, strategy, context, middlewareData } = useFloating({
     elements: {
@@ -26,6 +32,21 @@ const TutorialPopover: React.FC<TutorialPopoverProps> = ({ referenceElement, chi
   });
 
   const isPositioned = referenceElement && x != null && y != null;
+
+  if (fixedPosition === 'bottom') {
+    return (
+      <div className="fixed bottom-20 left-0 right-0 z-50 mx-auto w-full max-w-md px-4">
+        <div
+          role="dialog"
+          aria-modal="false"
+          className="relative w-full rounded-xl border border-slate-800/80 bg-slate-950/95 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur"
+        >
+          {children}
+          {nextButton}
+        </div>
+      </div>
+    );
+  }
 
   if (!isPositioned) {
     return (

@@ -525,6 +525,7 @@ export interface TutorialStep {
   prefill?: { [key: string]: string };
   showNextButton?: boolean;
   advanceEvent?: 'click' | 'submit';
+  fixedPosition?: 'bottom' | 'top';
 }
 
 export type NarrativeNeedStatus = 'thriving' | 'steady' | 'cooling' | 'at-risk';

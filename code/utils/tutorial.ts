@@ -40,6 +40,7 @@ const tutorialStepDefinitions: TutorialStepDefinition[] = [
   {
     target: '#create-project-form',
     advanceEvent: 'submit',
+    fixedPosition: 'bottom',
     prefill: {
       '#project-title': 'Aethelgard',
       '#project-summary':
@@ -220,6 +221,7 @@ export const getTutorialSteps = (language: TutorialLanguage = DEFAULT_TUTORIAL_L
       title: localizedCopy.title,
       explanation: localizedCopy.explanation,
       action: localizedCopy.action,
+      fixedPosition: definition.fixedPosition,
     };
   });
 
