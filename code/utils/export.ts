@@ -1165,7 +1165,7 @@ const generateArtifactMarkdownBody = (artifact: Artifact): string => {
             body += `- Pre-release: ${release?.prerelease ? 'Yes' : 'No'}\n\n`;
             break;
         }
-        case ArtifactType.Product: {
+        case ArtifactType.ProductCatalog: {
             const product = sanitizeProductData(artifact.data as ProductData, artifact.title);
             body += '## Merchandise Overview\n';
             body += `${product.description}\n\n`;
@@ -1366,7 +1366,7 @@ const generateArtifactContent = (artifact: Artifact, allArtifacts: Artifact[]): 
         content += `<p><span class='text-slate-400'>Pre-release:</span> ${release.prerelease ? 'Yes' : 'No'}</p>`;
         content += `<a href='${release.url}' class='text-cyan-400 hover:underline'>View on GitHub</a>`;
         content += '</div>';
-    } else if (artifact.type === ArtifactType.Product) {
+    } else if (artifact.type === ArtifactType.ProductCatalog) {
         const product = sanitizeProductData(artifact.data as ProductData, artifact.title);
         content += "<h2 class='text-2xl font-bold text-white mt-8 mb-4'>Merchandise overview</h2>";
         content += `<div class='bg-slate-800 p-5 rounded-lg border border-slate-700 text-slate-200 leading-relaxed'>${product.description.replace(/\n/g, '<br>')}</div>`;

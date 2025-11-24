@@ -62,7 +62,7 @@ export enum ArtifactType {
   Repository = 'Repository',
   Issue = 'Issue',
   Release = 'Release',
-  Product = 'Product',
+  ProductCatalog = 'ProductCatalog',
 }
 
 export const NARRATIVE_ARTIFACT_TYPES: readonly ArtifactType[] = [
@@ -115,7 +115,19 @@ export const TASK_STATE_VALUES = Object.values(TASK_STATE) as TaskState[];
 export interface Relation {
     toId: string;
     kind: string; // e.g., 'RELATES_TO', 'APPEARS_IN'
+    variantId?: string;
 }
+
+export interface RelationContext {
+    variantId?: string;
+}
+
+export type AddRelationHandler = (
+    fromId: string,
+    toId: string,
+    kind: string,
+    options?: RelationContext,
+) => void;
 
 export interface Scene {
     id: string;

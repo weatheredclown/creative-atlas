@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Artifact, ArtifactType, Scene, NARRATIVE_ARTIFACT_TYPES } from '../types';
+import { type AddRelationHandler, Artifact, ArtifactType, Scene, NARRATIVE_ARTIFACT_TYPES } from '../types';
 import { PlusIcon, XMarkIcon } from './Icons';
 import EditorRelationSidebar from './EditorRelationSidebar';
 import { useDepthPreferences } from '../contexts/DepthPreferencesContext';
@@ -23,7 +23,7 @@ interface StoryEditorProps {
   artifact: Artifact;
   onUpdateArtifactData: (artifactId: string, data: Scene[]) => void;
   projectArtifacts: Artifact[];
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
 }
 

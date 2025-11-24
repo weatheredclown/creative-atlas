@@ -43,7 +43,7 @@ const nodeColor = (type: ArtifactType): string => {
     case ArtifactType.Repository: return '#38bdf8'; // sky-400
     case ArtifactType.Issue: return '#facc15'; // amber-400
     case ArtifactType.Release: return '#f97316'; // orange-500
-    case ArtifactType.Product: return '#22c55e'; // green-500
+    case ArtifactType.ProductCatalog: return '#22c55e'; // green-500
     default: return '#94a3b8'; // slate-400
   }
 };

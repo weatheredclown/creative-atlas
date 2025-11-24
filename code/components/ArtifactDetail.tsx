@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Artifact, Relation } from '../types';
+import { type AddRelationHandler, type Artifact, ArtifactType, type ProductData, type Relation } from '../types';
 import { expandSummary } from '../services/geminiService';
 import { exportArtifactToMarkdown } from '../utils/export';
 import { getStatusClasses, formatStatusLabel } from '../utils/status';
@@ -20,7 +20,7 @@ interface ArtifactDetailProps {
   artifact: Artifact;
   projectArtifacts: Artifact[];
   onUpdateArtifact: (artifactId:string, updates: Partial<Artifact>) => void;
-  onAddRelation: (fromId: string, toId: string, kind: string) => void;
+  onAddRelation: AddRelationHandler;
   onRemoveRelation: (fromId: string, relationIndex: number) => void;
   onDeleteArtifact: (artifactId: string) => Promise<void> | void;
   onDuplicateArtifact: (artifactId: string) => Promise<void> | void;
@@ -289,9 +289,17 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
   };
 
   const availableTargets = projectArtifactsList.filter(
-    (candidate) =>
-      candidate.id !== artifact.id &&
-      !relationEntries.some((entry) => entry.relation.toId === candidate.id),
+    (candidate) => {
+      if (candidate.id === artifact.id) {
+        return false;
+      }
+
+      const hasCatalogRelation = relationEntries.some(
+        (entry) => entry.relation.toId === candidate.id && !entry.relation.variantId,
+      );
+
+      return !hasCatalogRelation;
+    },
   );
   const relationOptions = [
     'RELATES_TO',
@@ -302,6 +310,21 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
     'SET_IN',
     'PUBLISHES_TO',
   ];
+
+  const getVariantLabel = useCallback(
+    (variantId?: string): string | null => {
+      if (!variantId || artifact.type !== ArtifactType.ProductCatalog) {
+        return null;
+      }
+
+      const data = artifact.data as ProductData | undefined;
+      const variants = Array.isArray(data?.variants) ? data?.variants : [];
+      const variant = variants.find((entry) => entry.id === variantId);
+
+      return variant?.name ?? null;
+    },
+    [artifact],
+  );
 
   return (
     <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 divide-y divide-slate-700/50">
@@ -604,9 +627,15 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
               {relationEntries.map(({ relation, index }) => {
                 const target = projectArtifactsList.find((a) => a.id === relation.toId);
                 const isNavigable = Boolean(onSelectArtifact && target);
+                const variantLabel = getVariantLabel(relation.variantId);
                 return (
                   <div key={`${relation.toId}-${index}`} className="flex items-center gap-2 text-sm bg-slate-700/50 px-3 py-1.5 rounded-md">
                     <span className="text-slate-400">{formatStatusLabel(relation.kind)}</span>
+                    {variantLabel ? (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-200">
+                        Merch item: {variantLabel}
+                      </span>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handleSelectRelatedArtifact(relation.toId)}
@@ -683,6 +712,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                 {relationEntries.map(({ relation, index }) => {
                   const target = projectArtifactsList.find((a) => a.id === relation.toId);
                   const isNavigable = Boolean(onSelectArtifact && target);
+                  const variantLabel = getVariantLabel(relation.variantId);
                   return (
                     <li key={`${relation.toId}-${index}`} className="rounded-md border border-slate-700/60 bg-slate-800/40 px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -699,6 +729,11 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                           {target?.title || 'Unknown Artifact'}
                         </button>
                         <span className="ml-2 text-xs uppercase tracking-wide text-slate-500">{formatStatusLabel(relation.kind)}</span>
+                        {variantLabel ? (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-200">
+                            Merch item: {variantLabel}
+                          </span>
+                        ) : null}
                         <button
                           onClick={() => handleRemoveRelation(index)}
                           className="ml-auto text-slate-500 hover:text-red-400 transition"
