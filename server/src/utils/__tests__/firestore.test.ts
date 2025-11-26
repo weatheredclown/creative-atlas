@@ -32,7 +32,7 @@ describe('runTransactionWithRetry', () => {
     const handler = vi.fn(async () => 'ok');
     const abortedError = Object.assign(new Error('10 ABORTED: cross-transaction contention'), { code: 10 });
     const runTransaction = vi
-      .fn<Parameters<Firestore['runTransaction']>[0], ReturnType<Firestore['runTransaction']>>()
+      .fn<(fn: (tx: Transaction) => Promise<unknown>) => Promise<unknown>>()
       .mockImplementationOnce(async () => {
         throw abortedError;
       })
