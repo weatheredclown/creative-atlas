@@ -227,3 +227,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-22: Allowed guest-mode project selections to persist in the URL so sample projects no longer strobe when opened; no roadmap bullets impacted.
 - 2025-12-02: Fixed merchandise lineup name inputs so spaces persist while typing; no roadmap bullets impacted.
 - 2025-11-24: Renamed the Product artifact to Product Catalog and added variant-level relations for merch items; no roadmap bullets impacted.
+- 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
