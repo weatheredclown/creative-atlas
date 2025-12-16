@@ -82,6 +82,7 @@ This document tracks the multi-session automation initiative to deliver the full
   - _Next actions:_
     - [x] Keep workspace context persistent by encoding the selected project in the workspace URL so reloads/bookmarks reopen the same context.
     - [x] Ensure the "Back to Atlas" action clears the selection instead of reloading the previously viewed project.
+    - [x] Add a welcoming workspace empty state with guided actions so creators know how to get started before selecting a project.
     - [ ] Surface confirmation toasts instead of full reloads.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
     - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split.
