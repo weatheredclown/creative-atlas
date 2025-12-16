@@ -1,7 +1,8 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 
 import ArtifactDetail from '../ArtifactDetail';
 import ArtifactListItem from '../ArtifactListItem';
+import ArtifactRelations from '../ArtifactRelations';
 import CharacterEditor from '../CharacterEditor';
 import ConlangLexiconEditor from '../ConlangLexiconEditor';
 import ErrorBoundary, { type ErrorBoundaryFallbackProps } from '../ErrorBoundary';
@@ -410,6 +411,41 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
   onWorkspaceError,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    setActiveTab('overview');
+  }, [selectedArtifactId]);
+
+  const tabs = useMemo(() => {
+    if (!selectedArtifact) return [];
+    const t = [{ id: 'overview', label: 'Overview' }];
+
+    if (selectedArtifact.type === ArtifactType.Conlang) {
+      t.push({ id: 'lexicon', label: 'Lexicon' });
+    } else if (isNarrativeArtifactType(selectedArtifact.type)) {
+      t.push({ id: 'chapters', label: 'Chapters' });
+    } else if (selectedArtifact.type === ArtifactType.Character) {
+      t.push({ id: 'sheet', label: 'Character Sheet' });
+    } else if (selectedArtifact.type === ArtifactType.Wiki) {
+      t.push({ id: 'content', label: 'Content' });
+    } else if (selectedArtifact.type === ArtifactType.Location) {
+      t.push({ id: 'details', label: 'Details' });
+    } else if (selectedArtifact.type === ArtifactType.MagicSystem) {
+      t.push({ id: 'rules', label: 'Rules' });
+    } else if (selectedArtifact.type === ArtifactType.ProductCatalog) {
+      t.push({ id: 'catalog', label: 'Catalog' });
+    } else if (selectedArtifact.type === ArtifactType.Task) {
+      t.push({ id: 'task', label: 'Task Details' });
+    } else if (selectedArtifact.type === ArtifactType.Timeline) {
+      t.push({ id: 'timeline', label: 'Timeline' });
+    } else if (selectedArtifact.type === ArtifactType.Scene) {
+      t.push({ id: 'script', label: 'Script' });
+    }
+
+    t.push({ id: 'relationships', label: 'Relationships' });
+    return t;
+  }, [selectedArtifact]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -787,102 +823,140 @@ const WorkspaceArtifactPanel: React.FC<WorkspaceArtifactPanelProps> = ({
                   This artifact is hidden by the current filters. Reset filters to keep it in view while editing.
                 </div>
               ) : null}
-              <ArtifactDetail
-                artifact={selectedArtifact}
-                projectArtifacts={projectArtifacts}
-                onUpdateArtifact={onUpdateArtifact}
-                onAddRelation={onAddRelation}
-                onRemoveRelation={onRemoveRelation}
-                onDeleteArtifact={onDeleteArtifact}
-                onDuplicateArtifact={onDuplicateArtifact}
-                onNewArtifact={(sourceId) => onOpenCreateArtifactModal({ sourceId })}
-                addXp={(amount) => {
-                  void addXp(amount);
-                }}
-                onSelectArtifact={(artifactId) => {
-                  onSelectArtifact(artifactId);
-                }}
-              />
-              {selectedArtifact.type === ArtifactType.Conlang ? (
-                <ConlangLexiconEditor
-                  artifact={selectedArtifact}
-                  conlangName={project.title}
-                  onLexemesChange={(id, lexemes) => onUpdateArtifactData(id, lexemes)}
-                  addXp={addXp}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Scene ? (
-                <SceneDialogGenerator
-                  project={project}
+
+              {/* Tabs */}
+              <div className="border-b border-slate-700/60">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                        whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors
+                        ${activeTab === tab.id
+                          ? 'border-cyan-500 text-cyan-400'
+                          : 'border-transparent text-slate-400 hover:border-slate-300 hover:text-slate-300'}
+                      `}
+                      aria-current={activeTab === tab.id ? 'page' : undefined}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <ArtifactDetail
                   artifact={selectedArtifact}
                   projectArtifacts={projectArtifacts}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                  onUpdateArtifact={onUpdateArtifact}
+                  onDeleteArtifact={onDeleteArtifact}
+                  onDuplicateArtifact={onDuplicateArtifact}
+                  onNewArtifact={(sourceId) => onOpenCreateArtifactModal({ sourceId })}
                   addXp={(amount) => {
                     void addXp(amount);
                   }}
                 />
-              ) : null}
-              {isNarrativeArtifactType(selectedArtifact.type) ? (
-                <StoryEditor
+              )}
+
+              {/* Specific Editor Tabs */}
+              {(activeTab === 'lexicon' || activeTab === 'content' || activeTab === 'details' || activeTab === 'rules' || activeTab === 'catalog' || activeTab === 'task' || activeTab === 'timeline' || activeTab === 'script' || activeTab === 'chapters' || activeTab === 'sheet') && (
+                <>
+                  {selectedArtifact.type === ArtifactType.Conlang && (
+                    <ConlangLexiconEditor
+                      artifact={selectedArtifact}
+                      conlangName={project.title}
+                      onLexemesChange={(id, lexemes) => onUpdateArtifactData(id, lexemes)}
+                      addXp={addXp}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Scene && (
+                    <SceneDialogGenerator
+                      project={project}
+                      artifact={selectedArtifact}
+                      projectArtifacts={projectArtifacts}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                      addXp={(amount) => {
+                        void addXp(amount);
+                      }}
+                    />
+                  )}
+                  {isNarrativeArtifactType(selectedArtifact.type) && (
+                    <StoryEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, scenes) => onUpdateArtifactData(id, scenes)}
+                      projectArtifacts={projectArtifacts}
+                      onAddRelation={onAddRelation}
+                      onRemoveRelation={onRemoveRelation}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Character && (
+                    <CharacterEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                      projectArtifacts={projectArtifacts}
+                      onAddRelation={onAddRelation}
+                      onRemoveRelation={onRemoveRelation}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Wiki && (
+                    <WikiEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                      assistants={aiAssistants}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Location && (
+                    <LocationEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                      projectArtifacts={projectArtifacts}
+                      onAddRelation={onAddRelation}
+                      onRemoveRelation={onRemoveRelation}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.MagicSystem && (
+                    <MagicSystemBuilder
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.ProductCatalog && (
+                    <ProductEditor
+                      artifact={selectedArtifact}
+                      projectArtifacts={projectArtifacts}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                      onAddRelation={onAddRelation}
+                      onRemoveRelation={onRemoveRelation}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Task && (
+                    <TaskEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                    />
+                  )}
+                  {selectedArtifact.type === ArtifactType.Timeline && (
+                    <TimelineEditor
+                      artifact={selectedArtifact}
+                      onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Relationships Tab */}
+              {activeTab === 'relationships' && (
+                <ArtifactRelations
                   artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, scenes) => onUpdateArtifactData(id, scenes)}
                   projectArtifacts={projectArtifacts}
                   onAddRelation={onAddRelation}
                   onRemoveRelation={onRemoveRelation}
+                  onSelectArtifact={onSelectArtifact}
+                  addXp={addXp}
                 />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Character ? (
-                <CharacterEditor
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                  projectArtifacts={projectArtifacts}
-                  onAddRelation={onAddRelation}
-                  onRemoveRelation={onRemoveRelation}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Wiki ? (
-                <WikiEditor
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                  assistants={aiAssistants}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Location ? (
-                <LocationEditor
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                  projectArtifacts={projectArtifacts}
-                  onAddRelation={onAddRelation}
-                  onRemoveRelation={onRemoveRelation}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.MagicSystem ? (
-                <MagicSystemBuilder
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.ProductCatalog ? (
-                <ProductEditor
-                  artifact={selectedArtifact}
-                  projectArtifacts={projectArtifacts}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                  onAddRelation={onAddRelation}
-                  onRemoveRelation={onRemoveRelation}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Task ? (
-                <TaskEditor
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                />
-              ) : null}
-              {selectedArtifact.type === ArtifactType.Timeline ? (
-                <TimelineEditor
-                  artifact={selectedArtifact}
-                  onUpdateArtifactData={(id, data) => onUpdateArtifactData(id, data)}
-                />
-              ) : null}
+              )}
             </div>
           </ErrorBoundary>
         ) : null}
