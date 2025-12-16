@@ -94,6 +94,7 @@ interface ProjectWorkspaceContainerProps {
   canPublishToGitHub: boolean;
   onWorkspaceError: (message: string) => void;
   onRegisterArtifactNavigator?: (navigator: ArtifactNavigationController | null) => void;
+  onViewChange: (view: WorkspaceView) => void;
 }
 
 type ProjectWorkspaceContainerComponent = React.FC<ProjectWorkspaceContainerProps>;
@@ -104,6 +105,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   projectArtifacts,
   allArtifacts,
   currentView,
+  onViewChange,
   level,
   xpProgress,
   isZenMode,
@@ -258,22 +260,25 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
       setArtifactTypeFilter(type);
       setViewMode('table');
       onSelectArtifact(null);
+      onViewChange('codex');
     },
-    [onSelectArtifact, setArtifactTypeFilter, setViewMode],
+    [onSelectArtifact, setArtifactTypeFilter, setViewMode, onViewChange],
   );
 
   const handleOpenArtifact = useCallback(
     (artifactId: string) => {
       onSelectArtifact(artifactId);
+      onViewChange('codex');
     },
-    [onSelectArtifact],
+    [onSelectArtifact, onViewChange],
   );
 
   const handleClearNavigatorFilters = useCallback(() => {
     resetFilters();
     setViewMode('table');
     onSelectArtifact(null);
-  }, [onSelectArtifact, resetFilters, setViewMode]);
+    onViewChange('codex');
+  }, [onSelectArtifact, resetFilters, setViewMode, onViewChange]);
 
   const artifactNavigator = useMemo<ArtifactNavigationController>(
     () => ({

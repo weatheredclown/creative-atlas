@@ -47,7 +47,7 @@ import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } 
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 import ProfileDrawer from './components/ProfileDrawer';
-import type { ArtifactNavigationController } from './components/workspace/types';
+import type { ArtifactNavigationController, WorkspaceView } from './components/workspace/types';
 
 const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.Idea]: 'Idea',
@@ -142,6 +142,7 @@ export default function App() {
   });
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [artifactNavigator, setArtifactNavigator] = useState<ArtifactNavigationController | null>(null);
+  const [currentWorkspaceView, setCurrentWorkspaceView] = useState<WorkspaceView>('codex');
   const [isZenMode, setIsZenMode] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
@@ -831,6 +832,8 @@ export default function App() {
             onLoadMoreProjects={handleLoadMoreProjects}
             projectArtifacts={projectArtifacts}
             artifactNavigator={artifactNavigator}
+            currentView={currentWorkspaceView}
+            onViewChange={setCurrentWorkspaceView}
           />
         ) : null}
 
@@ -870,6 +873,8 @@ export default function App() {
               canPublishToGitHub={canPublishToGitHub}
               onStartGitHubPublish={startGitHubAuthorization}
               onRegisterArtifactNavigator={setArtifactNavigator}
+              currentView={currentWorkspaceView}
+              onViewChange={setCurrentWorkspaceView}
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
