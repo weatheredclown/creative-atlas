@@ -48,6 +48,7 @@ import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 import ProfileDrawer from './components/ProfileDrawer';
 import type { ArtifactNavigationController } from './components/workspace/types';
+import WorkspaceWelcome from './components/WorkspaceWelcome';
 
 const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.Idea]: 'Idea',
@@ -749,6 +750,14 @@ export default function App() {
     setIsTutorialVisible(true);
   }, []);
 
+  const handleFocusProjectSearch = useCallback(() => {
+    const projectSearchInput = document.getElementById('project-search');
+    if (projectSearchInput instanceof HTMLInputElement) {
+      projectSearchInput.focus();
+      projectSearchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
   const handleToggleZenMode = useCallback(() => {
     setIsZenMode((previous) => !previous);
   }, []);
@@ -872,9 +881,13 @@ export default function App() {
               onRegisterArtifactNavigator={setArtifactNavigator}
             />
           ) : (
-            <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
-                <p className="text-slate-500">Select a project to view its artifacts.</p>
-            </div>
+            <WorkspaceWelcome
+              totalProjects={projects.length}
+              totalArtifacts={artifacts.length}
+              onCreateProject={handleOpenCreateProjectModal}
+              onFocusProjectSearch={handleFocusProjectSearch}
+              onStartTutorial={handleStartTutorial}
+            />
           )}
         </section>
       </main>
