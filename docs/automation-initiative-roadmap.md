@@ -84,7 +84,6 @@ This document tracks the multi-session automation initiative to deliver the full
     - [x] Ensure the "Back to Atlas" action clears the selection instead of reloading the previously viewed project.
     - [ ] Surface confirmation toasts instead of full reloads.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
-    - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split.
   - **Low-priority backlog (keep at the bottom):**
     - [ ] Align artifact workspace header actions with the refreshed project overview layout.
 - _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
@@ -106,7 +105,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button.)
   - _Next actions:_
     - [ ] Continue auditing tutorial interactions for accessibility issues.
-    - [ ] Render the FAQ entries in `code/src/data/supportFaqs.ts` inside the support drawer.
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
 - **Low-priority backlog (keep at the bottom):**
   - [ ] Produce additional localization assets once core onboarding tasks stabilize.
@@ -228,3 +226,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-02: Fixed merchandise lineup name inputs so spaces persist while typing; no roadmap bullets impacted.
 - 2025-11-24: Renamed the Product artifact to Product Catalog and added variant-level relations for merch items; no roadmap bullets impacted.
 - 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
+- 2025-12-03: Created the SupportDrawer component and added a help button to the header; completed the "Render the FAQ entries" roadmap item.
+- 2025-12-03: Expanded WorkspaceSidebar to include Scenes, Factions, Magic Systems, and Wikis; completed the "Expand the refreshed sidebar navigation" roadmap item.
