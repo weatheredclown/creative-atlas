@@ -8,6 +8,7 @@ import {
   isDataApiConfigured,
 } from '../services/dataApi';
 import type { Project } from '../types';
+import { useToast } from '../contexts/ToastContext';
 
 interface ProjectSharePanelProps {
   project: Project;
@@ -18,6 +19,7 @@ type CopyFeedback = 'idle' | 'copied' | 'failed';
 
 const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
   const { getIdToken, isGuestMode } = useAuth();
+  const { showToast } = useToast();
   const [status, setStatus] = useState<ShareStatus>('loading');
   const [shareId, setShareId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,19 +122,21 @@ const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
       setShareId(newShareId);
       setStatus('enabled');
       setCopyFeedback('idle');
+      showToast('Sharing activated. Copy the link to share your atlas.', { variant: 'success' });
     } catch (err) {
       if (!isMountedRef.current) {
         return;
       }
       console.error('Failed to enable project sharing', err);
       setError(err instanceof Error ? err.message : 'Failed to enable sharing.');
+      showToast('Unable to activate sharing. Please try again.', { variant: 'error' });
       setStatus('error');
     } finally {
       if (isMountedRef.current) {
         setIsProcessing(false);
       }
     }
-  }, [canShare, getIdToken, isProcessing, project.id]);
+  }, [canShare, getIdToken, isProcessing, project.id, showToast]);
 
   const handleDisable = useCallback(async () => {
     if (!canShare || !shareId || isProcessing) {
@@ -154,18 +158,20 @@ const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
       setShareId(null);
       setStatus('disabled');
       setCopyFeedback('idle');
+      showToast('Sharing disabled for this project.', { variant: 'success' });
     } catch (err) {
       if (!isMountedRef.current) {
         return;
       }
       console.error('Failed to disable project sharing', err);
       setError(err instanceof Error ? err.message : 'Failed to disable sharing.');
+      showToast('Unable to disable sharing right now. Please try again.', { variant: 'error' });
     } finally {
       if (isMountedRef.current) {
         setIsProcessing(false);
       }
     }
-  }, [canShare, getIdToken, isProcessing, project.id, shareId]);
+  }, [canShare, getIdToken, isProcessing, project.id, shareId, showToast]);
 
   const handleRetry = useCallback(() => {
     setError(null);
@@ -198,12 +204,14 @@ const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
         return;
       }
       setCopyFeedback('copied');
+      showToast('Share link copied to your clipboard.', { variant: 'success' });
     } catch (err) {
       if (!isMountedRef.current) {
         return;
       }
       console.error('Failed to copy share link', err);
       setCopyFeedback('failed');
+      showToast('Copy failed. Try again or copy the link manually.', { variant: 'error' });
     } finally {
       if (isMountedRef.current) {
         if (copyTimeoutRef.current !== null) {
@@ -216,7 +224,17 @@ const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
         }, 2000);
       }
     }
-  }, [shareUrl]);
+  }, [shareUrl, showToast]);
+
+  const copyFeedbackMessage: string | null = useMemo(() => {
+    if (copyFeedback === 'copied') {
+      return 'Share link copied to clipboard';
+    }
+    if (copyFeedback === 'failed') {
+      return 'Share link copy failed. Try again or copy manually.';
+    }
+    return null;
+  }, [copyFeedback]);
 
   return (
     <section className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/20">
@@ -304,6 +322,11 @@ const ProjectSharePanel: React.FC<ProjectSharePanelProps> = ({ project }) => {
                   ? 'Copy failed'
                   : 'Copy link'}
               </button>
+              {copyFeedbackMessage && (
+                <span className="sr-only" role="status" aria-live="polite">
+                  {copyFeedbackMessage}
+                </span>
+              )}
             </div>
             <button
               type="button"

@@ -83,6 +83,7 @@ This document tracks the multi-session automation initiative to deliver the full
     - [x] Keep workspace context persistent by encoding the selected project in the workspace URL so reloads/bookmarks reopen the same context.
     - [x] Ensure the "Back to Atlas" action clears the selection instead of reloading the previously viewed project.
     - [ ] Surface confirmation toasts instead of full reloads.
+      - Added sharing success/error toasts in `ProjectSharePanel` so users get instant feedback without losing context. Continue swapping remaining reload flows for notifications.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
     - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split.
   - **Low-priority backlog (keep at the bottom):**
@@ -228,3 +229,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-02: Fixed merchandise lineup name inputs so spaces persist while typing; no roadmap bullets impacted.
 - 2025-11-24: Renamed the Product artifact to Product Catalog and added variant-level relations for merch items; no roadmap bullets impacted.
 - 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
+- 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
