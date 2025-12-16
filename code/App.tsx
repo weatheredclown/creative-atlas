@@ -10,7 +10,7 @@ import {
   type ProjectComponentKey,
   type ProjectVisibilitySettings,
 } from './types';
-import { CubeIcon, SparklesIcon } from './components/Icons';
+import { BookOpenIcon, CubeIcon, FolderPlusIcon, SparklesIcon } from './components/Icons';
 import Header from './components/Header';
 import Modal from './components/Modal';
 import CreateProjectForm from './components/CreateProjectForm';
@@ -872,8 +872,73 @@ export default function App() {
               onRegisterArtifactNavigator={setArtifactNavigator}
             />
           ) : (
-            <div className="flex items-center justify-center h-full bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
-                <p className="text-slate-500">Select a project to view its artifacts.</p>
+            <div className="space-y-6 rounded-2xl border border-slate-800/70 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Workspace</p>
+                  <h2 className="text-2xl font-semibold text-white">Welcome back to Creative Atlas</h2>
+                  <p className="text-sm text-slate-300 max-w-2xl">
+                    Select a project from your atlas to keep working, or start a fresh world with guided steps. Your filters and
+                    search tools live in the left rail for quick navigation.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateProjectModal}
+                    className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500"
+                  >
+                    <FolderPlusIcon className="h-4 w-4" />
+                    Create a project
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartTutorial}
+                    className="inline-flex items-center gap-2 rounded-md border border-indigo-400/60 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:border-indigo-300/80 hover:bg-indigo-500/20"
+                  >
+                    <BookOpenIcon className="h-4 w-4" />
+                    Start guided tour
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 shadow-inner shadow-slate-950/20">
+                  <div className="flex items-start gap-3">
+                    <span className="rounded-full bg-cyan-500/10 p-2 text-cyan-200">
+                      <CubeIcon className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold text-white">Pick from your atlas</h3>
+                      <p className="text-xs text-slate-400">Use project search and status filters in the sidebar to jump between worlds.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 shadow-inner shadow-slate-950/20">
+                  <div className="flex items-start gap-3">
+                    <span className="rounded-full bg-emerald-500/10 p-2 text-emerald-200">
+                      <SparklesIcon className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold text-white">Stay focused</h3>
+                      <p className="text-xs text-slate-400">Use Zen mode from the header to hide navigation chrome while drafting.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 shadow-inner shadow-slate-950/20">
+                  <div className="flex items-start gap-3">
+                    <span className="rounded-full bg-indigo-500/10 p-2 text-indigo-200">
+                      <BookOpenIcon className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold text-white">Need a walkthrough?</h3>
+                      <p className="text-xs text-slate-400">The tutorial highlights key panels, keyboard shortcuts, and publishing steps.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </section>
