@@ -1096,9 +1096,27 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
       const canvas = await html2canvas(document.body, options);
       const canvasWidth = Math.max(1, Math.round(canvas.width));
       const canvasHeight = Math.max(1, Math.round(canvas.height));
-      lastViewportSizeRef.current = { width: canvasWidth, height: canvasHeight };
+      const viewportSize = readViewportSize();
+      const targetWidth = Math.max(1, viewportSize.width);
+      const targetHeight = Math.max(1, viewportSize.height);
 
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const shouldResize = canvasWidth !== targetWidth || canvasHeight !== targetHeight;
+      const outputCanvas = shouldResize ? document.createElement('canvas') : canvas;
+
+      if (shouldResize) {
+        outputCanvas.width = targetWidth;
+        outputCanvas.height = targetHeight;
+        const context = outputCanvas.getContext('2d');
+        if (context) {
+          context.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+        }
+      }
+
+      const normalizedWidth = Math.max(1, Math.round(outputCanvas.width));
+      const normalizedHeight = Math.max(1, Math.round(outputCanvas.height));
+      lastViewportSizeRef.current = { width: normalizedWidth, height: normalizedHeight };
+
+      const dataUrl = outputCanvas.toDataURL('image/jpeg', 0.6);
       const [, base64] = dataUrl.split(',');
       if (!base64) {
         return null;
@@ -1107,7 +1125,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
       return {
         base64,
         dataUrl,
-        viewport: { width: canvasWidth, height: canvasHeight },
+        viewport: { width: normalizedWidth, height: normalizedHeight },
       };
     } catch (error) {
       console.error('Screen capture failed', error);
