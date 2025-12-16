@@ -3,8 +3,17 @@ import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, Project, ProjectStatus } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import ProjectCard from './ProjectCard';
-import { BookOpenIcon, FolderPlusIcon, MapPinIcon, UserCircleIcon } from './Icons';
-import type { ArtifactNavigationController } from './workspace/types';
+import {
+  BookOpenIcon,
+  BuildingStorefrontIcon,
+  FolderPlusIcon,
+  MapPinIcon,
+  SparklesIcon,
+  TableCellsIcon,
+  UserCircleIcon,
+} from './Icons';
+import type { ArtifactNavigationController, WorkspaceView } from './workspace/types';
+import { WORKSPACE_VIEW_OPTIONS } from './workspace/constants';
 
 interface WorkspaceSidebarProps {
   onOpenCreateProjectModal: () => void;
@@ -26,6 +35,8 @@ interface WorkspaceSidebarProps {
   onLoadMoreProjects: () => Promise<void> | void;
   projectArtifacts: Artifact[];
   artifactNavigator: ArtifactNavigationController | null;
+  currentView?: WorkspaceView;
+  onViewChange?: (view: WorkspaceView) => void;
 }
 
 const STATUS_COLLECTIONS: Array<{ label: string; value: 'ALL' | ProjectStatus; description: string }> = [
@@ -94,6 +105,8 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onLoadMoreProjects,
   projectArtifacts,
   artifactNavigator,
+  currentView,
+  onViewChange,
 }) => {
   const projectNavigationGroups = useMemo(
     () =>
@@ -107,7 +120,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   if (selectedProject) {
     const statusLabel = formatStatusLabel(selectedProject.status);
     return (
-      <aside className="lg:col-span-3 space-y-6" aria-label="Project navigation">
+      <aside
+        className="lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2"
+        aria-label="Project navigation"
+      >
         <div className="space-y-4 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-5 shadow-inner shadow-slate-950/20">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -132,6 +148,39 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </div>
           )}
         </div>
+
+        {onViewChange && (
+          <nav aria-label="Workspace views" className="space-y-1">
+            {WORKSPACE_VIEW_OPTIONS.map((option) => {
+              const isActive = option.id === currentView;
+              let Icon = BookOpenIcon;
+              if (option.id === 'board') Icon = TableCellsIcon;
+              if (option.id === 'laboratory') Icon = SparklesIcon;
+              if (option.id === 'studio') Icon = BuildingStorefrontIcon;
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onViewChange(option.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+                    isActive
+                      ? 'border-cyan-500/50 bg-cyan-950/40 text-cyan-50 shadow-md shadow-cyan-900/20'
+                      : 'border-transparent bg-slate-900/40 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                  <div>
+                    <span className="block text-sm font-semibold">{option.label}</span>
+                    <span className="block text-[10px] opacity-80">{option.description}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+
         <div className="space-y-5">
           {projectNavigationGroups.map((group) => {
             const { Icon } = group;
@@ -153,7 +202,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => artifactNavigator?.focusType(group.type)}
+                    onClick={() => {
+                      artifactNavigator?.focusType(group.type);
+                      onViewChange?.('codex');
+                    }}
                     className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 disabled:opacity-60"
                     disabled={!canNavigate}
                   >
@@ -168,7 +220,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                       <li key={artifact.id}>
                         <button
                           type="button"
-                          onClick={() => artifactNavigator?.openArtifact(artifact.id)}
+                          onClick={() => {
+                            artifactNavigator?.openArtifact(artifact.id);
+                            onViewChange?.('codex');
+                          }}
                           className="w-full rounded-lg border border-transparent px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:border-cyan-500/60 hover:bg-slate-900/70 disabled:opacity-60"
                           disabled={!canNavigate}
                         >
@@ -182,7 +237,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   <div className="mt-3">
                     <button
                       type="button"
-                      onClick={() => artifactNavigator?.focusType(group.type)}
+                      onClick={() => {
+                        artifactNavigator?.focusType(group.type);
+                        onViewChange?.('codex');
+                      }}
                       className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 disabled:opacity-60"
                       disabled={!canNavigate}
                     >
