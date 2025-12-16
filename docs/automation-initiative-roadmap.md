@@ -228,3 +228,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-02: Fixed merchandise lineup name inputs so spaces persist while typing; no roadmap bullets impacted.
 - 2025-11-24: Renamed the Product artifact to Product Catalog and added variant-level relations for merch items; no roadmap bullets impacted.
 - 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
+- 2025-12-16: Refreshed the shared project page with richer stats, improved share-link UX, and updated presentation; no roadmap bullets impacted.
