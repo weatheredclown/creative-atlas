@@ -230,3 +230,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-24: Renamed the Product artifact to Product Catalog and added variant-level relations for merch items; no roadmap bullets impacted.
 - 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
 - 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
+- 2025-12-05: Rescaled ghost agent screenshots to match the viewport dimensions, advancing the "Coordinate normalization, calibration, and screenshot reliability" roadmap item.
