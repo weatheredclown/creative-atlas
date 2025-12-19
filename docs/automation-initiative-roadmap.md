@@ -85,7 +85,6 @@ This document tracks the multi-session automation initiative to deliver the full
     - [ ] Surface confirmation toasts instead of full reloads.
       - Added sharing success/error toasts in `ProjectSharePanel` so users get instant feedback without losing context. Continue swapping remaining reload flows for notifications.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
-    - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split.
   - **Low-priority backlog (keep at the bottom):**
     - [ ] Align artifact workspace header actions with the refreshed project overview layout.
 - _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
@@ -107,7 +106,6 @@ This document tracks the multi-session automation initiative to deliver the full
 - Layer onboarding, accessibility, and localization improvements focused on first-time creators. (Tutorial popover now includes an explicit close button.)
   - _Next actions:_
     - [ ] Continue auditing tutorial interactions for accessibility issues.
-    - [ ] Render the FAQ entries in `code/src/data/supportFaqs.ts` inside the support drawer.
 - Produce support content: integrated FAQs, in-app documentation, and contextual tooltips that teach advanced features.
 - **Low-priority backlog (keep at the bottom):**
   - [ ] Produce additional localization assets once core onboarding tasks stabilize.
@@ -232,3 +230,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-03: Added a workspace welcome panel with quick actions to select or create projects, advancing the "Workspace UX polish" roadmap item.
 - 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
 - 2025-12-05: Rescaled ghost agent screenshots to match the viewport dimensions, advancing the "Coordinate normalization, calibration, and screenshot reliability" roadmap item.
+- 2025-12-03: Created the SupportDrawer component and added a help button to the header; completed the "Render the FAQ entries" roadmap item.
+- 2025-12-03: Expanded WorkspaceSidebar to include Scenes, Factions, Magic Systems, and Wikis; completed the "Expand the refreshed sidebar navigation" roadmap item.
