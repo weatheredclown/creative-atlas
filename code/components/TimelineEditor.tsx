@@ -67,10 +67,22 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({ artifact, onUpdateArtif
                             <p className="text-sm text-slate-400">{event.description}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => openModalForEdit(event)} className="p-1 text-slate-400 hover:text-white">
+                            <button
+                                type="button"
+                                onClick={() => openModalForEdit(event)}
+                                className="p-1 text-slate-400 hover:text-white"
+                                aria-label="Edit event"
+                                title="Edit event"
+                            >
                                 <PencilIcon className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleDelete(event.id)} className="p-1 text-slate-400 hover:text-red-500">
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(event.id)}
+                                className="p-1 text-slate-400 hover:text-red-500"
+                                aria-label="Delete event"
+                                title="Delete event"
+                            >
                                 <TrashIcon className="w-4 h-4" />
                             </button>
                         </div>
