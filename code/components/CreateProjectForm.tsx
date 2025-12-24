@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { generateProjectFromDescription } from '../services/geminiService';
-import { IntelligenceLogo } from './Icons';
+import { IntelligenceLogo, Spinner } from './Icons';
 import type { TemplateArtifactBlueprint } from '../types';
 
 interface CreateProjectFormProps {
@@ -150,8 +150,9 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
               type="button"
               onClick={handleGenerateFromDescription}
               disabled={isGenerating || !description.trim()}
-              className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-cyan-600/60"
+              className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-cyan-600/60"
             >
+              {isGenerating && <Spinner className="h-4 w-4 text-cyan-200" />}
               {isGenerating ? 'Generating…' : 'Summon Atlas Intelligence'}
             </button>
           </div>
