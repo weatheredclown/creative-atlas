@@ -1129,6 +1129,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                       onClick={() => handleRemoveTag(tag)}
                       className="text-slate-400 hover:text-rose-300"
                       aria-label={`Remove ${tag}`}
+                      title={`Remove ${tag}`}
                     >
                       <XMarkIcon className="w-3 h-3" />
                     </button>
@@ -1163,6 +1164,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                       onClick={handleAddTag}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
                       aria-label="Add tag"
+                      title="Add tag"
                     >
                       <PlusIcon className="w-4 h-4" />
                     </button>
@@ -1171,6 +1173,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                       onClick={handleCancelAddTag}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/70 text-slate-300 transition-colors hover:bg-slate-700/70"
                       aria-label="Cancel adding tag"
+                      title="Cancel adding tag"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -1181,6 +1184,7 @@ const ProjectHero: React.FC<ProjectHeroProps> = ({
                     onClick={handleStartAddingTag}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-600 text-white transition-colors hover:bg-cyan-500"
                     aria-label="Add a new tag"
+                    title="Add a new tag"
                   >
                     <PlusIcon className="w-4 h-4" />
                   </button>
