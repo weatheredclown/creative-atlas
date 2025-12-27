@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import { Artifact, ArtifactType, Project, ProjectStatus } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import ProjectCard from './ProjectCard';
 import { BookOpenIcon, FolderPlusIcon, MapPinIcon, UserCircleIcon } from './Icons';
-import type { ArtifactNavigationController } from './workspace/types';
+import type { ArtifactNavigationController, WorkspaceView } from './workspace/types';
+import { DEFAULT_WORKSPACE_VIEW, WORKSPACE_VIEW_OPTIONS } from './workspace/constants';
 
 interface WorkspaceSidebarProps {
   onOpenCreateProjectModal: () => void;
@@ -26,6 +27,8 @@ interface WorkspaceSidebarProps {
   onLoadMoreProjects: () => Promise<void> | void;
   projectArtifacts: Artifact[];
   artifactNavigator: ArtifactNavigationController | null;
+  currentView: WorkspaceView;
+  onChangeWorkspaceView: (view: WorkspaceView) => void;
 }
 
 const STATUS_COLLECTIONS: Array<{ label: string; value: 'ALL' | ProjectStatus; description: string }> = [
@@ -94,6 +97,8 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onLoadMoreProjects,
   projectArtifacts,
   artifactNavigator,
+  currentView,
+  onChangeWorkspaceView,
 }) => {
   const projectNavigationGroups = useMemo(
     () =>
@@ -103,11 +108,40 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       })),
     [projectArtifacts],
   );
+  const canNavigate = Boolean(artifactNavigator);
+
+  const focusCodexView = useCallback(() => {
+    onChangeWorkspaceView(DEFAULT_WORKSPACE_VIEW);
+  }, [onChangeWorkspaceView]);
+
+  const handleFocusArtifactType = useCallback(
+    (type: ArtifactType) => {
+      focusCodexView();
+      artifactNavigator?.focusType(type);
+    },
+    [artifactNavigator, focusCodexView],
+  );
+
+  const handleOpenArtifact = useCallback(
+    (artifactId: string) => {
+      focusCodexView();
+      artifactNavigator?.openArtifact(artifactId);
+    },
+    [artifactNavigator, focusCodexView],
+  );
+
+  const handleClearNavigatorFilters = useCallback(() => {
+    focusCodexView();
+    artifactNavigator?.clearFilters();
+  }, [artifactNavigator, focusCodexView]);
 
   if (selectedProject) {
     const statusLabel = formatStatusLabel(selectedProject.status);
     return (
-      <aside className="lg:col-span-3 space-y-6" aria-label="Project navigation">
+      <aside
+        className="lg:col-span-3 space-y-6 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+        aria-label="Project navigation"
+      >
         <div className="space-y-4 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-5 shadow-inner shadow-slate-950/20">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -132,10 +166,48 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </div>
           )}
         </div>
+        <div className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 shadow-inner shadow-slate-950/20">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Workspace view</p>
+              <p className="text-[11px] text-slate-400">Switch between Codex, Board, Laboratory, and Studio.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearNavigatorFilters}
+              className="rounded-md border border-slate-700/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:border-slate-500/80 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canNavigate}
+            >
+              Reset filters
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {WORKSPACE_VIEW_OPTIONS.map((option) => {
+              const isActive = option.id === currentView;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onChangeWorkspaceView(option.id)}
+                  aria-pressed={isActive}
+                  className={`flex flex-col rounded-xl border px-3 py-3 text-left text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                    isActive
+                      ? 'border-emerald-400/70 bg-emerald-500/10 text-emerald-50 shadow-lg shadow-emerald-900/30'
+                      : 'border-slate-700/70 bg-slate-900/60 text-slate-200 hover:border-slate-500/60'
+                  }`}
+                >
+                  <span className="font-semibold">{option.label}</span>
+                  <span className={`text-xs ${isActive ? 'text-emerald-100/90' : 'text-slate-400'}`}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="space-y-5">
           {projectNavigationGroups.map((group) => {
             const { Icon } = group;
-            const canNavigate = Boolean(artifactNavigator);
             return (
               <section
                 key={group.id}
@@ -153,7 +225,7 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => artifactNavigator?.focusType(group.type)}
+                    onClick={() => handleFocusArtifactType(group.type)}
                     className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 disabled:opacity-60"
                     disabled={!canNavigate}
                   >
@@ -168,7 +240,7 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                       <li key={artifact.id}>
                         <button
                           type="button"
-                          onClick={() => artifactNavigator?.openArtifact(artifact.id)}
+                          onClick={() => handleOpenArtifact(artifact.id)}
                           className="w-full rounded-lg border border-transparent px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:border-cyan-500/60 hover:bg-slate-900/70 disabled:opacity-60"
                           disabled={!canNavigate}
                         >
@@ -182,7 +254,7 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   <div className="mt-3">
                     <button
                       type="button"
-                      onClick={() => artifactNavigator?.focusType(group.type)}
+                      onClick={() => handleFocusArtifactType(group.type)}
                       className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 disabled:opacity-60"
                       disabled={!canNavigate}
                     >
@@ -199,7 +271,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   }
 
   return (
-    <aside className="lg:col-span-3 space-y-6" aria-label="Atlas navigation">
+    <aside
+      className="lg:col-span-3 space-y-6 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+      aria-label="Atlas navigation"
+    >
       <div>
         <div className="mb-4 flex items-center justify-between px-2">
           <h2 className="text-lg font-semibold text-slate-300">Projects</h2>
