@@ -3,7 +3,16 @@ import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, Project, ProjectStatus } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import ProjectCard from './ProjectCard';
-import { BookOpenIcon, FolderPlusIcon, MapPinIcon, UserCircleIcon } from './Icons';
+import {
+  BookOpenIcon,
+  FlagIcon,
+  FolderPlusIcon,
+  GlobeAltIcon,
+  MapPinIcon,
+  SparklesIcon,
+  UserCircleIcon,
+  ViewColumnsIcon,
+} from './Icons';
 import type { ArtifactNavigationController } from './workspace/types';
 
 interface WorkspaceSidebarProps {
@@ -66,6 +75,38 @@ const NAVIGATION_GROUPS: Array<{
     type: ArtifactType.Location,
     Icon: MapPinIcon,
     emptyLabel: 'Document important settings to unlock rich worldbuilding notes.',
+  },
+  {
+    id: 'scenes',
+    label: 'Scenes',
+    description: 'Draft key moments and beat sheets.',
+    type: ArtifactType.Scene,
+    Icon: ViewColumnsIcon,
+    emptyLabel: 'Create a scene to start visualizing your story beats.',
+  },
+  {
+    id: 'factions',
+    label: 'Factions',
+    description: 'Manage groups, guilds, and organizations.',
+    type: ArtifactType.Faction,
+    Icon: FlagIcon,
+    emptyLabel: 'Establish factions to define the power dynamics.',
+  },
+  {
+    id: 'magic-systems',
+    label: 'Magic Systems',
+    description: 'Define the rules of supernatural forces.',
+    type: ArtifactType.MagicSystem,
+    Icon: SparklesIcon,
+    emptyLabel: 'Codify a magic system to ground your fantasy elements.',
+  },
+  {
+    id: 'wikis',
+    label: 'Wiki Articles',
+    description: 'Encyclopedia entries for your world.',
+    type: ArtifactType.Wiki,
+    Icon: GlobeAltIcon,
+    emptyLabel: 'Write wiki articles to expand your lore.',
   },
 ];
 

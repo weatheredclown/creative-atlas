@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CubeIcon } from './Icons';
+import { CubeIcon, QuestionMarkCircleIcon } from './Icons';
 import { UserProfile } from '../types';
 
 const getInitials = (name: string) => {
@@ -17,6 +17,7 @@ const Header: React.FC<{
   onSignOut: () => void;
   onStartTutorial: () => void;
   onOpenProfileDrawer: () => void;
+  onOpenSupportDrawer: () => void;
   adminAction?: React.ReactNode;
   isZenMode: boolean;
   onToggleZenMode: () => void;
@@ -27,6 +28,7 @@ const Header: React.FC<{
   onSignOut,
   onStartTutorial,
   onOpenProfileDrawer,
+  onOpenSupportDrawer,
   adminAction,
   isZenMode,
   onToggleZenMode,
@@ -66,6 +68,15 @@ const Header: React.FC<{
         aria-pressed={isZenMode}
       >
         {isZenMode ? 'Exit Zen Mode' : 'Zen Mode'}
+      </button>
+      <button
+        type="button"
+        onClick={onOpenSupportDrawer}
+        className="rounded-full border border-slate-600/60 p-1.5 text-slate-200 transition-colors hover:border-slate-400/80 hover:text-white"
+        aria-label="Open support drawer"
+        title="Help & Support"
+      >
+        <QuestionMarkCircleIcon className="h-5 w-5" />
       </button>
       <button
         type="button"
