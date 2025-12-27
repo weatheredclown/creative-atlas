@@ -415,6 +415,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({
                                 type="button"
                                 onClick={() => onRemoveRelation(artifact.id, index)}
                                 className="ml-auto text-emerald-200 transition hover:text-rose-200"
+                                title="Remove relation"
                               >
                                 <TrashIcon className="h-4 w-4" />
                                 <span className="sr-only">Remove relation</span>
