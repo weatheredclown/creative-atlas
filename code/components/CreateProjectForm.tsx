@@ -284,6 +284,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
                   onClick={() => handleRemoveTag(tag)}
                   className="text-cyan-200/80 transition-colors hover:text-cyan-50"
                   aria-label={`Remove tag ${tag}`}
+                  title={`Remove tag ${tag}`}
                 >
                   &times;
                 </button>

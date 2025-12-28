@@ -801,6 +801,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               type="button"
               onClick={dismissWorkspaceError}
               className="rounded-md p-1 text-rose-100/80 transition-colors hover:text-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200/80 focus:ring-offset-2 focus:ring-offset-rose-900"
+              title="Dismiss error message"
             >
               <span className="sr-only">Dismiss error message</span>
               <XMarkIcon className="h-4 w-4" />
