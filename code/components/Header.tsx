@@ -72,6 +72,7 @@ const Header: React.FC<{
         onClick={onOpenProfileDrawer}
         className="inline-flex rounded-full border border-transparent p-0.5 transition-colors hover:border-cyan-400/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         aria-label="Open profile drawer"
+        title="Open profile drawer"
       >
         {profile.photoURL ? (
           <img src={profile.photoURL} alt={profile.displayName} className="w-9 h-9 rounded-full object-cover border border-slate-600" />
