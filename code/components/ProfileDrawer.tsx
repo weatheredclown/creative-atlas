@@ -96,6 +96,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             onClick={onClose}
             className="rounded-full border border-slate-600/60 p-2 text-slate-200 transition-colors hover:border-slate-400/80 hover:text-white"
             aria-label="Close profile drawer"
+            title="Close profile drawer"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
