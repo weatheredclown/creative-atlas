@@ -244,6 +244,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
             onClick={onClose}
             className="text-slate-400 hover:text-white hover:bg-slate-700 rounded-full p-1 transition-colors cursor-pointer"
             aria-label="Close modal"
+            title="Close modal"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>

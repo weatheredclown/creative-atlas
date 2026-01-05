@@ -486,6 +486,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                       onClick={() => handleRemoveTag(tag)}
                       className="text-slate-400 hover:text-red-400"
                       aria-label={`Remove tag ${tag}`}
+                      title={`Remove tag ${tag}`}
                     >
                       <XMarkIcon className="w-3 h-3" />
                     </button>
@@ -523,6 +524,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                         onClick={handleAddTag}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
                         aria-label="Add tag"
+                        title="Add tag"
                       >
                         <PlusIcon className="w-4 h-4" />
                       </button>
@@ -531,6 +533,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                         onClick={handleCancelAddTag}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-700/70 text-slate-300 hover:bg-slate-600/70 transition-colors"
                         aria-label="Cancel adding tag"
+                        title="Cancel adding tag"
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>
@@ -541,6 +544,7 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                       onClick={handleStartAddingTag}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
                       aria-label="Add a new tag"
+                      title="Add a new tag"
                     >
                       <PlusIcon className="w-4 h-4" />
                     </button>
