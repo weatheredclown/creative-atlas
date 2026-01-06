@@ -37,6 +37,8 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState }) => {
             key={state}
             onClick={() => onUpdateTaskState(task.id, state)}
             className="px-2 py-0.5 text-xs font-semibold bg-slate-600 hover:bg-slate-500 text-slate-300 rounded-md transition-colors"
+            aria-label={`Move task to ${state}`}
+            title={`Move task to ${state}`}
           >
             {state}
           </button>
