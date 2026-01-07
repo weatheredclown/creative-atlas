@@ -136,7 +136,12 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   <strong className="text-slate-300 text-sm">{trait.key}:</strong>
                   <span className="text-slate-400 text-sm flex-grow">{trait.value}</span>
                   {showDetailedFields && (
-                    <button onClick={() => handleDeleteTrait(trait.id)} className="p-1 text-slate-500 hover:text-red-400">
+                    <button
+                      onClick={() => handleDeleteTrait(trait.id)}
+                      className="p-1 text-slate-500 hover:text-red-400"
+                      aria-label={`Delete trait: ${trait.key}`}
+                      title={`Delete trait: ${trait.key}`}
+                    >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
                   )}
