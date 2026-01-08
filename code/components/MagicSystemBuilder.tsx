@@ -261,6 +261,7 @@ const MagicSystemBuilder: React.FC<MagicSystemBuilderProps> = ({ artifact, onUpd
                       onClick={() => removePrinciple(principle.id)}
                       className="text-slate-500 hover:text-rose-300"
                       aria-label="Remove principle"
+                      title="Remove principle"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -339,6 +340,7 @@ const MagicSystemBuilder: React.FC<MagicSystemBuilderProps> = ({ artifact, onUpd
                       onClick={() => removeSource(source.id)}
                       className="text-slate-500 hover:text-rose-300"
                       aria-label="Remove source"
+                      title="Remove source"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -411,6 +413,7 @@ const MagicSystemBuilder: React.FC<MagicSystemBuilderProps> = ({ artifact, onUpd
                     onClick={() => removeRitual(ritual.id)}
                     className="text-slate-500 hover:text-rose-300"
                     aria-label="Remove ritual"
+                    title="Remove ritual"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
@@ -492,6 +495,7 @@ const MagicSystemBuilder: React.FC<MagicSystemBuilderProps> = ({ artifact, onUpd
                     onClick={() => removeTaboo(taboo.id)}
                     className="text-slate-500 hover:text-rose-300"
                     aria-label="Remove taboo"
+                    title="Remove taboo"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
@@ -550,6 +554,7 @@ const MagicSystemBuilder: React.FC<MagicSystemBuilderProps> = ({ artifact, onUpd
                   onClick={() => removeFieldNote(index)}
                   className="mt-1 text-slate-500 hover:text-rose-300"
                   aria-label="Remove note"
+                  title="Remove note"
                 >
                   <XMarkIcon className="w-4 h-4" />
                 </button>
