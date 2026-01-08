@@ -47,6 +47,7 @@ import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } 
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 import ProfileDrawer from './components/ProfileDrawer';
+import SupportDrawer from './components/SupportDrawer';
 import type { ArtifactNavigationController } from './components/workspace/types';
 import WorkspaceWelcome from './components/WorkspaceWelcome';
 
@@ -142,6 +143,7 @@ export default function App() {
     return !progress.hasCompleted && !progress.wasDismissed;
   });
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [isSupportDrawerOpen, setIsSupportDrawerOpen] = useState(false);
   const [artifactNavigator, setArtifactNavigator] = useState<ArtifactNavigationController | null>(null);
   const [isZenMode, setIsZenMode] = useState(false);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
@@ -301,6 +303,14 @@ export default function App() {
 
   const handleCloseProfileDrawer = useCallback(() => {
     setIsProfileDrawerOpen(false);
+  }, []);
+
+  const handleOpenSupportDrawer = useCallback(() => {
+    setIsSupportDrawerOpen(true);
+  }, []);
+
+  const handleCloseSupportDrawer = useCallback(() => {
+    setIsSupportDrawerOpen(false);
   }, []);
 
   const projectConversations = useMemo(
@@ -795,6 +805,7 @@ export default function App() {
         onSignOut={signOutUser}
         onStartTutorial={handleStartTutorial}
         onOpenProfileDrawer={handleOpenProfileDrawer}
+        onOpenSupportDrawer={handleOpenSupportDrawer}
         isZenMode={isZenMode}
         onToggleZenMode={handleToggleZenMode}
         adminAction={
@@ -926,6 +937,10 @@ export default function App() {
         artifacts={artifacts}
         isViewingOwnWorkspace={isViewingOwnWorkspace}
         onUpdateProfile={handleProfileUpdate}
+      />
+      <SupportDrawer
+        isOpen={isSupportDrawerOpen}
+        onClose={handleCloseSupportDrawer}
       />
       <GhostAgent
         ref={ghostAgentRef}
