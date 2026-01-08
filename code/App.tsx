@@ -47,8 +47,9 @@ import { loadTutorialProgress, persistTutorialProgress, TutorialProgressState } 
 import { clearAnalyticsUser, setAnalyticsUser } from './services/analytics';
 import GhostAgent, { GhostAgentHandle } from './components/GhostAgent';
 import ProfileDrawer from './components/ProfileDrawer';
-import type { ArtifactNavigationController } from './components/workspace/types';
+import type { ArtifactNavigationController, WorkspaceView } from './components/workspace/types';
 import WorkspaceWelcome from './components/WorkspaceWelcome';
+import { DEFAULT_WORKSPACE_VIEW } from './components/workspace/constants';
 
 const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.Idea]: 'Idea',
@@ -144,12 +145,17 @@ export default function App() {
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [artifactNavigator, setArtifactNavigator] = useState<ArtifactNavigationController | null>(null);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(DEFAULT_WORKSPACE_VIEW);
   const dataApiEnabled = isDataApiConfigured && !isGuestMode;
   const selectedProject = useMemo(
     () => (projectIdFromUrl ? projects.find((project) => project.id === projectIdFromUrl) ?? null : null),
     [projects, projectIdFromUrl],
   );
   const selectedProjectId = selectedProject?.id ?? null;
+
+  useEffect(() => {
+    setWorkspaceView(DEFAULT_WORKSPACE_VIEW);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (!profile) {
@@ -290,6 +296,10 @@ export default function App() {
     () => selectDailyQuestsForDate(dailyQuestDayKey),
     [dailyQuestDayKey],
   );
+
+  const handleChangeWorkspaceView = useCallback((view: WorkspaceView) => {
+    setWorkspaceView(view);
+  }, []);
 
   const handleToggleGhostAgent = useCallback(() => {
     ghostAgentRef.current?.toggle();
@@ -498,6 +508,7 @@ export default function App() {
 
   const handleReturnToAtlas = useCallback(() => {
     setArtifactNavigator(null);
+    setWorkspaceView(DEFAULT_WORKSPACE_VIEW);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
     setSearchParams(nextParams, { replace: true });
@@ -840,6 +851,8 @@ export default function App() {
             onLoadMoreProjects={handleLoadMoreProjects}
             projectArtifacts={projectArtifacts}
             artifactNavigator={artifactNavigator}
+            currentView={workspaceView}
+            onChangeWorkspaceView={handleChangeWorkspaceView}
           />
         ) : null}
 
@@ -879,6 +892,8 @@ export default function App() {
               canPublishToGitHub={canPublishToGitHub}
               onStartGitHubPublish={startGitHubAuthorization}
               onRegisterArtifactNavigator={setArtifactNavigator}
+              currentView={workspaceView}
+              onChangeWorkspaceView={handleChangeWorkspaceView}
             />
           ) : (
             <WorkspaceWelcome

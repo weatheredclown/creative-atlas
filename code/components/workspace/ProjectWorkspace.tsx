@@ -11,6 +11,7 @@ import {
   WorkspaceView,
 } from './types';
 import { XMarkIcon } from '../Icons';
+import { DEFAULT_WORKSPACE_VIEW, WORKSPACE_VIEW_OPTIONS } from './constants';
 
 import {
   type Artifact,
@@ -90,32 +91,11 @@ interface ProjectWorkspaceProps {
   canPublishToGitHub: boolean;
   onStartGitHubPublish: () => Promise<void>;
   onRegisterArtifactNavigator?: (navigator: ArtifactNavigationController | null) => void;
+  currentView: WorkspaceView;
+  onChangeWorkspaceView: (view: WorkspaceView) => void;
 }
 
 const DEFAULT_ARTIFACT_STATUS = 'idea';
-
-const WORKSPACE_VIEW_OPTIONS: Array<{ id: WorkspaceView; label: string; description: string }> = [
-  {
-    id: 'codex',
-    label: 'Codex',
-    description: 'Browse artifacts, quick facts, and project stats.',
-  },
-  {
-    id: 'board',
-    label: 'Board',
-    description: 'Track tasks, milestones, and relationship flows.',
-  },
-  {
-    id: 'laboratory',
-    label: 'Laboratory',
-    description: 'Experiment with insights, AI copilots, and simulations.',
-  },
-  {
-    id: 'studio',
-    label: 'Studio',
-    description: 'Prep templates, imports, and release workflows.',
-  },
-];
 
 const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   profile,
@@ -151,6 +131,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   canPublishToGitHub,
   onStartGitHubPublish,
   onRegisterArtifactNavigator,
+  currentView,
+  onChangeWorkspaceView,
 }) => {
   const { showToast } = useToast();
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
@@ -162,7 +144,6 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [infoModalContent, setInfoModalContent] = useState<InfoModalState>(null);
   const [workspaceErrorToast, setWorkspaceErrorToast] = useState<{ id: number; message: string } | null>(null);
   const [quickFactSourceArtifactId, setQuickFactSourceArtifactId] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<WorkspaceView>('codex');
 
   const projectArtifactsById = useMemo(() => {
     const map = new Map<string, Artifact>();
@@ -189,8 +170,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     setInfoModalContent(null);
     setWorkspaceErrorToast(null);
     setQuickFactSourceArtifactId(null);
-    setCurrentView('codex');
-  }, [project.id]);
+    onChangeWorkspaceView(DEFAULT_WORKSPACE_VIEW);
+  }, [onChangeWorkspaceView, project.id]);
 
   useEffect(() => {
     if (!workspaceErrorToast) {
@@ -810,35 +791,37 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         </div>
       ) : null}
 
-      <section className="mb-10 space-y-3">
-        <header className="space-y-1">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Workspace view</p>
-          <p className="text-xs text-slate-500">Choose which tools to focus on while working in this project.</p>
-        </header>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {WORKSPACE_VIEW_OPTIONS.map((option) => {
-            const isActive = option.id === currentView;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setCurrentView(option.id)}
-                aria-pressed={isActive}
-                className={`rounded-2xl border px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                  isActive
-                    ? 'border-emerald-400/70 bg-emerald-500/10 shadow-lg shadow-emerald-900/20'
-                    : 'border-slate-700/60 bg-slate-900/40 hover:border-slate-500/60'
-                }`}
-              >
-                <span className={`text-base font-semibold ${isActive ? 'text-emerald-50' : 'text-slate-100'}`}>
-                  {option.label}
-                </span>
-                <p className={`mt-1 text-sm ${isActive ? 'text-emerald-100/80' : 'text-slate-400'}`}>{option.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {isZenMode ? (
+        <section className="mb-10 space-y-3">
+          <header className="space-y-1">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Workspace view</p>
+            <p className="text-xs text-slate-500">Choose which tools to focus on while working in this project.</p>
+          </header>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {WORKSPACE_VIEW_OPTIONS.map((option) => {
+              const isActive = option.id === currentView;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onChangeWorkspaceView(option.id)}
+                  aria-pressed={isActive}
+                  className={`rounded-2xl border px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                    isActive
+                      ? 'border-emerald-400/70 bg-emerald-500/10 shadow-lg shadow-emerald-900/20'
+                      : 'border-slate-700/60 bg-slate-900/40 hover:border-slate-500/60'
+                  }`}
+                >
+                  <span className={`text-base font-semibold ${isActive ? 'text-emerald-50' : 'text-slate-100'}`}>
+                    {option.label}
+                  </span>
+                  <p className={`mt-1 text-sm ${isActive ? 'text-emerald-100/80' : 'text-slate-400'}`}>{option.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <ProjectWorkspaceContainer
         profile={profile}
@@ -911,4 +894,3 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 };
 
 export default ProjectWorkspace;
-

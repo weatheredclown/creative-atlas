@@ -85,7 +85,7 @@ This document tracks the multi-session automation initiative to deliver the full
     - [ ] Surface confirmation toasts instead of full reloads.
       - Added sharing success/error toasts in `ProjectSharePanel` so users get instant feedback without losing context. Continue swapping remaining reload flows for notifications.
     - [ ] Provide inline help for advanced AI modules and audit accessibility/responsiveness gaps.
-    - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split.
+    - [ ] Expand the refreshed sidebar navigation to cover more artifact collections (scenes, factions, wiki hubs) after validating the new profile drawer split; the sticky sidebar view switcher is in place, so extend coverage next.
   - **Low-priority backlog (keep at the bottom):**
     - [ ] Align artifact workspace header actions with the refreshed project overview layout.
 - _(Low priority)_ Build the simulated history heatmap: aggregate timeline data in Firestore and render a heatmap visualization in `code/src/features/history/`. (Scope and data flow summarized in `docs/history-heatmap-overview.md`.)
@@ -231,4 +231,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-11-26: Fixed Firestore transaction retry test typings to restore server type checks; no roadmap bullets impacted.
 - 2025-12-03: Added a workspace welcome panel with quick actions to select or create projects, advancing the "Workspace UX polish" roadmap item.
 - 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
+- 2025-12-19: Integrated the sticky workspace sidebar view switcher (PR #480 backport) and centralized workspace view state resets, advancing the "Workspace UX polish" navigation workstream.
 - 2025-12-05: Rescaled ghost agent screenshots to match the viewport dimensions, advancing the "Coordinate normalization, calibration, and screenshot reliability" roadmap item.
