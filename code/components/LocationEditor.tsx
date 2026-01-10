@@ -157,7 +157,13 @@ const LocationEditor: React.FC<LocationEditorProps> = ({
                   <strong className="text-slate-300 text-sm">{feature.name}</strong>
                   <p className="text-slate-400 text-xs">{feature.description}</p>
                   {showDetailedFields && (
-                    <button onClick={() => handleDeleteFeature(feature.id)} className="absolute top-1 right-1 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFeature(feature.id)}
+                      className="absolute top-1 right-1 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Delete feature"
+                      title="Delete feature"
+                    >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
                   )}
