@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AIAssistant, Artifact, ArtifactType, Project } from '../types';
-import { IntelligenceLogo, BookOpenIcon } from './Icons';
+import { IntelligenceLogo, BookOpenIcon, Spinner } from './Icons';
 import { generateText } from '../services/generation';
 import { buildAtlasIntelligencePrompt } from '../services/promptBuilder';
 import { useUserData } from '../contexts/UserDataContext';
@@ -468,7 +468,7 @@ const AICopilotPanel: React.FC<AICopilotPanelProps> = ({ assistants, onGenerate 
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-cyan-600/30 border border-cyan-500/60 text-cyan-200 hover:bg-cyan-600/40 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
               >
-                <IntelligenceLogo className="w-4 h-4" />
+                {isLoading ? <Spinner className="w-4 h-4 text-cyan-200" /> : <IntelligenceLogo className="w-4 h-4" />}
                 {isLoading ? 'Generating...' : 'Generate'}
               </button>
             </div>

@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Artifact, ArtifactType, Project, ProjectStatus } from '../types';
 import { formatStatusLabel } from '../utils/status';
 import ProjectCard from './ProjectCard';
-import { BookOpenIcon, FolderPlusIcon, MapPinIcon, UserCircleIcon } from './Icons';
+import { BookOpenIcon, FolderPlusIcon, MapPinIcon, UserCircleIcon, Spinner } from './Icons';
 import type { ArtifactNavigationController } from './workspace/types';
 
 interface WorkspaceSidebarProps {
@@ -307,9 +307,10 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 onClick={() => {
                   void onLoadMoreProjects();
                 }}
-                className="w-full rounded-md border border-cyan-800/50 bg-cyan-950/50 px-3 py-2 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-900/60 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full flex justify-center items-center gap-2 rounded-md border border-cyan-800/50 bg-cyan-950/50 px-3 py-2 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-900/60 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isLoadingMoreProjects}
               >
+                {isLoadingMoreProjects && <Spinner className="w-4 h-4 text-cyan-200" />}
                 {isLoadingMoreProjects ? 'Loading more projects…' : 'Load more projects'}
               </button>
             )}
