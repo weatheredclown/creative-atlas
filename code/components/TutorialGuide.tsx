@@ -160,6 +160,7 @@ const TutorialGuide: React.FC<TutorialGuideProps> = ({
             onClick={onClose}
             className="absolute right-0 top-0 -mr-2 -mt-2 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             aria-label="Close tutorial"
+            title="Close tutorial"
           >
             <span aria-hidden="true">&times;</span>
           </button>

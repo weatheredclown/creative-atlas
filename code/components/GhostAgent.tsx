@@ -803,6 +803,7 @@ const PayloadPreviewModal: React.FC<{ preview: PayloadPreviewData; onClose: () =
               onClick={onClose}
               className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-900/70 p-2 text-slate-200 transition hover:bg-slate-800"
               aria-label="Close payload preview"
+              title="Close payload preview"
             >
               <XMarkIcon className="h-4 w-4" />
             </button>
@@ -1676,6 +1677,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
                 }}
                 className="rounded-full p-1 text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label="Close agent"
+                title="Close agent"
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
@@ -1947,6 +1949,7 @@ const GhostAgent = forwardRef<GhostAgentHandle, GhostAgentProps>(
                 onClick={() => setIsOpen(true)}
                 className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-900/80 shadow-lg backdrop-blur transition hover:bg-slate-900"
                 aria-label="Open Creative Atlas ghost agent"
+                title="Open Creative Atlas ghost agent"
               >
                 <SparklesIcon className="h-6 w-6 text-indigo-300" />
               </button>
