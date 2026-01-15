@@ -5,7 +5,7 @@ import { IntelligenceLogo, Spinner } from './Icons';
 import type { TemplateArtifactBlueprint } from '../types';
 
 interface CreateProjectFormProps {
-  onCreate: (data: { title: string; summary: string; tags?: string[]; artifacts?: TemplateArtifactBlueprint[] }) => void;
+  onCreate: (data: { title: string; summary: string; tags?: string[]; artifacts?: TemplateArtifactBlueprint[] }) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -37,6 +37,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
   const [generationError, setGenerationError] = useState('');
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [starterArtifacts, setStarterArtifacts] = useState<TemplateArtifactBlueprint[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleTemplateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const templateId = event.target.value;
@@ -99,14 +100,18 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
     setStarterArtifacts([]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required.');
       return;
     }
-    onCreate({ title: title.trim(), summary: summary.trim(), tags: suggestedTags, artifacts: starterArtifacts });
-    onClose();
+    setIsCreating(true);
+    try {
+      await onCreate({ title: title.trim(), summary: summary.trim(), tags: suggestedTags, artifacts: starterArtifacts });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
     return (
@@ -301,15 +306,18 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreate, onClose
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors"
+          disabled={isCreating}
+          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
+          disabled={isCreating}
+          className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Create Project
+          {isCreating && <Spinner className="h-4 w-4 text-cyan-200" />}
+          {isCreating ? 'Creating…' : 'Create Project'}
         </button>
       </div>
     </form>
