@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { InspirationCard } from '../types';
 import { drawInspirationCard } from '../utils/inspiration';
-import { PlusIcon, SparklesIcon, TrophyIcon } from './Icons';
+import { PlusIcon, SparklesIcon, TrophyIcon, Spinner } from './Icons';
 
 interface InspirationDeckProps {
   onCaptureCard?: (card: InspirationCard) => Promise<void> | void;
@@ -110,7 +110,7 @@ const InspirationDeck: React.FC<InspirationDeckProps> = ({ onCaptureCard, isCapt
               disabled={isCapturing || isCaptureDisabled}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-slate-100"
             >
-              <PlusIcon className="w-4 h-4" />
+              {isCapturing ? <Spinner className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
               {isCapturing ? 'Saving…' : 'Capture to project'}
             </button>
           )}
