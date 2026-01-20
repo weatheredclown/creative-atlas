@@ -10,7 +10,7 @@ import { CreateArtifactInput, InfoModalState, QuickFactInput } from './types';
 interface WorkspaceModalsProps {
   isCreateModalOpen: boolean;
   onCloseCreateModal: () => void;
-  onCreateArtifact: (input: CreateArtifactInput) => void;
+  onCreateArtifact: (input: CreateArtifactInput) => Promise<void> | void;
   sourceArtifactId: string | null;
   defaultCreateArtifactType: ArtifactType | null;
   isQuickFactModalOpen: boolean;

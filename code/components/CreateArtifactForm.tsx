@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ArtifactType } from '../types';
+import { Spinner } from './Icons';
 
 const HIDDEN_TYPES: ArtifactType[] = [ArtifactType.Repository, ArtifactType.Issue, ArtifactType.Release];
 const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as ArtifactType[]).filter(
@@ -8,7 +9,7 @@ const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as Artifact
 );
 
 interface CreateArtifactFormProps {
-  onCreate: (data: { title: string; type: ArtifactType; summary: string; sourceArtifactId?: string | null }) => void;
+  onCreate: (data: { title: string; type: ArtifactType; summary: string; sourceArtifactId?: string | null }) => Promise<void> | void;
   onClose: () => void;
   sourceArtifactId?: string | null;
   defaultType?: ArtifactType | null;
@@ -25,15 +26,24 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
   const [type, setType] = useState<ArtifactType>(initialType);
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required.');
       return;
     }
-    onCreate({ title, type, summary, sourceArtifactId });
-    onClose();
+
+    setIsCreating(true);
+    try {
+      await onCreate({ title, type, summary, sourceArtifactId });
+      onClose();
+    } catch (err) {
+      console.error('Failed to create artifact:', err);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -50,7 +60,8 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
             setTitle(e.target.value);
             if (error) setError('');
           }}
-          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+          disabled={isCreating}
+          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition disabled:opacity-50"
           placeholder="e.g., The Crimson Blade, City of Glass"
           required
         />
@@ -65,7 +76,8 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
           id="artifact-type"
           value={type}
           onChange={(e) => setType(e.target.value as ArtifactType)}
-          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+          disabled={isCreating}
+          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition disabled:opacity-50"
         >
           {AVAILABLE_TYPES.map((artifactType) => (
             <option key={artifactType} value={artifactType}>
@@ -84,7 +96,8 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           rows={3}
-          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+          disabled={isCreating}
+          className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition disabled:opacity-50"
           placeholder="A brief description of this artifact."
         />
       </div>
@@ -93,15 +106,18 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors"
+          disabled={isCreating}
+          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
+          disabled={isCreating}
+          className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors flex items-center gap-2 disabled:bg-cyan-600/70 disabled:cursor-not-allowed"
         >
-          Create Artifact
+          {isCreating && <Spinner className="h-4 w-4 text-cyan-200" />}
+          {isCreating ? 'Creating...' : 'Create Artifact'}
         </button>
       </div>
     </form>
