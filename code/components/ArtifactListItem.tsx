@@ -1,7 +1,7 @@
-import React, { KeyboardEvent, useMemo } from 'react';
+import React, { KeyboardEvent, useMemo, useState } from 'react';
 
 import type { Artifact } from '../types';
-import { BookOpenIcon, PlusIcon, SparklesIcon, ArrowUpTrayIcon, XMarkIcon } from './Icons';
+import { BookOpenIcon, PlusIcon, SparklesIcon, ArrowUpTrayIcon, XMarkIcon, Spinner } from './Icons';
 import { formatStatusLabel, getStatusClasses } from '../utils/status';
 import { isQuickFactArtifact } from '../utils/quickFacts';
 
@@ -57,9 +57,18 @@ const ArtifactListItem: React.FC<ArtifactListItemProps> = ({
     return 'Quick Fact';
   }, [isQuickFact, quickFactMatch, totalQuickFacts]);
 
-  const handleDuplicate = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    void onDuplicate();
+    if (isDuplicating) return;
+
+    setIsDuplicating(true);
+    try {
+      await onDuplicate();
+    } finally {
+      setIsDuplicating(false);
+    }
   };
 
   const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -130,10 +139,11 @@ const ArtifactListItem: React.FC<ArtifactListItemProps> = ({
           <button
             type="button"
             onClick={handleDuplicate}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-700/60 px-2 py-1 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-500/60 hover:text-white"
+            disabled={isDuplicating}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-700/60 px-2 py-1 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-500/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
-            Duplicate
+            {isDuplicating ? <Spinner className="h-3.5 w-3.5" /> : <ArrowUpTrayIcon className="h-3.5 w-3.5" />}
+            {isDuplicating ? 'Duplicating...' : 'Duplicate'}
           </button>
           <button
             type="button"
