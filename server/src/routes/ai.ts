@@ -848,7 +848,7 @@ router.post(
       const response = await client.models.generateContent({
         model,
         contents,
-        config: generationConfig,
+        ...generationConfig,
       });
       const safetyIssue = resolveSafetyIssue(response);
 
