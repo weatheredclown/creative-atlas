@@ -9,7 +9,7 @@ import {
   SceneDialogueLine,
 } from '../types';
 import { IntelligenceLogo, SparklesIcon, Spinner } from './Icons';
-import { generateSceneDialogue } from '../services/geminiService';
+import { generateText } from '../services/aiService';
 import {
   createSceneDialogueLineId,
   formatSceneDialogue,
@@ -210,23 +210,55 @@ const SceneDialogGenerator: React.FC<SceneDialogGeneratorProps> = ({
 
       const sceneSummaryContext = synopsis.trim().length > 0 ? synopsis : artifact.summary ?? '';
 
-      const result = await generateSceneDialogue({
-        projectTitle: project.title,
-        sceneTitle: artifact.title,
-        scenePrompt: trimmedPrompt,
-        sceneSummary: sceneSummaryContext,
-        characters: castProfiles,
-        existingBeats: beats,
-      });
+      const characterProfiles = castProfiles
+        .map(
+          (profile) =>
+            `### ${profile.name}\n\n${[profile.summary, profile.bio, ...profile.traits]
+              .filter((field) => field && field.trim().length > 0)
+              .join('\n\n')}`,
+        )
+        .join('\n\n');
+
+      const systemPrompt = [
+        `You are an expert screenwriter for ${project.title}.`,
+        `Your task is to write dialogue for a scene titled "${artifact.title}".`,
+        sceneSummaryContext ? `Scene summary: ${sceneSummaryContext}` : '',
+        `The scene involves the following characters:\n${characterProfiles}`,
+        beats.length > 0 ? `The dialogue should follow these beats:\n${beats.join('\n')}` : '',
+        'Generate a JSON object with the keys "synopsis", "beats", and "dialogue".',
+        'The "dialogue" key should be an array of objects, each with "speaker", "line", and "direction" keys.',
+        'The speaker value must exactly match one of the character names provided.',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const result = await generateText(
+        `System prompt:\n${systemPrompt}\n\nScene prompt:\n${trimmedPrompt}`,
+        {
+          responseMimeType: 'application/json',
+        },
+      );
 
       const timestamp = Date.now();
       const speakerLookup = new Map(
         selectedProfiles.map((profile) => [profile.name.toLowerCase(), profile.id]),
       );
 
-      const generatedDialogue: SceneDialogueLine[] = (result.dialogue ?? [])
+      const parsedResult = JSON.parse(result) as {
+        synopsis?: unknown;
+        beats?: unknown;
+        dialogue?: unknown;
+      };
+
+      const generatedDialogue: SceneDialogueLine[] = (
+        (Array.isArray(parsedResult.dialogue) ? parsedResult.dialogue : []) as Array<{
+          speaker?: unknown;
+          line?: unknown;
+          direction?: unknown;
+        }>
+      )
         .map((line, index) => {
-          const rawSpeaker = (line.speaker ?? '').trim();
+          const rawSpeaker = (typeof line.speaker === 'string' ? line.speaker : '').trim();
           const normalizedSpeaker = rawSpeaker.toLowerCase();
           const matchedId = speakerLookup.get(normalizedSpeaker);
           const direction = typeof line.direction === 'string' ? line.direction.trim() : '';
@@ -253,11 +285,13 @@ const SceneDialogGenerator: React.FC<SceneDialogGeneratorProps> = ({
         throw new Error('Atlas Intelligence returned an empty script. Try tweaking the prompt or cast.');
       }
 
-      const generatedBeats = Array.isArray(result.beats)
-        ? result.beats.map((beat) => (typeof beat === 'string' ? beat.trim() : '')).filter((beat) => beat.length > 0)
+      const generatedBeats = Array.isArray(parsedResult.beats)
+        ? parsedResult.beats
+            .map((beat) => (typeof beat === 'string' ? beat.trim() : ''))
+            .filter((beat) => beat.length > 0)
         : [];
 
-      const aiSynopsis = typeof result.synopsis === 'string' ? result.synopsis.trim() : '';
+      const aiSynopsis = typeof parsedResult.synopsis === 'string' ? parsedResult.synopsis.trim() : '';
       const nextSynopsis = aiSynopsis.length > 0 ? aiSynopsis : (sceneSummaryContext ?? '');
       const generatedAtIso = new Date(timestamp).toISOString();
 
