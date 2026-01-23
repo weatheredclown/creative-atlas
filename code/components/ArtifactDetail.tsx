@@ -484,8 +484,9 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                   {showDetailedFields && (
                     <button
                       onClick={() => handleRemoveTag(tag)}
-                      className="text-slate-400 hover:text-red-400"
+                      className="text-slate-400 hover:text-red-400 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-slate-700"
                       aria-label={`Remove tag ${tag}`}
+                      title={`Remove tag ${tag}`}
                     >
                       <XMarkIcon className="w-3 h-3" />
                     </button>
@@ -521,16 +522,18 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                       <button
                         type="button"
                         onClick={handleAddTag}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800"
                         aria-label="Add tag"
+                        title="Add tag"
                       >
                         <PlusIcon className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelAddTag}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-700/70 text-slate-300 hover:bg-slate-600/70 transition-colors"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-700/70 text-slate-300 hover:bg-slate-600/70 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800"
                         aria-label="Cancel adding tag"
+                        title="Cancel adding tag"
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>
@@ -539,8 +542,9 @@ const ArtifactDetail: React.FC<ArtifactDetailProps> = ({
                     <button
                       type="button"
                       onClick={handleStartAddingTag}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-600 text-white hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800"
                       aria-label="Add a new tag"
+                      title="Add a new tag"
                     >
                       <PlusIcon className="w-4 h-4" />
                     </button>
