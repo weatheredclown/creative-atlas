@@ -53,7 +53,7 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
   };
 
   return (
-    <form id="create-artifact-form" onSubmit={handleSubmit} className="space-y-6">
+    <form id="create-artifact-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
       <div>
         <label htmlFor="artifact-title" className="block text-sm font-medium text-slate-300 mb-1">
           Title
@@ -69,8 +69,14 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
           className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
           placeholder="e.g., The Crimson Blade, City of Glass"
           required
+          aria-invalid={!!error}
+          aria-describedby={error ? 'artifact-title-error' : undefined}
         />
-        {error && <p className="text-red-400 mt-1 text-sm">{error}</p>}
+        {error && (
+          <p id="artifact-title-error" role="alert" className="text-red-400 mt-1 text-sm">
+            {error}
+          </p>
+        )}
       </div>
 
       <div>
