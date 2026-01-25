@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ArtifactType } from '../types';
+import { Spinner } from './Icons';
 
 const HIDDEN_TYPES: ArtifactType[] = [ArtifactType.Repository, ArtifactType.Issue, ArtifactType.Release];
 const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as ArtifactType[]).filter(
@@ -8,7 +9,7 @@ const AVAILABLE_TYPES: ArtifactType[] = (Object.values(ArtifactType) as Artifact
 );
 
 interface CreateArtifactFormProps {
-  onCreate: (data: { title: string; type: ArtifactType; summary: string; sourceArtifactId?: string | null }) => void;
+  onCreate: (data: { title: string; type: ArtifactType; summary: string; sourceArtifactId?: string | null }) => Promise<void> | void;
   onClose: () => void;
   sourceArtifactId?: string | null;
   defaultType?: ArtifactType | null;
@@ -25,15 +26,30 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
   const [type, setType] = useState<ArtifactType>(initialType);
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required.');
       return;
     }
-    onCreate({ title, type, summary, sourceArtifactId });
-    onClose();
+
+    setIsCreating(true);
+    try {
+      await onCreate({ title: title.trim(), type, summary: summary.trim(), sourceArtifactId });
+      // We rely on the parent to close the modal on success (e.g., via prop update)
+      // or if the parent's onCreate handles navigation/closing.
+      // However, if the parent expects this form to close itself, we might need to know.
+      // Based on CreateProjectForm pattern and ProjectWorkspace logic, the parent updates state to close modal.
+      // Wait, in ProjectWorkspace, handleCreateArtifact calls closeCreateArtifactModal() on success.
+      // So removing onClose() here is correct for success path.
+    } catch (err) {
+      console.error('Failed to create artifact:', err);
+      // Keep modal open so user can retry
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -93,15 +109,18 @@ const CreateArtifactForm: React.FC<CreateArtifactFormProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors"
+          disabled={isCreating}
+          className="px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-600/50 hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors"
+          disabled={isCreating}
+          className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition-colors flex items-center gap-2 disabled:bg-cyan-600/70 disabled:cursor-not-allowed"
         >
-          Create Artifact
+          {isCreating && <Spinner className="h-4 w-4 text-cyan-200" />}
+          {isCreating ? 'Creating...' : 'Create Artifact'}
         </button>
       </div>
     </form>
