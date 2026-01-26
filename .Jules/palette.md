@@ -5,3 +5,7 @@
 ## 2024-05-24 - [Micro-UX: Accessible Form Validation]
 **Learning:** Visual error messages alone are insufficient for screen reader users. By linking inputs to error messages via `aria-describedby` and marking errors with `role="alert"`, we ensure immediate feedback is announced when validation fails.
 **Action:** Add `aria-invalid={!!error}`, `aria-describedby="error-id"`, and `role="alert"` to form validation patterns.
+
+## 2024-05-25 - [Micro-UX: Accessible Inputs in Complex Forms]
+**Learning:** Complex editors like `CharacterEditor` often use auxiliary inputs (like "Add Trait" or "Search") that lack visible labels for layout reasons. These become "ghost inputs" to screen reader users.
+**Action:** When visual labels are omitted for density, always provide descriptive `aria-label` attributes, dynamic ones if the context requires it (e.g., "Search candidates for Parents").
