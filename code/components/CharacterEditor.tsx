@@ -163,6 +163,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   value={newTraitKey}
                   onChange={e => setNewTraitKey(e.target.value)}
                   placeholder="Trait (e.g., Age)"
+                  aria-label="Trait name"
                   className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
                 />
                 <input
@@ -170,6 +171,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({
                   value={newTraitValue}
                   onChange={e => setNewTraitValue(e.target.value)}
                   placeholder="Value (e.g., 27)"
+                  aria-label="Trait value"
                   className="w-full bg-slate-800 border border-slate-600 rounded-md px-2 py-1 text-sm text-slate-200 focus:ring-1 focus:ring-blue-500"
                 />
                 <button onClick={handleAddTrait} className="w-full flex items-center justify-center gap-1 px-3 py-1 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors">
