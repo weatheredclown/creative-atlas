@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { Artifact } from '../types';
 import { generateQuickFactInspiration } from '../services/geminiService';
-import { SparklesIcon } from './Icons';
+import { SparklesIcon, Spinner } from './Icons';
 
 interface QuickFactFormProps {
   projectTitle: string;
@@ -222,7 +222,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
           type="button"
           onClick={handleSurpriseMe}
@@ -230,7 +230,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           aria-label="Use a surprise prompt"
           disabled={isGeneratingPrompt}
         >
-          <SparklesIcon className="h-4 w-4" />
+          {isGeneratingPrompt ? <Spinner className="h-4 w-4 text-amber-300" /> : <SparklesIcon className="h-4 w-4" />}
           {isGeneratingPrompt ? 'Summoning…' : 'Surprise me'}
         </button>
         <p className="text-xs text-slate-500">
@@ -258,7 +258,8 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/40 disabled:text-emerald-100"
           disabled={isSubmitting}
         >
-          Save fact
+          {isSubmitting && <Spinner className="h-4 w-4 text-emerald-950" />}
+          {isSubmitting ? 'Saving...' : 'Save fact'}
         </button>
       </div>
     </form>

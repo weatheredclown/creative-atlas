@@ -47,8 +47,8 @@ describe('ArtifactListItem', () => {
     // Check if loading state is shown
     expect(screen.getByText('Duplicating...')).toBeInTheDocument();
     // The button might have multiple text nodes or children, so getByRole is safer for disabled check
-    // Use exact string to avoid matching the container div which has role="button" and contains the text
-    const button = screen.getByRole('button', { name: 'Duplicating...' });
+    // The accessible name includes the spinner's aria-label "loading"
+    const button = screen.getByRole('button', { name: 'loading Duplicating...' });
     expect(button).toBeDisabled();
 
     // Resolve the promise
