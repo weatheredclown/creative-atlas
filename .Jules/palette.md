@@ -9,3 +9,7 @@
 ## 2024-05-25 - [Micro-UX: Accessible Inputs in Complex Forms]
 **Learning:** Complex editors like `CharacterEditor` often use auxiliary inputs (like "Add Trait" or "Search") that lack visible labels for layout reasons. These become "ghost inputs" to screen reader users.
 **Action:** When visual labels are omitted for density, always provide descriptive `aria-label` attributes, dynamic ones if the context requires it (e.g., "Search candidates for Parents").
+
+## 2024-05-26 - [Micro-UX: Global Spinner Accessibility]
+**Learning:** Adding role="status" and aria-label="loading" to a reusable Spinner component instantly improves accessibility across the app, but it affects the accessible name calculation of parent buttons, potentially breaking tests that rely on strict name matching.
+**Action:** When improving global component accessibility, audit and update tests for consuming components to account for the richer accessible name (e.g., "loading Save" instead of just "Save").
