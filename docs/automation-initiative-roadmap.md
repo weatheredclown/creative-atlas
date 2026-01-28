@@ -165,6 +165,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
 - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 - ✅ Pivoted the simulated history heatmap to use only local project timelines, removed the Firestore snapshot tooling/routes, and updated the docs to reflect the single-project scope.
+- ✅ Persisted workspace and atlas filter state in the URL so refreshes restore the current view and selections.
 
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)
 - ✅ Artifact action menu now includes inline rename controls so workspace editors can retitle artifacts without leaving the detail view.
@@ -233,3 +234,5 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
 - 2025-12-05: Rescaled ghost agent screenshots to match the viewport dimensions, advancing the "Coordinate normalization, calibration, and screenshot reliability" roadmap item.
 - 2026-01-28: Normalized Kanban task state handling and enabled drag-and-drop moves between Kanban columns; no roadmap bullets impacted.
+- 2025-12-18: Delayed projectId deep-link cleanup until initial workspace loading completes so project URLs open as expected; no roadmap bullets impacted.
+- 2026-01-28: Adjusted project selection history so browser back returns to the project list; no roadmap bullets impacted.

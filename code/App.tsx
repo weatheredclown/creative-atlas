@@ -57,6 +57,9 @@ const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.Archived]: 'Archived',
 };
 
+const PROJECT_SEARCH_PARAM = 'projectSearch';
+const PROJECT_STATUS_PARAM = 'projectStatus';
+
 const formatProjectStatusLabel = (status: ProjectStatus): string =>
   PROJECT_STATUS_LABELS[status] ?? status;
 
@@ -66,6 +69,14 @@ const truncateForContext = (value: string, maxLength: number): string => {
   }
 
   return `${value.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+};
+
+const parseProjectStatusFilter = (value: string | null): 'ALL' | ProjectStatus => {
+  if (!value || value === 'ALL') {
+    return 'ALL';
+  }
+
+  return Object.values(ProjectStatus).includes(value as ProjectStatus) ? (value as ProjectStatus) : 'ALL';
 };
 
 const DashboardShellPlaceholder: FC<{ loading: boolean }> = ({ loading }) => (
@@ -124,9 +135,11 @@ export default function App() {
   const ghostAgentRef = useRef<GhostAgentHandle>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdFromUrl = searchParams.get('projectId');
+  const initialProjectSearch = searchParams.get(PROJECT_SEARCH_PARAM) ?? '';
+  const initialProjectStatus = parseProjectStatusFilter(searchParams.get(PROJECT_STATUS_PARAM));
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
-  const [projectSearchTerm, setProjectSearchTerm] = useState('');
-  const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>('ALL');
+  const [projectSearchTerm, setProjectSearchTerm] = useState(initialProjectSearch);
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'ALL' | ProjectStatus>(initialProjectStatus);
   const [dailyQuestDayKey, setDailyQuestDayKey] = useState<string>(() => getCurrentDateKey());
   const [projectActivityLog, setProjectActivityLog] = useState<Record<string, ProjectActivity>>({});
   const [projectVisibilityMap, setProjectVisibilityMap] = useState<Record<string, ProjectVisibilitySettings>>(
@@ -161,6 +174,43 @@ export default function App() {
       tutorial_language: tutorialProgress.language,
     });
   }, [profile, tutorialProgress.language]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get(PROJECT_SEARCH_PARAM) ?? '';
+    if (nextSearch !== projectSearchTerm) {
+      setProjectSearchTerm(nextSearch);
+    }
+
+    const nextStatus = parseProjectStatusFilter(searchParams.get(PROJECT_STATUS_PARAM));
+    if (nextStatus !== projectStatusFilter) {
+      setProjectStatusFilter(nextStatus);
+    }
+  }, [projectSearchTerm, projectStatusFilter, searchParams]);
+
+  useEffect(() => {
+    const currentSearch = searchParams.get(PROJECT_SEARCH_PARAM) ?? '';
+    const currentStatus = parseProjectStatusFilter(searchParams.get(PROJECT_STATUS_PARAM));
+    const trimmedSearch = projectSearchTerm.trim();
+
+    if (currentSearch === trimmedSearch && currentStatus === projectStatusFilter) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (trimmedSearch) {
+      nextParams.set(PROJECT_SEARCH_PARAM, trimmedSearch);
+    } else {
+      nextParams.delete(PROJECT_SEARCH_PARAM);
+    }
+
+    if (projectStatusFilter === 'ALL') {
+      nextParams.delete(PROJECT_STATUS_PARAM);
+    } else {
+      nextParams.set(PROJECT_STATUS_PARAM, projectStatusFilter);
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  }, [projectSearchTerm, projectStatusFilter, searchParams, setSearchParams]);
   const projectArtifacts = useMemo(
     () => artifacts.filter((artifact) => artifact.projectId === selectedProjectId),
     [artifacts, selectedProjectId],
@@ -356,6 +406,10 @@ export default function App() {
       return;
     }
 
+    if (loading) {
+      return;
+    }
+
     if (projects.some((project) => project.id === projectIdFromUrl)) {
       return;
     }
@@ -367,7 +421,15 @@ export default function App() {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
     setSearchParams(nextParams, { replace: true });
-  }, [canLoadMoreProjects, isLoadingMoreProjects, projectIdFromUrl, projects, searchParams, setSearchParams]);
+  }, [
+    canLoadMoreProjects,
+    isLoadingMoreProjects,
+    loading,
+    projectIdFromUrl,
+    projects,
+    searchParams,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -491,7 +553,7 @@ export default function App() {
     (id: string) => {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set('projectId', id);
-      setSearchParams(nextParams, { replace: true });
+      setSearchParams(nextParams);
     },
     [searchParams, setSearchParams],
   );
@@ -500,6 +562,13 @@ export default function App() {
     setArtifactNavigator(null);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
+    nextParams.delete('workspaceView');
+    nextParams.delete('artifactView');
+    nextParams.delete('artifactType');
+    nextParams.delete('artifactStatus');
+    nextParams.delete('artifactSearch');
+    nextParams.delete('artifactTags');
+    nextParams.delete('artifactId');
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
