@@ -232,3 +232,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-03: Added a workspace welcome panel with quick actions to select or create projects, advancing the "Workspace UX polish" roadmap item.
 - 2025-12-16: Added share panel confirmation toasts and screen reader copy feedback to progress the "Workspace UX polish" toast goal.
 - 2025-12-05: Rescaled ghost agent screenshots to match the viewport dimensions, advancing the "Coordinate normalization, calibration, and screenshot reliability" roadmap item.
+- 2025-12-18: Delayed projectId deep-link cleanup until initial workspace loading completes so project URLs open as expected; no roadmap bullets impacted.
