@@ -69,8 +69,9 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                 {showDetailedFields && (
                   <button
                     onClick={() => handleDeleteScene(scene.id)}
-                    className="absolute top-2 right-2 p-1 bg-slate-800/50 rounded-full text-slate-400 hover:bg-red-500/50 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 p-1 bg-slate-800/50 rounded-full text-slate-400 hover:bg-red-500/50 hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-opacity"
                     aria-label="Delete scene"
+                    title="Delete scene"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
