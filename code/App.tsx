@@ -406,6 +406,10 @@ export default function App() {
       return;
     }
 
+    if (loading) {
+      return;
+    }
+
     if (projects.some((project) => project.id === projectIdFromUrl)) {
       return;
     }
@@ -417,7 +421,15 @@ export default function App() {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('projectId');
     setSearchParams(nextParams, { replace: true });
-  }, [canLoadMoreProjects, isLoadingMoreProjects, projectIdFromUrl, projects, searchParams, setSearchParams]);
+  }, [
+    canLoadMoreProjects,
+    isLoadingMoreProjects,
+    loading,
+    projectIdFromUrl,
+    projects,
+    searchParams,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     if (!selectedProjectId) {
