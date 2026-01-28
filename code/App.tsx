@@ -491,7 +491,7 @@ export default function App() {
     (id: string) => {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set('projectId', id);
-      setSearchParams(nextParams, { replace: true });
+      setSearchParams(nextParams);
     },
     [searchParams, setSearchParams],
   );
