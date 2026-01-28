@@ -1,25 +1,18 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Artifact, ArtifactType, TaskData, TASK_STATE, TASK_STATE_VALUES, type TaskState } from '../types';
-
-const normalizeTaskState = (task: Artifact): TaskState => {
-  const data = (task.data as TaskData | undefined) ?? { state: TASK_STATE.Todo };
-  const rawState = data.state;
-
-  if (rawState && TASK_STATE_VALUES.includes(rawState)) {
-    return rawState;
-  }
-
-  return TASK_STATE.Todo;
-};
+import { normalizeTaskState } from '../utils/taskState';
 
 interface KanbanCardProps {
   task: Artifact;
   onUpdateTaskState: (taskId: string, newState: TaskState) => void;
+  onDragStart: (taskId: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
 }
 
-const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState }) => {
-  const currentState = normalizeTaskState(task);
+const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState, onDragStart, onDragEnd, isDragging }) => {
+  const currentState = normalizeTaskState((task.data as TaskData | undefined)?.state);
 
   const availableStates = useMemo(
     () => TASK_STATE_VALUES.filter((state) => state !== currentState),
@@ -27,7 +20,14 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ task, onUpdateTaskState }) => {
   );
 
   return (
-    <div className="bg-slate-700/70 p-3 rounded-lg border border-slate-600/80 shadow-md">
+    <div
+      className={`bg-slate-700/70 p-3 rounded-lg border border-slate-600/80 shadow-md transition ${
+        isDragging ? 'opacity-60 ring-2 ring-emerald-400/40' : ''
+      }`}
+      draggable
+      onDragStart={(event) => onDragStart(task.id, event)}
+      onDragEnd={onDragEnd}
+    >
       <h4 className="font-semibold text-slate-200 mb-1">{task.title}</h4>
       <p className="text-xs text-slate-400 mb-3">{task.summary}</p>
       <div className="flex items-center justify-end gap-2">
@@ -52,9 +52,27 @@ interface KanbanColumnProps {
   title: TaskState;
   tasks: Artifact[];
   onUpdateTaskState: (taskId: string, newState: TaskState) => void;
+  onDropTask: (taskId: string, newState: TaskState) => void;
+  onDragOverColumn: (state: TaskState) => void;
+  onDragLeaveColumn: () => void;
+  isActiveDropTarget: boolean;
+  onDragStart: (taskId: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+  draggedTaskId: string | null;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, onUpdateTaskState }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({
+  title,
+  tasks,
+  onUpdateTaskState,
+  onDropTask,
+  onDragOverColumn,
+  onDragLeaveColumn,
+  isActiveDropTarget,
+  onDragStart,
+  onDragEnd,
+  draggedTaskId,
+}) => {
   const columnColors = {
     [TASK_STATE.Todo]: 'border-t-blue-400',
     [TASK_STATE.InProgress]: 'border-t-yellow-400',
@@ -62,11 +80,36 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, onUpdateTaskS
   };
 
   return (
-    <div className={`bg-slate-800/50 rounded-lg p-3 border-t-4 ${columnColors[title]}`}>
+    <div
+      className={`bg-slate-800/50 rounded-lg p-3 border-t-4 transition ${
+        columnColors[title]
+      } ${isActiveDropTarget ? 'ring-2 ring-emerald-400/40' : ''}`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        onDragOverColumn(title);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        const taskId = event.dataTransfer.getData('text/plain');
+        if (taskId) {
+          onDropTask(taskId, title);
+        }
+      }}
+      onDragLeave={onDragLeaveColumn}
+    >
       <h3 className="font-bold text-slate-300 mb-4 px-1">{title} ({tasks.length})</h3>
       <div className="space-y-3 h-full overflow-y-auto">
         {tasks.length > 0 ? (
-          tasks.map(task => <KanbanCard key={task.id} task={task} onUpdateTaskState={onUpdateTaskState} />)
+          tasks.map(task => (
+            <KanbanCard
+              key={task.id}
+              task={task}
+              onUpdateTaskState={onUpdateTaskState}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              isDragging={draggedTaskId === task.id}
+            />
+          ))
         ) : (
           <div className="text-center text-sm text-slate-500 pt-8">No tasks</div>
         )}
@@ -82,6 +125,8 @@ interface KanbanBoardProps {
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ artifacts, onUpdateArtifactData }) => {
   const tasks = artifacts.filter(a => a.type === ArtifactType.Task);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [activeDropState, setActiveDropState] = useState<TaskState | null>(null);
 
   const handleUpdateTaskState = (taskId: string, newState: TaskState) => {
     const task = tasks.find(t => t.id === taskId);
@@ -91,11 +136,40 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ artifacts, onUpdateArtifactDa
     }
   };
 
+  const handleDragStart = (taskId: string, event: React.DragEvent<HTMLDivElement>) => {
+    setDraggedTaskId(taskId);
+    event.dataTransfer.setData('text/plain', taskId);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setActiveDropState(null);
+  };
+
+  const handleDropTask = (taskId: string, newState: TaskState) => {
+    if (!taskId) {
+      return;
+    }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    const currentState = normalizeTaskState((task.data as TaskData | undefined)?.state);
+    if (currentState !== newState) {
+      handleUpdateTaskState(taskId, newState);
+    }
+
+    setActiveDropState(null);
+  };
+
   const columns = useMemo(
     () =>
       TASK_STATE_VALUES.map((state) => ({
         title: state,
-        tasks: tasks.filter((task) => normalizeTaskState(task) === state),
+        tasks: tasks.filter((task) => normalizeTaskState((task.data as TaskData | undefined)?.state) === state),
       })),
     [tasks],
   );
@@ -108,6 +182,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ artifacts, onUpdateArtifactDa
           title={col.title}
           tasks={col.tasks}
           onUpdateTaskState={handleUpdateTaskState}
+          onDropTask={handleDropTask}
+          onDragOverColumn={(state) => setActiveDropState(state)}
+          onDragLeaveColumn={() => setActiveDropState(null)}
+          isActiveDropTarget={activeDropState === col.title}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          draggedTaskId={draggedTaskId}
         />
       ))}
     </div>

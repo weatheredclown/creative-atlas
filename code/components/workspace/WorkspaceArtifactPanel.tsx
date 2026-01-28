@@ -25,6 +25,7 @@ import {
   ViewColumnsIcon,
 } from '../Icons';
 import { type Artifact, ArtifactType, type Project, type CharacterData, type CharacterTrait, type ConlangLexeme, type LocationData, type LocationFeature, type MagicSystemData, type ProductData, type Scene, type TaskData, type TimelineData, type TimelineEvent, type WikiData, isNarrativeArtifactType, TASK_STATE } from '../../types';
+import { normalizeTaskState } from '../../utils/taskState';
 import type { AddRelationHandler } from '../../types';
 import { aiAssistants } from '../../src/data/aiAssistants';
 import { sanitizeEncounterConfig, sanitizeGeneratedEncounter } from '../../utils/encounterGenerator';
@@ -90,8 +91,6 @@ const RECOVERABLE_TYPES = new Set<ArtifactType>([
   ArtifactType.Scene,
   ArtifactType.ProductCatalog,
 ]);
-
-const VALID_TASK_STATES = new Set<string>(Object.values(TASK_STATE));
 
 const createRecoveryId = (prefix: string, timestamp: number, index: number): string =>
   `${prefix}-${timestamp.toString(36)}-${index.toString(36)}`;
@@ -254,7 +253,7 @@ const sanitizeTaskData = (value: unknown): TaskData => {
       ? (value as Partial<TaskData> & Record<string, unknown>)
       : ({} as Partial<TaskData> & Record<string, unknown>);
   const rawState = coerceString(source.state).trim();
-  const state = VALID_TASK_STATES.has(rawState) ? (rawState as TaskData['state']) : TASK_STATE.Todo;
+  const state = rawState ? normalizeTaskState(rawState) : TASK_STATE.Todo;
   const assignee = coerceString(source.assignee).trim();
   const due = coerceString(source.due).trim();
   const encounterConfig = sanitizeEncounterConfig(source.encounterConfig);
