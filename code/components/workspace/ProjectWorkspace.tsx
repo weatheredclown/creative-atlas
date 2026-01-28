@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import ProjectWorkspaceContainer from '../ProjectWorkspaceContainer';
 import WorkspaceModals from './WorkspaceModals';
@@ -93,6 +94,68 @@ interface ProjectWorkspaceProps {
 }
 
 const DEFAULT_ARTIFACT_STATUS = 'idea';
+const WORKSPACE_VIEW_PARAM = 'workspaceView';
+const ARTIFACT_VIEW_PARAM = 'artifactView';
+const ARTIFACT_TYPE_PARAM = 'artifactType';
+const ARTIFACT_STATUS_PARAM = 'artifactStatus';
+const ARTIFACT_SEARCH_PARAM = 'artifactSearch';
+const ARTIFACT_TAGS_PARAM = 'artifactTags';
+const ARTIFACT_ID_PARAM = 'artifactId';
+
+const WORKSPACE_VIEW_VALUES: WorkspaceView[] = ['codex', 'board', 'laboratory', 'studio'];
+const ARTIFACT_VIEW_VALUES = ['table', 'graph', 'kanban'] as const;
+
+const parseWorkspaceView = (value: string | null): WorkspaceView =>
+  value && WORKSPACE_VIEW_VALUES.includes(value as WorkspaceView) ? (value as WorkspaceView) : 'codex';
+
+const parseArtifactView = (value: string | null): 'table' | 'graph' | 'kanban' =>
+  value && ARTIFACT_VIEW_VALUES.includes(value as 'table' | 'graph' | 'kanban')
+    ? (value as 'table' | 'graph' | 'kanban')
+    : 'table';
+
+const parseArtifactTypeFilter = (value: string | null): 'ALL' | ArtifactType => {
+  if (!value || value === 'ALL') {
+    return 'ALL';
+  }
+
+  return Object.values(ArtifactType).includes(value as ArtifactType) ? (value as ArtifactType) : 'ALL';
+};
+
+const parseArtifactStatusFilter = (value: string | null): 'ALL' | string => {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === 'ALL') {
+    return 'ALL';
+  }
+
+  return trimmed;
+};
+
+const parseArtifactTags = (value: string | null): string[] => {
+  if (!value) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const tags = value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0)
+    .filter((tag) => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
+  return tags;
+};
+
+const parseArtifactId = (value: string | null): string | null => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
 
 const WORKSPACE_VIEW_OPTIONS: Array<{ id: WorkspaceView; label: string; description: string }> = [
   {
@@ -153,7 +216,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   onRegisterArtifactNavigator,
 }) => {
   const { showToast } = useToast();
-  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
+    parseArtifactId(searchParams.get(ARTIFACT_ID_PARAM)),
+  );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [defaultCreateArtifactType, setDefaultCreateArtifactType] = useState<ArtifactType | null>(null);
   const [sourceArtifactId, setSourceArtifactId] = useState<string | null>(null);
@@ -162,7 +228,9 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [infoModalContent, setInfoModalContent] = useState<InfoModalState>(null);
   const [workspaceErrorToast, setWorkspaceErrorToast] = useState<{ id: number; message: string } | null>(null);
   const [quickFactSourceArtifactId, setQuickFactSourceArtifactId] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<WorkspaceView>('codex');
+  const [currentView, setCurrentView] = useState<WorkspaceView>(
+    parseWorkspaceView(searchParams.get(WORKSPACE_VIEW_PARAM)),
+  );
 
   const projectArtifactsById = useMemo(() => {
     const map = new Map<string, Artifact>();
@@ -180,7 +248,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   }, [projectArtifactsById, quickFactSourceArtifactId]);
 
   useEffect(() => {
-    setSelectedArtifactId(null);
+    setSelectedArtifactId(parseArtifactId(searchParams.get(ARTIFACT_ID_PARAM)));
     setIsCreateModalOpen(false);
     setSourceArtifactId(null);
     setDefaultCreateArtifactType(null);
@@ -189,8 +257,112 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     setInfoModalContent(null);
     setWorkspaceErrorToast(null);
     setQuickFactSourceArtifactId(null);
-    setCurrentView('codex');
-  }, [project.id]);
+    setCurrentView(parseWorkspaceView(searchParams.get(WORKSPACE_VIEW_PARAM)));
+  }, [project.id, searchParams]);
+
+  useEffect(() => {
+    const nextView = parseWorkspaceView(searchParams.get(WORKSPACE_VIEW_PARAM));
+    if (nextView !== currentView) {
+      setCurrentView(nextView);
+    }
+
+    const nextSelectedArtifactId = parseArtifactId(searchParams.get(ARTIFACT_ID_PARAM));
+    if (nextSelectedArtifactId !== selectedArtifactId) {
+      setSelectedArtifactId(nextSelectedArtifactId);
+    }
+  }, [currentView, searchParams, selectedArtifactId]);
+
+  const updateWorkspaceParams = useCallback(
+    (updater: (params: URLSearchParams) => void) => {
+      const nextParams = new URLSearchParams(searchParams);
+      updater(nextParams);
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleSelectArtifact = useCallback(
+    (artifactId: string | null) => {
+      setSelectedArtifactId(artifactId);
+      updateWorkspaceParams((params) => {
+        if (artifactId) {
+          params.set(ARTIFACT_ID_PARAM, artifactId);
+        } else {
+          params.delete(ARTIFACT_ID_PARAM);
+        }
+      });
+    },
+    [updateWorkspaceParams],
+  );
+
+  const handleWorkspaceViewChange = useCallback(
+    (view: WorkspaceView) => {
+      setCurrentView(view);
+      updateWorkspaceParams((params) => {
+        if (view === 'codex') {
+          params.delete(WORKSPACE_VIEW_PARAM);
+        } else {
+          params.set(WORKSPACE_VIEW_PARAM, view);
+        }
+      });
+    },
+    [updateWorkspaceParams],
+  );
+
+  const initialArtifactFilters = useMemo(
+    () => ({
+      viewMode: parseArtifactView(searchParams.get(ARTIFACT_VIEW_PARAM)),
+      artifactTypeFilter: parseArtifactTypeFilter(searchParams.get(ARTIFACT_TYPE_PARAM)),
+      statusFilter: parseArtifactStatusFilter(searchParams.get(ARTIFACT_STATUS_PARAM)),
+      searchTerm: searchParams.get(ARTIFACT_SEARCH_PARAM) ?? '',
+      activeTagFilters: parseArtifactTags(searchParams.get(ARTIFACT_TAGS_PARAM)),
+    }),
+    [searchParams],
+  );
+
+  const handleArtifactFiltersChange = useCallback(
+    (filters: {
+      viewMode: 'table' | 'graph' | 'kanban';
+      artifactTypeFilter: 'ALL' | ArtifactType;
+      statusFilter: 'ALL' | string;
+      searchTerm: string;
+      activeTagFilters: string[];
+    }) => {
+      updateWorkspaceParams((params) => {
+        if (filters.viewMode === 'table') {
+          params.delete(ARTIFACT_VIEW_PARAM);
+        } else {
+          params.set(ARTIFACT_VIEW_PARAM, filters.viewMode);
+        }
+
+        if (filters.artifactTypeFilter === 'ALL') {
+          params.delete(ARTIFACT_TYPE_PARAM);
+        } else {
+          params.set(ARTIFACT_TYPE_PARAM, filters.artifactTypeFilter);
+        }
+
+        if (filters.statusFilter === 'ALL') {
+          params.delete(ARTIFACT_STATUS_PARAM);
+        } else {
+          params.set(ARTIFACT_STATUS_PARAM, filters.statusFilter);
+        }
+
+        const trimmedSearch = filters.searchTerm.trim();
+        if (trimmedSearch) {
+          params.set(ARTIFACT_SEARCH_PARAM, trimmedSearch);
+        } else {
+          params.delete(ARTIFACT_SEARCH_PARAM);
+        }
+
+        if (filters.activeTagFilters.length > 0) {
+          params.set(ARTIFACT_TAGS_PARAM, filters.activeTagFilters.join(','));
+        } else {
+          params.delete(ARTIFACT_TAGS_PARAM);
+        }
+      });
+    },
+    [updateWorkspaceParams],
+  );
 
   useEffect(() => {
     if (!workspaceErrorToast) {
@@ -390,9 +562,9 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         showToast('Failed to delete artifact. Please try again later.', { variant: 'error' });
         return;
       }
-      setSelectedArtifactId((current) => (current === artifactId ? null : current));
+      handleSelectArtifact(selectedArtifactId === artifactId ? null : selectedArtifactId);
     },
-    [deleteArtifact, showToast],
+    [deleteArtifact, handleSelectArtifact, selectedArtifactId, showToast],
   );
 
   const handleDuplicateArtifact = useCallback(
@@ -433,14 +605,14 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         return;
       }
 
-      setSelectedArtifactId(created.id);
+      handleSelectArtifact(created.id);
       void addXp(2);
       setInfoModalContent({
         title: 'Artifact duplicated',
         message: `Created ${created.title} from ${source.title}.`,
       });
     },
-    [addXp, createArtifact, project.id, projectArtifacts, projectArtifactsById, showToast],
+    [addXp, createArtifact, handleSelectArtifact, project.id, projectArtifacts, projectArtifactsById, showToast],
   );
 
   const handleCreateArtifact = useCallback(
@@ -463,10 +635,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         }
         void addXp(5);
         closeCreateArtifactModal();
-        setSelectedArtifactId(created.id);
+        handleSelectArtifact(created.id);
       }
     },
-    [addXp, closeCreateArtifactModal, createArtifact, handleAddRelation, project.id],
+    [addXp, closeCreateArtifactModal, createArtifact, handleAddRelation, handleSelectArtifact, project.id],
   );
 
   const handleApplyProjectTemplate = useCallback(
@@ -492,7 +664,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         const created = await createArtifactsBulk(project.id, drafts);
         if (created.length > 0) {
           void addXp(created.length * 5);
-          setSelectedArtifactId(created[0].id);
+          handleSelectArtifact(created[0].id);
           setInfoModalContent({
             title: 'Template Applied',
             message: `Added ${created.length} starter artifact${created.length > 1 ? 's' : ''} from the ${template.name} template.`,
@@ -515,7 +687,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         }
       }
     },
-    [addXp, allProjects, createArtifactsBulk, onUpdateProject, project.id, projectArtifacts],
+    [addXp, allProjects, createArtifactsBulk, handleSelectArtifact, onUpdateProject, project.id, projectArtifacts],
   );
 
   const handleSelectTemplate = useCallback(
@@ -533,10 +705,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
       if (created) {
         void addXp(2);
-        setSelectedArtifactId(created.id);
+        handleSelectArtifact(created.id);
       }
     },
-    [addXp, createArtifact, project.id],
+    [addXp, createArtifact, handleSelectArtifact, project.id],
   );
 
   const handleImportArtifacts = useCallback(
@@ -711,7 +883,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         }
 
         void addXp(3);
-        setSelectedArtifactId(created.id);
+        handleSelectArtifact(created.id);
         setIsQuickFactModalOpen(false);
         setQuickFactSourceArtifactId(null);
       } catch (error) {
@@ -732,7 +904,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
       project.title,
       projectArtifacts,
       quickFactSourceArtifactId,
-      setSelectedArtifactId,
+      handleSelectArtifact,
     ],
   );
 
@@ -782,10 +954,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
       if (created) {
         void addXp(2);
-        setSelectedArtifactId(created.id);
+        handleSelectArtifact(created.id);
       }
     },
-    [addXp, createArtifact, project.id],
+    [addXp, createArtifact, handleSelectArtifact, project.id],
   );
 
   return (
@@ -822,7 +994,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               <button
                 key={option.id}
                 type="button"
-                onClick={() => setCurrentView(option.id)}
+                onClick={() => handleWorkspaceViewChange(option.id)}
                 aria-pressed={isActive}
                 className={`rounded-2xl border px-4 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   isActive
@@ -850,7 +1022,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         xpProgress={xpProgress}
         isZenMode={isZenMode}
         selectedArtifactId={selectedArtifactId}
-        onSelectArtifact={setSelectedArtifactId}
+        onSelectArtifact={handleSelectArtifact}
         onOpenCreateArtifactModal={openCreateArtifactModal}
         onOpenQuickFactModal={handleOpenQuickFactModal}
         onUpdateProject={onUpdateProject}
@@ -887,6 +1059,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         canPublishToGitHub={canPublishToGitHub}
         onWorkspaceError={handleWorkspaceError}
         onRegisterArtifactNavigator={onRegisterArtifactNavigator}
+        initialArtifactFilters={initialArtifactFilters}
+        onArtifactFiltersChange={handleArtifactFiltersChange}
       />
 
       <WorkspaceModals
@@ -911,4 +1085,3 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 };
 
 export default ProjectWorkspace;
-

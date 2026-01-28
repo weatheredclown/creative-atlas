@@ -165,6 +165,7 @@ This document tracks the multi-session automation initiative to deliver the full
 - ✅ Skip Firestore reads when the viewer is in guest mode or unauthenticated so the UI relies on local project data without triggering permission errors.
 - ✅ Gracefully handle Firestore permission denials by falling back to local timeline data without logging hard errors.
 - ✅ Pivoted the simulated history heatmap to use only local project timelines, removed the Firestore snapshot tooling/routes, and updated the docs to reflect the single-project scope.
+- ✅ Persisted workspace and atlas filter state in the URL so refreshes restore the current view and selections.
 
 ### Workflow Efficiency & Usability (Smoother Everyday Editing)
 - ✅ Artifact action menu now includes inline rename controls so workspace editors can retitle artifacts without leaving the detail view.
