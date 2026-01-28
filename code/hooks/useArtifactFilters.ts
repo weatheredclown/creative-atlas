@@ -5,6 +5,10 @@ import type { Artifact } from '../types';
 
 interface UseArtifactFiltersOptions {
   initialViewMode?: 'table' | 'graph' | 'kanban';
+  initialArtifactTypeFilter?: 'ALL' | ArtifactType;
+  initialStatusFilter?: 'ALL' | string;
+  initialSearchTerm?: string;
+  initialTagFilters?: string[];
   onViewModeChange?: (viewMode: 'table' | 'graph' | 'kanban') => void;
 }
 
@@ -32,12 +36,21 @@ export function useArtifactFilters(
   projectArtifacts: Artifact[],
   options: UseArtifactFiltersOptions = {},
 ): UseArtifactFiltersResult {
-  const { initialViewMode = 'table', onViewModeChange } = options;
+  const {
+    initialViewMode = 'table',
+    initialArtifactTypeFilter = 'ALL',
+    initialStatusFilter = 'ALL',
+    initialSearchTerm = '',
+    initialTagFilters = [],
+    onViewModeChange,
+  } = options;
   const [viewMode, setViewModeState] = useState<'table' | 'graph' | 'kanban'>(initialViewMode);
-  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | string>('ALL');
-  const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'ALL' | ArtifactType>(initialArtifactTypeFilter);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | string>(initialStatusFilter);
+  const [activeTagFilters, setActiveTagFilters] = useState<string[]>(
+    initialTagFilters.slice().sort((a, b) => a.localeCompare(b)),
+  );
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
 
   const handleViewModeChange = useCallback(
     (mode: 'table' | 'graph' | 'kanban') => {
@@ -46,6 +59,39 @@ export function useArtifactFilters(
     },
     [onViewModeChange],
   );
+
+  useEffect(() => {
+    if (initialViewMode && initialViewMode !== viewMode) {
+      handleViewModeChange(initialViewMode);
+    }
+  }, [handleViewModeChange, initialViewMode, viewMode]);
+
+  useEffect(() => {
+    if (initialArtifactTypeFilter !== artifactTypeFilter) {
+      setArtifactTypeFilter(initialArtifactTypeFilter);
+    }
+  }, [artifactTypeFilter, initialArtifactTypeFilter]);
+
+  useEffect(() => {
+    if (initialStatusFilter !== statusFilter) {
+      setStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter, statusFilter]);
+
+  useEffect(() => {
+    if (initialSearchTerm !== searchTerm) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm, searchTerm]);
+
+  useEffect(() => {
+    const sorted = initialTagFilters.slice().sort((a, b) => a.localeCompare(b));
+    const nextKey = sorted.join('|');
+    const currentKey = activeTagFilters.join('|');
+    if (nextKey !== currentKey) {
+      setActiveTagFilters(sorted);
+    }
+  }, [activeTagFilters, initialTagFilters]);
 
   const availableStatuses = useMemo(
     () => Array.from(new Set(projectArtifacts.map((artifact) => artifact.status))).sort(),

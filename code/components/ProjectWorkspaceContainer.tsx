@@ -47,6 +47,14 @@ import type {
 import { logAnalyticsEvent } from '../services/analytics';
 import { buildCharacterArcEvaluationMap } from '../utils/characterProgression';
 
+interface ArtifactFiltersState {
+  viewMode: 'table' | 'graph' | 'kanban';
+  artifactTypeFilter: 'ALL' | ArtifactType;
+  statusFilter: 'ALL' | string;
+  activeTagFilters: string[];
+  searchTerm: string;
+}
+
 interface ProjectWorkspaceContainerProps {
   profile: UserProfile;
   project: Project;
@@ -94,6 +102,8 @@ interface ProjectWorkspaceContainerProps {
   canPublishToGitHub: boolean;
   onWorkspaceError: (message: string) => void;
   onRegisterArtifactNavigator?: (navigator: ArtifactNavigationController | null) => void;
+  initialArtifactFilters?: Partial<ArtifactFiltersState>;
+  onArtifactFiltersChange?: (filters: ArtifactFiltersState) => void;
 }
 
 type ProjectWorkspaceContainerComponent = React.FC<ProjectWorkspaceContainerProps>;
@@ -145,6 +155,8 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   canPublishToGitHub,
   onWorkspaceError,
   onRegisterArtifactNavigator,
+  initialArtifactFilters,
+  onArtifactFiltersChange,
 }) => {
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
   const previousSelectedArtifactIdRef = useRef<string | null>(null);
@@ -220,7 +232,33 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
     isSelectedArtifactHidden,
   } = useArtifactFilters(projectArtifacts, {
     onViewModeChange: handleViewModeAnalytics,
+    initialViewMode: initialArtifactFilters?.viewMode,
+    initialArtifactTypeFilter: initialArtifactFilters?.artifactTypeFilter,
+    initialStatusFilter: initialArtifactFilters?.statusFilter,
+    initialSearchTerm: initialArtifactFilters?.searchTerm,
+    initialTagFilters: initialArtifactFilters?.activeTagFilters,
   });
+
+  useEffect(() => {
+    if (!onArtifactFiltersChange) {
+      return;
+    }
+
+    onArtifactFiltersChange({
+      viewMode,
+      artifactTypeFilter,
+      statusFilter,
+      activeTagFilters,
+      searchTerm,
+    });
+  }, [
+    activeTagFilters,
+    artifactTypeFilter,
+    onArtifactFiltersChange,
+    searchTerm,
+    statusFilter,
+    viewMode,
+  ]);
 
   const selectedArtifact = useMemo(
     () => projectArtifacts.find((artifact) => artifact.id === selectedArtifactId) ?? null,
