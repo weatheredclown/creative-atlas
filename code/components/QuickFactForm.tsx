@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { Artifact } from '../types';
 import { generateQuickFactInspiration } from '../services/geminiService';
-import { SparklesIcon } from './Icons';
+import { SparklesIcon, Spinner } from './Icons';
 
 interface QuickFactFormProps {
   projectTitle: string;
@@ -162,7 +162,7 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
     : 'Add a quick note about the impact, rumor source, or a follow-up thread.';
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <form className="space-y-6" onSubmit={handleSubmit} noValidate>
       <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
         <p className="font-semibold text-cyan-200">Add a single beat of lore to {projectTitle}.</p>
         <p>Think small: a rumor, detail, or truth you can expand later. We&apos;ll drop it straight into your wiki.</p>
@@ -201,8 +201,14 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           rows={3}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           placeholder={factPlaceholder}
+          aria-invalid={!!error}
+          aria-describedby={error ? "quick-fact-error" : undefined}
         />
-        {error && <p className="text-xs text-rose-300">{error}</p>}
+        {error && (
+          <p id="quick-fact-error" role="alert" className="text-xs text-rose-300">
+            {error}
+          </p>
+        )}
         {surprisePrompt?.spark && (
           <p className="text-xs text-slate-500">Spark: {surprisePrompt.spark}</p>
         )}
@@ -227,10 +233,14 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           type="button"
           onClick={handleSurpriseMe}
           className="inline-flex items-center gap-2 text-sm font-semibold text-amber-300 hover:text-amber-200 disabled:cursor-not-allowed disabled:text-amber-200/60"
-          aria-label="Use a surprise prompt"
+          aria-label={isGeneratingPrompt ? undefined : "Use a surprise prompt"}
           disabled={isGeneratingPrompt}
         >
-          <SparklesIcon className="h-4 w-4" />
+          {isGeneratingPrompt ? (
+            <Spinner className="h-4 w-4 text-amber-300" />
+          ) : (
+            <SparklesIcon className="h-4 w-4" />
+          )}
           {isGeneratingPrompt ? 'Summoning…' : 'Surprise me'}
         </button>
         <p className="text-xs text-slate-500">
@@ -258,7 +268,8 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/40 disabled:text-emerald-100"
           disabled={isSubmitting}
         >
-          Save fact
+          {isSubmitting && <Spinner className="h-4 w-4 text-emerald-900" />}
+          {isSubmitting ? 'Saving...' : 'Save fact'}
         </button>
       </div>
     </form>
