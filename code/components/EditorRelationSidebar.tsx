@@ -269,7 +269,7 @@ const EditorRelationSidebar: React.FC<EditorRelationSidebarProps> = ({
                                     showDetailedFields ? '' : 'opacity-80 hover:opacity-100 focus-visible:opacity-100'
                                   }`}
                                   aria-label={`Remove ${label} relation to ${target?.title ?? relation.toId}`}
-                                  title="Remove relation"
+                                  title={`Remove ${label} relation to ${target?.title ?? relation.toId}`}
                                 >
                                   <XMarkIcon className="w-4 h-4" />
                                 </button>
