@@ -1,0 +1,35 @@
+
+> creative-atlas@1.0.0 prepreview
+> npm run build
+
+
+> creative-atlas@1.0.0 build
+> vite build
+
+vite v7.1.12 building for production...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+transforming...
+✓ 1255 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                              1.25 kB │ gzip:   0.57 kB
+dist/assets/index-DMVUUxxB.css              83.80 kB │ gzip:  13.87 kB
+dist/assets/purify.es-B6FQ9oRL.js           22.57 kB │ gzip:   8.74 kB
+dist/assets/index.es-tofMkVJF.js           159.40 kB │ gzip:  53.42 kB
+dist/assets/html2canvas.esm-B0tyYwQk.js    202.36 kB │ gzip:  48.04 kB
+dist/assets/jspdf.es.min-D5rkFX_f.js       387.69 kB │ gzip: 127.21 kB
+dist/assets/index-CRR0jZ4u.js            1,603.54 kB │ gzip: 463.99 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.11s
+
+> creative-atlas@1.0.0 preview
+> vite preview
+
+Port 4173 is in use, trying another one...
+  ➜  Local:   http://localhost:4174/
+  ➜  Network: use --host to expose
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
