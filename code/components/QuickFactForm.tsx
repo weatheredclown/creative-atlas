@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import type { Artifact } from '../types';
-import { generateQuickFactInspiration } from '../services/geminiService';
-import { SparklesIcon } from './Icons';
+import React, { useCallback, useEffect, useState } from "react";
+import type { Artifact } from "../types";
+import { generateQuickFactInspiration } from "../services/geminiService";
+import { SparklesIcon, Spinner } from "./Icons";
 
 interface QuickFactFormProps {
   projectTitle: string;
@@ -20,34 +20,45 @@ interface FactPrompt {
 
 const FALLBACK_FACT_PROMPTS: readonly FactPrompt[] = [
   {
-    id: 'leyline-beacon',
-    prompt: 'A dormant leyline beacon beneath headquarters pulses once at dusk, hinting that old wards are waking up.',
-    spark: 'Log a wiki entry about magical infrastructure flickering back online.',
+    id: "leyline-beacon",
+    prompt:
+      "A dormant leyline beacon beneath headquarters pulses once at dusk, hinting that old wards are waking up.",
+    spark:
+      "Log a wiki entry about magical infrastructure flickering back online.",
   },
   {
-    id: 'clockwork-debt',
-    prompt: 'Someone on the crew secretly owes the Clockwork Guild three favors—and the first repayment is due tonight.',
-    spark: 'Drop a character note about who calls in the debt and why it matters.',
+    id: "clockwork-debt",
+    prompt:
+      "Someone on the crew secretly owes the Clockwork Guild three favors—and the first repayment is due tonight.",
+    spark:
+      "Drop a character note about who calls in the debt and why it matters.",
   },
   {
-    id: 'whisperwood-rumor',
-    prompt: 'Whisperwood birds fall silent near the northern ridge, the sure sign that a new rift is bleeding through.',
-    spark: 'Map the ridge or queue a quest to seal the breach before dawn.',
+    id: "whisperwood-rumor",
+    prompt:
+      "Whisperwood birds fall silent near the northern ridge, the sure sign that a new rift is bleeding through.",
+    spark: "Map the ridge or queue a quest to seal the breach before dawn.",
   },
   {
-    id: 'artifact-glow',
-    prompt: 'A mundane artifact glows whenever it sits beside lexemes that share its root syllable.',
-    spark: 'Link a conlang entry to the relic and explore why language activates it.',
+    id: "artifact-glow",
+    prompt:
+      "A mundane artifact glows whenever it sits beside lexemes that share its root syllable.",
+    spark:
+      "Link a conlang entry to the relic and explore why language activates it.",
   },
   {
-    id: 'streak-charm',
-    prompt: 'Maintaining a seven-day streak unlocks a charm that doubles XP earned from building relations for one session.',
-    spark: 'Celebrate streak milestones or craft a questline tied to the charm\'s power.',
+    id: "streak-charm",
+    prompt:
+      "Maintaining a seven-day streak unlocks a charm that doubles XP earned from building relations for one session.",
+    spark:
+      "Celebrate streak milestones or craft a questline tied to the charm's power.",
   },
   {
-    id: 'map-eclipse',
-    prompt: 'An upcoming eclipse will tint the world map in copper light; any location tagged "eclipse-ready" gains bonus visibility.',
-    spark: 'Tag assets that thrive during the eclipse and note who is preparing.',
+    id: "map-eclipse",
+    prompt:
+      'An upcoming eclipse will tint the world map in copper light; any location tagged "eclipse-ready" gains bonus visibility.',
+    spark:
+      "Tag assets that thrive during the eclipse and note who is preparing.",
   },
 ];
 
@@ -59,22 +70,26 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
   isSubmitting,
   sourceArtifact,
 }) => {
-  const [fact, setFact] = useState('');
-  const [detail, setDetail] = useState('');
+  const [fact, setFact] = useState("");
+  const [detail, setDetail] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [surprisePrompt, setSurprisePrompt] = useState<FactPrompt | null>(() => {
-    if (FALLBACK_FACT_PROMPTS.length === 0) {
-      return null;
-    }
-    const initialIndex = Math.floor(Math.random() * FALLBACK_FACT_PROMPTS.length);
-    return FALLBACK_FACT_PROMPTS[initialIndex] ?? null;
-  });
+  const [surprisePrompt, setSurprisePrompt] = useState<FactPrompt | null>(
+    () => {
+      if (FALLBACK_FACT_PROMPTS.length === 0) {
+        return null;
+      }
+      const initialIndex = Math.floor(
+        Math.random() * FALLBACK_FACT_PROMPTS.length,
+      );
+      return FALLBACK_FACT_PROMPTS[initialIndex] ?? null;
+    },
+  );
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [surpriseError, setSurpriseError] = useState<string | null>(null);
 
   useEffect(() => {
-    setFact('');
-    setDetail('');
+    setFact("");
+    setDetail("");
     setError(null);
     setSurpriseError(null);
   }, [sourceArtifact?.id]);
@@ -85,18 +100,24 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
     const trimmedDetail = detail.trim();
 
     if (!trimmedFact) {
-      setError('Capture at least one sentence for your fact.');
+      setError("Capture at least one sentence for your fact.");
       return;
     }
 
     setError(null);
 
     try {
-      await onSubmit({ fact: trimmedFact, detail: trimmedDetail.length > 0 ? trimmedDetail : undefined });
-      setFact('');
-      setDetail('');
+      await onSubmit({
+        fact: trimmedFact,
+        detail: trimmedDetail.length > 0 ? trimmedDetail : undefined,
+      });
+      setFact("");
+      setDetail("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'We could not save your fact. Please try again.';
+      const message =
+        err instanceof Error
+          ? err.message
+          : "We could not save your fact. Please try again.";
       setError(message);
     }
   };
@@ -106,13 +127,16 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
     setSurpriseError(null);
 
     try {
-      const inspiration = await generateQuickFactInspiration({ projectTitle, artifacts });
+      const inspiration = await generateQuickFactInspiration({
+        projectTitle,
+        artifacts,
+      });
       const generatedFact = inspiration.fact.trim();
       if (!generatedFact) {
-        throw new Error('Atlas Intelligence returned an empty fact.');
+        throw new Error("Atlas Intelligence returned an empty fact.");
       }
 
-      const generatedSpark = inspiration.spark?.trim() ?? '';
+      const generatedSpark = inspiration.spark?.trim() ?? "";
       const generatedPrompt: FactPrompt = {
         id: `ai-${Date.now()}`,
         prompt: generatedFact,
@@ -121,14 +145,14 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
 
       setSurprisePrompt(generatedPrompt);
       setFact(generatedFact);
-      setDetail('');
+      setDetail("");
       setError(null);
     } catch (err) {
-      console.error('Failed to generate quick fact inspiration', err);
+      console.error("Failed to generate quick fact inspiration", err);
       const message =
         err instanceof Error
           ? err.message
-          : 'Atlas Intelligence could not propose a quick fact right now.';
+          : "Atlas Intelligence could not propose a quick fact right now.";
       setSurpriseError(message);
     } finally {
       setIsGeneratingPrompt(false);
@@ -143,47 +167,65 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
   };
 
   const handleCancel = () => {
-    setFact('');
-    setDetail('');
+    setFact("");
+    setDetail("");
     setError(null);
     setSurpriseError(null);
     onCancel();
   };
 
-  const sourceArtifactTitle = sourceArtifact ? sourceArtifact.title.trim() : '';
-  const sourceArtifactSummary = sourceArtifact ? sourceArtifact.summary.trim() : '';
+  const sourceArtifactTitle = sourceArtifact ? sourceArtifact.title.trim() : "";
+  const sourceArtifactSummary = sourceArtifact
+    ? sourceArtifact.summary.trim()
+    : "";
 
   const factPlaceholder = sourceArtifact
-    ? `What fresh detail about ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : 'this artifact'} do you want to log?`
-    : surprisePrompt?.prompt ?? 'Capture a small truth, rumor, or detail you can expand later.';
+    ? `What fresh detail about ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : "this artifact"} do you want to log?`
+    : (surprisePrompt?.prompt ??
+      "Capture a small truth, rumor, or detail you can expand later.");
 
   const detailPlaceholder = sourceArtifact
-    ? `Why does this matter for ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : 'this artifact'}?`
-    : 'Add a quick note about the impact, rumor source, or a follow-up thread.';
+    ? `Why does this matter for ${sourceArtifactTitle.length > 0 ? sourceArtifactTitle : "this artifact"}?`
+    : "Add a quick note about the impact, rumor source, or a follow-up thread.";
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-        <p className="font-semibold text-cyan-200">Add a single beat of lore to {projectTitle}.</p>
-        <p>Think small: a rumor, detail, or truth you can expand later. We&apos;ll drop it straight into your wiki.</p>
+        <p className="font-semibold text-cyan-200">
+          Add a single beat of lore to {projectTitle}.
+        </p>
+        <p>
+          Think small: a rumor, detail, or truth you can expand later.
+          We&apos;ll drop it straight into your wiki.
+        </p>
       </div>
 
       {sourceArtifact ? (
         <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-100">
           <p className="font-semibold">
-            Anchoring this fact to <span className="text-amber-50">{sourceArtifactTitle || 'Untitled artifact'}</span>.
+            Anchoring this fact to{" "}
+            <span className="text-amber-50">
+              {sourceArtifactTitle || "Untitled artifact"}
+            </span>
+            .
           </p>
           <p className="mt-1 text-xs text-amber-100/80">
-            We&apos;ll relate the saved fact back to this artifact automatically so you can find it later.
+            We&apos;ll relate the saved fact back to this artifact automatically
+            so you can find it later.
           </p>
           {sourceArtifactSummary ? (
-            <p className="mt-2 text-xs text-amber-100/70 line-clamp-3">{sourceArtifactSummary}</p>
+            <p className="mt-2 text-xs text-amber-100/70 line-clamp-3">
+              {sourceArtifactSummary}
+            </p>
           ) : null}
         </div>
       ) : null}
 
       <div className="space-y-2">
-        <label htmlFor="quick-fact" className="block text-sm font-medium text-slate-200">
+        <label
+          htmlFor="quick-fact"
+          className="block text-sm font-medium text-slate-200"
+        >
           Fact
         </label>
         <textarea
@@ -204,12 +246,17 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
         />
         {error && <p className="text-xs text-rose-300">{error}</p>}
         {surprisePrompt?.spark && (
-          <p className="text-xs text-slate-500">Spark: {surprisePrompt.spark}</p>
+          <p className="text-xs text-slate-500">
+            Spark: {surprisePrompt.spark}
+          </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="quick-fact-detail" className="block text-sm font-medium text-slate-200">
+        <label
+          htmlFor="quick-fact-detail"
+          className="block text-sm font-medium text-slate-200"
+        >
           Why it matters (optional)
         </label>
         <textarea
@@ -231,11 +278,11 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           disabled={isGeneratingPrompt}
         >
           <SparklesIcon className="h-4 w-4" />
-          {isGeneratingPrompt ? 'Summoning…' : 'Surprise me'}
+          {isGeneratingPrompt ? "Summoning…" : "Surprise me"}
         </button>
         <p className="text-xs text-slate-500">
-          Need inspiration? Tap Surprise me to ask Atlas Intelligence for a prompt rooted in your
-          artifacts.
+          Need inspiration? Tap Surprise me to ask Atlas Intelligence for a
+          prompt rooted in your artifacts.
         </p>
       </div>
       {surpriseError && (
@@ -258,7 +305,10 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-5 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/40 disabled:text-emerald-100"
           disabled={isSubmitting}
         >
-          Save fact
+          {isSubmitting ? (
+            <Spinner className="h-4 w-4 text-emerald-900" />
+          ) : null}
+          {isSubmitting ? "Saving..." : "Save fact"}
         </button>
       </div>
     </form>
