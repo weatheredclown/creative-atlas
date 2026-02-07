@@ -201,8 +201,14 @@ const QuickFactForm: React.FC<QuickFactFormProps> = ({
           rows={3}
           className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           placeholder={factPlaceholder}
+          aria-invalid={!!error}
+          aria-describedby={error ? 'quick-fact-error' : undefined}
         />
-        {error && <p className="text-xs text-rose-300">{error}</p>}
+        {error && (
+          <p id="quick-fact-error" role="alert" className="text-xs text-rose-300">
+            {error}
+          </p>
+        )}
         {surprisePrompt?.spark && (
           <p className="text-xs text-slate-500">Spark: {surprisePrompt.spark}</p>
         )}
