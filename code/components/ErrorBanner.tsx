@@ -30,6 +30,7 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onDismiss }) => {
           type='button'
           onClick={onDismiss}
           className='ml-2 rounded-full p-1 text-rose-200 transition-colors hover:bg-rose-800/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300'
+          title='Dismiss error'
         >
           <span className='sr-only'>Dismiss error</span>
           <XMarkIcon className='h-4 w-4' />
