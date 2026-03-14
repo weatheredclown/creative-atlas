@@ -237,3 +237,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-18: Delayed projectId deep-link cleanup until initial workspace loading completes so project URLs open as expected; no roadmap bullets impacted.
 - 2026-01-28: Adjusted project selection history so browser back returns to the project list; no roadmap bullets impacted.
 - 2026-03-14: Top-aligned the workspace welcome panel container so onboarding copy no longer starts off-screen beside long project lists, continuing the "Workspace UX polish" workstream.
+- 2026-03-14: Added a top-of-README guest-mode direct link (`?guest=1`) for seeded demo data discovery; no roadmap bullets impacted.
