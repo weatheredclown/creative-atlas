@@ -4,6 +4,9 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 🔗 **Guest mode (try a demo):** https://creative-atlas.web.app/?guest=1
 
+![Screenshot](docs/creative_atlas.png)
+
+
 ## Deployment Smoke Test Checklist
 
 When validating recent Firebase Hosting and Functions deploy fixes, run a quick smoke test to confirm both surfaces ship cleanly:
