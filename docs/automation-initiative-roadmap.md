@@ -236,3 +236,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2026-01-28: Normalized Kanban task state handling and enabled drag-and-drop moves between Kanban columns; no roadmap bullets impacted.
 - 2025-12-18: Delayed projectId deep-link cleanup until initial workspace loading completes so project URLs open as expected; no roadmap bullets impacted.
 - 2026-01-28: Adjusted project selection history so browser back returns to the project list; no roadmap bullets impacted.
+- 2026-03-14: Added a top-of-README guest-mode direct link (`?guest=1`) for seeded demo data discovery; no roadmap bullets impacted.
