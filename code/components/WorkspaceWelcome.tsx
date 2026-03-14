@@ -17,7 +17,7 @@ const WorkspaceWelcome: React.FC<WorkspaceWelcomeProps> = ({
   onFocusProjectSearch,
   onStartTutorial,
 }) => (
-  <div className="flex h-full items-center justify-center">
+  <div className="flex h-full items-start justify-center pt-6">
     <div className="w-full max-w-5xl space-y-8 rounded-2xl border border-slate-800/70 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/40">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-3">
