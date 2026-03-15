@@ -4,6 +4,8 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 🔗 **Guest mode (try a demo):** https://creative-atlas.web.app/?guest=1
 
+![Screenshot](docs/creative_atlas.png)
+
 ## Primary Capabilities
 
 Creative Atlas is designed to help creators move from scattered notes to a publishable world workspace. The core experience includes:
