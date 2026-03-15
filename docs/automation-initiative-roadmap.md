@@ -237,3 +237,4 @@ This document tracks the multi-session automation initiative to deliver the full
 - 2025-12-18: Delayed projectId deep-link cleanup until initial workspace loading completes so project URLs open as expected; no roadmap bullets impacted.
 - 2026-01-28: Adjusted project selection history so browser back returns to the project list; no roadmap bullets impacted.
 - 2026-03-14: Added a top-of-README guest-mode direct link (`?guest=1`) for seeded demo data discovery; no roadmap bullets impacted.
+- 2026-03-14: Added a README capability overview with product snapshots ahead of deployment instructions; no roadmap bullets impacted.

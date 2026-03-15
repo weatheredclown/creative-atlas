@@ -4,6 +4,28 @@ A playful, gamified personal knowledge system for organizing web comics, wikis, 
 
 🔗 **Guest mode (try a demo):** https://creative-atlas.web.app/?guest=1
 
+## Primary Capabilities
+
+Creative Atlas is designed to help creators move from scattered notes to a publishable world workspace. The core experience includes:
+
+- **Project-centered worldbuilding:** Organize each story/game/wiki world as its own project with quick status context and navigation.
+- **Linked artifacts:** Create and manage artifacts like characters, lore, timelines, and related planning content in one workspace.
+- **Guided onboarding:** Follow a built-in tutorial flow that walks first-time creators through creating and connecting artifacts.
+- **Flexible editing workflows:** Switch between focused editing and broader project context while iterating on world details.
+- **Sharing and publishing support:** Prepare content for sharing and downstream publishing workflows once your project is ready.
+
+### Product Snapshots
+
+> For a live interactive view of these features, open guest mode: https://creative-atlas.web.app/?guest=1
+
+#### Workspace overview (dashboard + onboarding)
+
+![Creative Atlas workspace overview](code/public/share-preview.png)
+
+#### Example project visual (guest starter world)
+
+![Tamenzut guest project thumbnail](code/public/tamenzut-thumb.svg)
+
 ## Deployment Smoke Test Checklist
 
 When validating recent Firebase Hosting and Functions deploy fixes, run a quick smoke test to confirm both surfaces ship cleanly:
