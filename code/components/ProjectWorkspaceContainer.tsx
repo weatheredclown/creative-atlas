@@ -159,7 +159,7 @@ const ProjectWorkspaceContainer: ProjectWorkspaceContainerComponent = ({
   onArtifactFiltersChange,
 }) => {
   const detailSectionRef = useRef<HTMLDivElement | null>(null);
-  const previousSelectedArtifactIdRef = useRef<string | null>(null);
+  const previousSelectedArtifactIdRef = useRef<string | null>(selectedArtifactId);
 
   const quickFacts = useMemo(
     () => projectArtifacts.filter(isQuickFactArtifact).slice().sort(sortQuickFactsByRecency),
